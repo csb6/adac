@@ -32,7 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 static
 int is_graphic_character(char c)
 {
-    return isgraph(c) || c == ' ';
+    return c >= ' ' && c <= '~';
 }
 
 static
@@ -121,7 +121,7 @@ const char* lex_string_literal(const char* input_start, const char* input_end, c
         if(*curr == '"') {
             if(curr + 1 != input_end && curr[1] == '"') {
                 // Two double quotes inside a string literal are treated as one double quote (cursed)
-                ++curr;
+                curr += 2;
             } else {
                 found_closing_quote = 1;
             }
