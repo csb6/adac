@@ -49,6 +49,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
             // TODO: store base in token->extra.num_base
             // TODO: validate that base is within [1,16]
             // TODO: validate that digits A-F are appropriate for given base
+            // TODO: allow substitution of '#' with '"' subject to rules in LRM 2.10
             ++curr;
             if(curr == input_end) {
                 fprintf(stderr, "Unexpected end of based literal\n");
