@@ -30,6 +30,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     token->len = 1;
 
 static
+int is_graphic_character(char c)
+{
+    return isgraph(c) || c == ' ';
+}
+
+static
 const char* lex_numeric_literal(const char* input_start, const char* input_end, const char* curr, Token* token)
 {
     const char* token_start = curr;
@@ -97,6 +103,42 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
     token->kind = TOKEN_NUM_LITERAL;
     token->start = token_start - input_start;
     token->len = curr - token_start;
+    return curr;
+}
+
+static
+const char* lex_string_literal(const char* input_start, const char* input_end, const char* curr, Token* token)
+{
+    ++curr; // Skip '"'
+    if(curr == input_end) {
+        fprintf(stderr, "Unexpected end of string literal\n");
+        return curr;
+    }
+    const char* token_start = curr;
+    int found_closing_quote = 0;
+    while(curr != input_end && !found_closing_quote) {
+        if(*curr == '"') {
+            if(curr + 1 != input_end && curr[1] == '"') {
+                // Two double quotes inside a string literal are treated as one double quote (cursed)
+                ++curr;
+            } else {
+                found_closing_quote = 1;
+            }
+        } else if(is_graphic_character(*curr)) {
+            ++curr;
+        } else {
+            fprintf(stderr, "Unexpected character\n");
+            return curr;
+        }
+    }
+    if(!found_closing_quote) {
+        fprintf(stderr, "Missing closing quote for string literal\n");
+        return curr;
+    }
+    token->kind = TOKEN_STRING_LITERAL;
+    token->start = token_start - input_start;
+    token->len = curr - token_start;
+    ++curr; // Skip final '"'
     return curr;
 }
 
@@ -182,7 +224,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
             case '\'':
                 if(curr + 2 < input_end && curr[2] == '\'') {
                     ++curr;
-                    if(isgraph(*curr) || *curr == ' ') {
+                    if(is_graphic_character(*curr)) {
                         set_simple_token(TOKEN_CHAR_LITERAL)
                     } else {
                         fprintf(stderr, "Character literal must be a graphical character\n");
@@ -195,9 +237,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 ++curr;
                 break;
             case '"':
-                // TODO: string literal
-                set_simple_token(TOKEN_DOUBLE_QUOTE)
-                ++curr;
+                curr = lex_string_literal(input_start, input_end, curr, token);
                 break;
             case '*':
                 token->start = curr - input_start;

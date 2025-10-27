@@ -93,7 +93,6 @@ int main(int argc, char** argv)
 static const char* token_kind_names[TOKEN_NUM_TOKEN_KINDS] = {
     [TOKEN_AMP] = "AMP",
     [TOKEN_SINGLE_QUOTE] = "SINGLE_QUOTE",
-    [TOKEN_DOUBLE_QUOTE] = "DOUBLE_QUOTE",
     [TOKEN_L_PAREN] = "L_PAREN",
     [TOKEN_R_PAREN] = "R_PAREN",
     [TOKEN_MULT] = "MULT",
