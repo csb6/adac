@@ -39,6 +39,9 @@ typedef struct {
     uint32_t start;
     uint32_t len;
     TokenKind kind;
+    union {
+        uint8_t num_base;
+    } extra;
 } Token;
 
 #endif /* ADA_TOKEN_H */

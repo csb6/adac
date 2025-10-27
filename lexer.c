@@ -21,17 +21,40 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
         ++curr;
     }
     if(curr != input_end) {
-        if(*curr == '.') {
+        if(*curr == '#') {
+            // Based literals
+            // TODO: store base in token->extra.num_base
+            // TODO: validate that base is within [1,16]
+            // TODO: validate that digits A-F are appropriate for given base
             ++curr;
-            while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
-                ++curr;
-            }
             if(curr == input_end) {
-                fprintf(stderr, "Unexpected end of decimal literal\n");
+                fprintf(stderr, "Unexpected end of based literal\n");
                 return curr;
             }
+            while(curr != input_end && (isdigit(*curr) || *curr == '_' || isalpha(*curr))) {
+                ++curr;
+            }
+            if(curr == input_end || *curr != '#') {
+                fprintf(stderr, "Unexpected end of based literal\n");
+                return curr;
+            }
+            ++curr;
+        } else {
+            if(*curr == '.') {
+                // Decimal literals
+                ++curr;
+                if(curr == input_end) {
+                    fprintf(stderr, "Unexpected end of decimal literal\n");
+                    return curr;
+                }
+                while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
+                    ++curr;
+                }
+            }
         }
-        if(*curr == 'e' || *curr == 'E') {
+
+        if(curr != input_end && (*curr == 'e' || *curr == 'E')) {
+            // Exponents
             ++curr;
             if(curr == input_end) {
                 fprintf(stderr, "Unexpected end of exponent\n");
@@ -54,7 +77,6 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
             }
         }
     }
-    // TODO: based literals
     token->kind = TOKEN_NUM_LITERAL;
     token->start = token_start - input_start;
     token->len = curr - token_start;
