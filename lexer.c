@@ -135,6 +135,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 set_simple_token(TOKEN_SEMICOLON)
                 ++curr;
                 break;
+            case '!':
             case '|':
                 set_simple_token(TOKEN_BAR)
                 ++curr;
