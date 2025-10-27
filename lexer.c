@@ -71,7 +71,7 @@ const char* lex_identifier_or_keyword(const char* input_start, const char* input
         ++curr;
     }
     const struct keyword_token* keyword = is_keyword(token_start, curr - token_start);
-    if(keyword) {
+    if(keyword && (curr == input_end || !(isalpha(*curr) || *curr == '_' || isdigit(*curr)))) {
         token->kind = keyword->kind;
     } else {
         token->kind = TOKEN_IDENT;
