@@ -230,27 +230,69 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                                 }
                             }
                             token->len = curr - token_start;
+                            state = STATE_END;
                         } else if(isdigit(*curr)) {
-                            token->kind = TOKEN_NUM_LITERAL;
-                            token->start = curr - input_start;
-                            ++curr;
-                            while(curr != input_end && isdigit(*curr)) {
-                                ++curr;
-                            }
-                            // TODO: based literals
-                            // TODO: decimal literals
-                            token->len = (curr - input_start) - token->start;
+                            state = STATE_NUM_LIT;
                         } else {
                             fprintf(stderr, "Unexpected character: %c\n", *curr);
+                            state = STATE_END;
                         }
-                        state = STATE_END;
                         break;
                 }
                 break;
             case STATE_STRING_LIT:
                 break;
-            case STATE_NUM_LIT:
+            case STATE_NUM_LIT: {
+                const char* token_start = curr;
+                ++curr;
+                while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
+                    ++curr;
+                }
+                if(curr != input_end) {
+                    if(*curr == '.') {
+                        ++curr;
+                        while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
+                            ++curr;
+                        }
+                        if(curr == input_end) {
+                            fprintf(stderr, "Unexpected end of decimal literal\n");
+                            state = STATE_END;
+                            continue;
+                        }
+                    }
+                    if(*curr == 'e' || *curr == 'E') {
+                        ++curr;
+                        if(curr == input_end) {
+                            fprintf(stderr, "Unexpected end of exponent\n");
+                            state = STATE_END;
+                            continue;
+                        }
+                        if(*curr == '+' || *curr == '-') {
+                            ++curr;
+                            if(curr == input_end) {
+                                fprintf(stderr, "Unexpected end of exponent\n");
+                                state = STATE_END;
+                                continue;
+                            }
+                        }
+                        if(!isdigit(*curr)) {
+                            fprintf(stderr, "Unexpected end of exponent\n");
+                            state = STATE_END;
+                            continue;
+                        }
+                        ++curr;
+                        while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
+                            ++curr;
+                        }
+                    }
+                }
+                // TODO: based literals
+                token->kind = TOKEN_NUM_LITERAL;
+                token->start = token_start - input_start;
+                token->len = curr - token_start;
+                state = STATE_END;
                 break;
+            }
             case STATE_COMMENT:
                 curr += 2; // Skip over '--'
                 while(curr != input_end && *curr != '\n') {

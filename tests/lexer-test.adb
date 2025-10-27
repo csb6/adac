@@ -1,4 +1,11 @@
-& ' " ( ) * ** + , - . .. / /= : := ; < <= << = >= > >> | -- foo bar
--- foo bar
+-- Symbols/operators
+& ' " ( ) * ** + , - . .. / /= : := ; < <= << = >= > >> | -- comment at end of line
+-- comment on own line
+-- Character literals
 'a' ' ' '#'
-foo FOO bar B1 BAR_BAR23:=foo 1 14 12323 package end PACKAGE Package
+-- Identifiers
+foo FOO bar B1 BAR_BAR23
+-- Keywords
+package end PACKAGE Package
+-- Number literals
+1 14 12323 12_32_3 1.0 0.1 11.00 1e6 1E6 11E6 11E66 11.0E6 1232_32.00_1E4_4
