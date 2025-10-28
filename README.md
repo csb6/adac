@@ -36,4 +36,7 @@ or manually invoke `gperf` using the invocation in the comment at the top of `ke
 
 ## License
 
+Files in the `third_party` directory are vendored and have their own separate copyrights/licenses. See the respective README
+files of each subdirectory for more information.
+
 All files in this repository (unless otherwise specified) are licensed under the [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html).
