@@ -1,6 +1,6 @@
 build/
 .cache/
-.DS_Store
+**/.DS_Store
 # TODO: unzip and add these at some point
 tests/acats/
 .vscode/
