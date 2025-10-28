@@ -13,6 +13,6 @@ add_custom_target(gen_keyword_hash
         --output-file="${CMAKE_SOURCE_DIR}/keywords.c"
         ${CMAKE_SOURCE_DIR}/keywords.gperf)
 
-add_executable(adac main.c lexer.c)
+add_executable(adac main.c lexer.c error.c)
 target_include_directories(adac PRIVATE .)
 target_compile_options(adac PRIVATE "-Wall" "-Wextra" "-pedantic-errors")

@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "error.h"
 #include "lexer.h"
 
 static
@@ -50,8 +51,8 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    printf("%s:\n", argv[1]);
-    int fd = open(argv[1], O_RDONLY);
+    const char* source_file_path = argv[1];
+    int fd = open(source_file_path, O_RDONLY);
     if(fd < 0) {
         perror("Failed to open file");
         return 1;
@@ -71,6 +72,7 @@ int main(int argc, char** argv)
     const char* curr = input_file;
     const char* input_start = input_file;
     const char* input_end = input_start + file_size;
+    error_set_source_file_path(source_file_path);
 
     Token token = {0};
     while(curr < input_end && token.kind != TOKEN_EOF) {
@@ -88,7 +90,7 @@ int main(int argc, char** argv)
     }
     close(fd);
 
-    return 0;
+    return error_get_return_status();
 }
 
 static const char* token_kind_names[TOKEN_NUM_TOKEN_KINDS] = {
