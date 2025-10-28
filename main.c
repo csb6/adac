@@ -52,6 +52,7 @@ int main(int argc, char** argv)
     }
 
     const char* source_file_path = argv[1];
+    error_set_source_file_path(source_file_path);
     int fd = open(source_file_path, O_RDONLY);
     if(fd < 0) {
         perror("Failed to open file");
@@ -72,7 +73,6 @@ int main(int argc, char** argv)
     const char* curr = input_file;
     const char* input_start = input_file;
     const char* input_end = input_start + file_size;
-    error_set_source_file_path(source_file_path);
 
     Token token = {0};
     while(curr < input_end && token.kind != TOKEN_EOF) {

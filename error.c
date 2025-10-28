@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 
 static int error_status = 0;
-static const char* source_file_path = "";
+static const char* source_file_path = NULL;
 
 void error_set_source_file_path(const char* path)
 {
@@ -33,6 +33,9 @@ int error_get_return_status(void)
 
 void error_print(const char* message)
 {
-    fprintf(stderr, "%s: Error: %s\n", source_file_path, message);
+    if(source_file_path) {
+        fprintf(stderr, "%s: ", source_file_path);
+    }
+    fprintf(stderr, "Error: %s\n", message);
     error_status = 1;
 }
