@@ -126,6 +126,7 @@ static const char* token_kind_names[TOKEN_NUM_TOKEN_KINDS] = {
     [TOKEN_NUM_LITERAL] = "NUM_LITERAL",
     [TOKEN_PACKAGE] = "PACKAGE",
     [TOKEN_END] = "END",
+    [TOKEN_STRING_LITERAL] = "STRING_LITERAL",
 };
 
 static
