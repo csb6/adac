@@ -51,11 +51,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
             // TODO: validate that digits A-F are appropriate for given base
             // TODO: allow substitution of '#' with '"' subject to rules in LRM 2.10
             ++curr;
-            if(curr == input_end) {
-                fprintf(stderr, "Unexpected end of based literal\n");
-                return curr;
-            }
-            while(curr != input_end && (isdigit(*curr) || *curr == '_' || isalpha(*curr))) {
+            while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
                 ++curr;
             }
             if(curr == input_end || *curr != '#') {
@@ -63,17 +59,15 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
                 return curr;
             }
             ++curr;
-        } else {
-            if(*curr == '.') {
-                // Decimal literals
+        } else if(*curr == '.') {
+            // Decimal literals
+            ++curr;
+            if(curr == input_end) {
+                fprintf(stderr, "Unexpected end of decimal literal\n");
+                return curr;
+            }
+            while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
                 ++curr;
-                if(curr == input_end) {
-                    fprintf(stderr, "Unexpected end of decimal literal\n");
-                    return curr;
-                }
-                while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
-                    ++curr;
-                }
             }
         }
 
@@ -153,11 +147,11 @@ const char* lex_identifier_or_keyword(const char* input_start, const char* input
         ++curr;
     }
     const struct keyword_token* keyword = is_keyword(token_start, curr - token_start);
-    if(keyword && (curr == input_end || !(isalpha(*curr) || *curr == '_' || isdigit(*curr)))) {
+    if(keyword && (curr == input_end || !(isalnum(*curr) || *curr == '_'))) {
         token->kind = keyword->kind;
     } else {
         token->kind = TOKEN_IDENT;
-        while(curr != input_end && (isalpha(*curr) || *curr == '_' || isdigit(*curr))) {
+        while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
             ++curr;
         }
     }
