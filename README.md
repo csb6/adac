@@ -29,6 +29,14 @@ Note: [`gperf`](https://www.gnu.org/software/gperf/) is not a compile-time or ru
 the source tree. To regenerate `keywords.c`, you can run the `gen_keyword_hash` custom command (e.g. `ninja gen_keyword_hash`)
 or manually invoke `gperf` using the invocation in the comment at the top of `keywords.c`.
 
+## Running
+
+The build produces a standalone executable `adac` that can then be run:
+
+    adac path_to_ada_source_file
+
+Currently, this simply tokenizes to given file and prints out information about each token.
+
 ## Useful links
 
 - [Bookstrapping wiki article](https://bootstrapping.miraheze.org/wiki/Bootstrapping_Specific_Languages#Ada_and_SPARK) describing the issues with bootstrapping GNAT
@@ -39,4 +47,4 @@ or manually invoke `gperf` using the invocation in the comment at the top of `ke
 Files in the `third_party` directory are vendored and have their own separate copyrights/licenses. See the respective README
 files of each subdirectory for more information.
 
-All files in this repository (unless otherwise specified) are licensed under the [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html).
+All other files in this repository (unless otherwise specified) are licensed under the [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html).
