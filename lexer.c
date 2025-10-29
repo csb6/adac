@@ -46,6 +46,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
     if(curr != input_end) {
         if(*curr == '#') {
             // Based literals
+            // TODO: there can be based literals with "decimal" points (sigh)
             // TODO: store base in token->extra.num_base
             // TODO: validate that base is within [1,16]
             // TODO: validate that digits A-F are appropriate for given base

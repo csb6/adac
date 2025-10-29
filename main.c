@@ -22,7 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <stdio.h>
 #include "error.h"
-#include "lexer.h"
+#include "parser.h"
+#include "token.h"
 
 static
 void print_token(Token, const char* input);
@@ -70,19 +71,9 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    const char* curr = input_file;
     const char* input_start = input_file;
     const char* input_end = input_start + file_size;
-
-    Token token = {0};
-    while(curr < input_end && token.kind != TOKEN_EOF) {
-        curr = lexer_parse_token(input_start, input_end, curr, &token);
-        if(token.kind == TOKEN_ERROR) {
-            fprintf(stderr, "Error: invalid token\n");
-            break;
-        }
-        print_token(token, input_start);
-    }
+    parser_parse(input_start, input_end);
 
     if(munmap(input_file, file_size) < 0) {
         perror("Failed to unmap input file");
