@@ -1,6 +1,7 @@
 #ifndef ADA_AST_H
 #define ADA_AST_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "mini-gmp.h"
 #include "string_view.h"
@@ -111,7 +112,7 @@ typedef struct {
     StringView identifier;
     Type* type;
     Expression* init_expr;
-    _Bool is_constant;
+    bool is_constant;
 } ObjectDecl;
 
 // 3.3.1: Type Declarations

@@ -1,4 +1,5 @@
 #include "parser.h"
+#include <stdbool.h>
 #include <stdlib.h>
 #include "ast.h"
 #include "lexer.h"
@@ -21,42 +22,42 @@ void print_unexpected_token_error(ParseContext* ctx)
     error_print(ctx->input_start, ctx->curr, "Unexpected token: '%.*s'", token_str.len, token_str.value);
 }
 
-_Bool expect_token(ParseContext* ctx, TokenKind kind)
+bool expect_token(ParseContext* ctx, TokenKind kind)
 {
     ctx->curr = lexer_parse_token(ctx->input_start, ctx->input_end, ctx->curr, &ctx->token);
     if(ctx->token.kind == TOKEN_ERROR) {
-        return 0;
+        return false;
     }
     if(ctx->token.kind != kind) {
         print_unexpected_token_error(ctx);
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
 static
-_Bool parse_integer_type_definition(ParseContext* ctx, IntType* int_type)
+bool parse_integer_type_definition(ParseContext* ctx, IntType* int_type)
 {
     // TODO: support more complex expressions
     if(!expect_token(ctx, TOKEN_NUM_LITERAL)) {
-        return 0;
+        return false;
     }
     // TODO: min
     mpz_init_set_ui(int_type->range.lower_bound, 0);
     if(!expect_token(ctx, TOKEN_DOUBLE_DOT)) {
-        return 0;
+        return false;
     }
     // TODO: support more complex expressions
     if(!expect_token(ctx, TOKEN_NUM_LITERAL)) {
-        return 0;
+        return false;
     }
     // TODO: max
     mpz_init_set_ui(int_type->range.upper_bound, 128);
-    return 1;
+    return true;
 }
 
 static
-_Bool parse_full_type_declaration(ParseContext* ctx, TypeDecl* type_decl)
+bool parse_full_type_declaration(ParseContext* ctx, TypeDecl* type_decl)
 {
     ctx->curr = lexer_parse_token(ctx->input_start, ctx->input_end, ctx->curr, &ctx->token);
     switch(ctx->token.kind) {
@@ -65,7 +66,7 @@ _Bool parse_full_type_declaration(ParseContext* ctx, TypeDecl* type_decl)
             type_decl->name.len = ctx->token.len;
             // TODO: discriminant_part
             if(!expect_token(ctx, TOKEN_IS)) {
-                return 0;
+                return false;
             }
             ctx->curr = lexer_parse_token(ctx->input_start, ctx->input_end, ctx->curr, &ctx->token);
             switch(ctx->token.kind) {
@@ -73,24 +74,24 @@ _Bool parse_full_type_declaration(ParseContext* ctx, TypeDecl* type_decl)
                     type_decl->type = calloc(1, sizeof(Type));
                     type_decl->type->kind = TYPE_INTEGER;
                     if(!parse_integer_type_definition(ctx, &type_decl->type->u.int_type)) {
-                        return 0;
+                        return false;
                     }
                     break;
                 case TOKEN_ERROR:
-                    return 0;
+                    return false;
                 default:
                     print_unexpected_token_error(ctx);
-                    return 0;
+                    return false;
             }
             break;
         default:
             print_unexpected_token_error(ctx);
-            return 0;
+            return false;
     }
     if(!expect_token(ctx, TOKEN_SEMICOLON)) {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
 Declaration* parse_basic_declaration(ParseContext* ctx)
