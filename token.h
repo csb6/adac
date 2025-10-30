@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ADA_TOKEN_H
 
 #include <stdint.h>
+#include "string_view.h"
 
 typedef uint8_t TokenKind;
 enum {
@@ -60,5 +61,7 @@ typedef struct {
         uint8_t num_base;
     } extra;
 } Token;
+
+StringView token_to_str(const char* text_start, const Token* token);
 
 #endif /* ADA_TOKEN_H */

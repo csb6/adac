@@ -14,6 +14,13 @@ typedef struct {
     Token token;
 } ParseContext;
 
+static
+void print_unexpected_token_error(ParseContext* ctx)
+{
+    StringView token_str = token_to_str(ctx->input_start, &ctx->token);
+    error_print(ctx->input_start, ctx->curr, "Unexpected token: '%.*s'", token_str.len, token_str.value);
+}
+
 _Bool expect_token(ParseContext* ctx, TokenKind kind)
 {
     ctx->curr = lexer_parse_token(ctx->input_start, ctx->input_end, ctx->curr, &ctx->token);
@@ -21,7 +28,7 @@ _Bool expect_token(ParseContext* ctx, TokenKind kind)
         return 0;
     }
     if(ctx->token.kind != kind) {
-        error_print("Unexpected token");
+        print_unexpected_token_error(ctx);
         return 0;
     }
     return 1;
@@ -54,7 +61,8 @@ _Bool parse_full_type_declaration(ParseContext* ctx, TypeDecl* type_decl)
     ctx->curr = lexer_parse_token(ctx->input_start, ctx->input_end, ctx->curr, &ctx->token);
     switch(ctx->token.kind) {
         case TOKEN_IDENT:
-            string_view_create(ctx->input_start, &ctx->token, &type_decl->name);
+            type_decl->name.value = ctx->input_start + ctx->token.start;
+            type_decl->name.len = ctx->token.len;
             // TODO: discriminant_part
             if(!expect_token(ctx, TOKEN_IS)) {
                 return 0;
@@ -68,13 +76,15 @@ _Bool parse_full_type_declaration(ParseContext* ctx, TypeDecl* type_decl)
                         return 0;
                     }
                     break;
+                case TOKEN_ERROR:
+                    return 0;
                 default:
-                    error_print("Unexpected token");
+                    print_unexpected_token_error(ctx);
                     return 0;
             }
             break;
         default:
-            error_print("Unexpected token");
+            print_unexpected_token_error(ctx);
             return 0;
     }
     if(!expect_token(ctx, TOKEN_SEMICOLON)) {
@@ -95,8 +105,10 @@ Declaration* parse_basic_declaration(ParseContext* ctx)
                 return NULL;
             }
             break;
+        case TOKEN_ERROR:
+            return NULL;
         default:
-            error_print("Unexpected token");
+            print_unexpected_token_error(ctx);
             return NULL;
     }
     return decl;

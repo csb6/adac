@@ -56,7 +56,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
                 ++curr;
             }
             if(curr == input_end || *curr != '#') {
-                error_print("Unexpected end of based literal");
+                error_print(input_start, curr, "Unexpected end of based literal");
                 return curr;
             }
             ++curr;
@@ -64,7 +64,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
             // Decimal literals
             ++curr;
             if(curr == input_end) {
-                error_print("Unexpected end of decimal literal");
+                error_print(input_start, curr, "Unexpected end of decimal literal");
                 return curr;
             }
             while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
@@ -76,18 +76,18 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
             // Exponents
             ++curr;
             if(curr == input_end) {
-                error_print("Unexpected end of exponent");
+                error_print(input_start, curr, "Unexpected end of exponent");
                 return curr;
             }
             if(*curr == '+' || *curr == '-') {
                 ++curr;
                 if(curr == input_end) {
-                    error_print("Unexpected end of exponent");
+                    error_print(input_start, curr, "Unexpected end of exponent");
                     return curr;
                 }
             }
             if(!isdigit(*curr)) {
-                error_print("Unexpected end of exponent");
+                error_print(input_start, curr, "Unexpected end of exponent");
                 return curr;
             }
             ++curr;
@@ -107,7 +107,7 @@ const char* lex_string_literal(const char* input_start, const char* input_end, c
 {
     ++curr; // Skip '"'
     if(curr == input_end) {
-        error_print("Unexpected end of string literal");
+        error_print(input_start, curr, "Unexpected end of string literal");
         return curr;
     }
     const char* token_start = curr;
@@ -123,12 +123,12 @@ const char* lex_string_literal(const char* input_start, const char* input_end, c
         } else if(is_graphic_character(*curr)) {
             ++curr;
         } else {
-            error_print("Unexpected character");
+            error_print(input_start, curr, "Unexpected character: '%c'", *curr);
             return curr;
         }
     }
     if(!found_closing_quote) {
-        error_print("Missing closing quote for string literal");
+        error_print(input_start, curr, "Missing closing quote for string literal");
         return curr;
     }
     token->kind = TOKEN_STRING_LITERAL;
@@ -223,7 +223,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                     if(is_graphic_character(*curr)) {
                         set_simple_token(TOKEN_CHAR_LITERAL)
                     } else {
-                        error_print("Character literal must be a graphical character");
+                        error_print(input_start, curr, "Character literal must be a graphical character");
                     }
                     ++curr;
                 } else {
@@ -352,7 +352,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 } else if(isdigit(*curr)) {
                     curr = lex_numeric_literal(input_start, input_end, curr, token);
                 } else {
-                    error_print("Unexpected character");
+                    error_print(input_start, curr, "Unexpected character: '%c'", *curr);
                 }
         }
     } while(!done);

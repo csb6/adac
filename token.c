@@ -15,11 +15,20 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef ADA_ERROR_H
-#define ADA_ERROR_H
+#include "token.h"
+#include <stddef.h>
+#include <string.h>
 
-void error_set_source_file_path(const char* path);
-int error_get_return_status(void);
-void error_print(const char* text_start, const char* curr, const char* message, ...);
+StringView token_to_str(const char* text_start, const Token* token)
+{
+    StringView token_name = {0};
+    if(token->kind > TOKEN_NUM_TOKEN_KINDS) {
+        token_name.value = "Invalid token";
+        token_name.len = strlen(token_name.value);
+    } else {
+        token_name.value = text_start + token->start;
+        token_name.len = token->len;
+    }
 
-#endif /* ADA_ERROR_H */
+    return token_name;
+}

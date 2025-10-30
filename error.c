@@ -16,7 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "error.h"
+#include <stdint.h>
 #include <stdio.h>
+#include <stdarg.h>
 
 static int error_status = 0;
 static const char* source_file_path = NULL;
@@ -31,11 +33,23 @@ int error_get_return_status(void)
     return error_status;
 }
 
-void error_print(const char* message)
+void error_print(const char* text_start, const char* curr, const char* message, ...)
 {
     if(source_file_path) {
-        fprintf(stderr, "%s: ", source_file_path);
+        uint32_t line_num = 1;
+        for(const char* c = text_start; c < curr; ++c) {
+            if(*c == '\n') {
+                ++line_num;
+            }
+        }
+        fprintf(stderr, "%s:%u ", source_file_path, line_num);
     }
-    fprintf(stderr, "Error: %s\n", message);
+
+    va_list args;
+    va_start(args, message);
+    fprintf(stderr, "Error: ");
+    vfprintf(stderr, message, args);
+    fprintf(stderr, "\n");
+    va_end(args);
     error_status = 1;
 }
