@@ -45,13 +45,11 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
         ++curr;
     }
     uint32_t num_base = 10;
-    bool is_based = false;
     if(curr != input_end) {
         if(*curr == '#') {
             // Based literals
             // TODO: there can be based literals with "decimal" points (sigh)
             // TODO: allow substitution of '#' with '"' subject to rules in LRM 2.10
-            is_based = true;
             num_base = 0;
             for(const char* b = token_start; b < curr; ++b) {
                 if(isdigit(*b)) {
@@ -63,7 +61,6 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
                 return curr;
             }
             ++curr; // Skip over '#'
-            token_start = curr;
             while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
                 ++curr;
             }
@@ -111,8 +108,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
     token->kind = TOKEN_NUM_LITERAL;
     token->u.num_base = (uint8_t)num_base;
     token->start = token_start - input_start;
-    // Omit trailing '#' from based literals
-    token->len = is_based ? (curr - token_start - 1) : (curr - token_start);
+    token->len = curr - token_start;
     return curr;
 }
 
