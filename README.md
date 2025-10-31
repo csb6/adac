@@ -12,6 +12,7 @@ GNAT from source.
 ## Progress
 
 - The lexer is largely complete, although it is lacking some validation checks.
+- The parser is in the early stages.
 
 ## Building
 
