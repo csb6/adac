@@ -61,6 +61,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
                 return curr;
             }
             ++curr; // Skip over '#'
+            token_start = curr;
             while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
                 ++curr;
             }
