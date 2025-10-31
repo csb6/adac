@@ -49,7 +49,7 @@ void error_print(const char* text_start, const char* curr, const char* message, 
     va_start(args, message);
     fprintf(stderr, "Error: ");
     vfprintf(stderr, message, args);
-    fprintf(stderr, "\n");
+    fputc('\n', stderr);
     va_end(args);
     error_status = 1;
 }

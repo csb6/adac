@@ -16,7 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "token.h"
-#include <stddef.h>
 #include <string.h>
 
 StringView token_to_str(const char* text_start, const Token* token)
