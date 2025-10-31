@@ -136,14 +136,13 @@ bool parse_full_type_declaration(TypeDecl* type_decl)
                     return false;
             }
             break;
+        case TOKEN_ERROR:
+            return false;
         default:
             print_unexpected_token_error();
             return false;
     }
-    if(!expect_token(TOKEN_SEMICOLON)) {
-        return false;
-    }
-    return true;
+    return expect_token(TOKEN_SEMICOLON);
 }
 
 Declaration* parse_basic_declaration(void)
