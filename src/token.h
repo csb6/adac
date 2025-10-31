@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ADA_TOKEN_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "string_view.h"
 
 typedef uint8_t TokenKind;
@@ -58,7 +59,10 @@ typedef struct {
     uint32_t len;
     TokenKind kind;
     union {
-        uint8_t num_base;
+        struct {
+            uint8_t num_base;
+            bool has_fraction;
+        } int_lit;
     } u;
 } Token;
 

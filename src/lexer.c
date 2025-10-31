@@ -45,6 +45,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
         ++curr;
     }
     uint32_t num_base = 10;
+    bool has_fraction = false;
     if(curr != input_end) {
         if(*curr == '#') {
             // Based literals
@@ -72,6 +73,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
             ++curr;
         } else if(*curr == '.') {
             // Decimal literals
+            has_fraction = true;
             ++curr;
             if(curr == input_end) {
                 error_print(input_start, curr, "Unexpected end of decimal literal");
@@ -107,7 +109,8 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
         }
     }
     token->kind = TOKEN_NUM_LITERAL;
-    token->u.num_base = (uint8_t)num_base;
+    token->u.int_lit.num_base = (uint8_t)num_base;
+    token->u.int_lit.has_fraction = has_fraction;
     token->start = token_start - input_start;
     token->len = curr - token_start;
     return curr;

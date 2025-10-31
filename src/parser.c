@@ -55,6 +55,7 @@ bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz)
     const char* c = text->value;
     char* b = buffer;
     while(c < text_end) {
+        // TODO: handle exponent notation
         if(isalnum(*c)) {
             *b = *c;
             ++b;
@@ -78,14 +79,18 @@ bool parse_integer_type_definition(IntType* int_type)
     if(!expect_token(TOKEN_NUM_LITERAL)) {
         return false;
     }
+    if(ctx.token.u.int_lit.has_fraction) {
+        print_parse_error("Integer type must have integer bounds");
+        return false;
+    }
     num_buffer[0] = '\0';
     StringView num_str_view = token_to_str(ctx.input_start, &ctx.token);
     if(!prepare_num_str(&num_str_view, num_buffer, sizeof(num_buffer))) {
         print_parse_error("Numeric literal is too long to be processed (max is 127 characters in length)");
         return false;
     }
-    if(mpz_init_set_str(int_type->range.lower_bound, num_buffer, (int)ctx.token.u.num_base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx.token.u.num_base);
+    if(mpz_init_set_str(int_type->range.lower_bound, num_buffer, (int)ctx.token.u.int_lit.num_base) < 0) {
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx.token.u.int_lit.num_base);
         return false;
     }
 
@@ -98,11 +103,15 @@ bool parse_integer_type_definition(IntType* int_type)
     if(!expect_token(TOKEN_NUM_LITERAL)) {
         return false;
     }
+    if(ctx.token.u.int_lit.has_fraction) {
+        print_parse_error("Integer type must have integer bounds");
+        return false;
+    }
     num_buffer[0] = '\0';
     num_str_view = token_to_str(ctx.input_start, &ctx.token);
     prepare_num_str(&num_str_view, num_buffer, sizeof(num_buffer));
-    if(mpz_init_set_str(int_type->range.upper_bound, num_buffer, (int)ctx.token.u.num_base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx.token.u.num_base);
+    if(mpz_init_set_str(int_type->range.upper_bound, num_buffer, (int)ctx.token.u.int_lit.num_base) < 0) {
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx.token.u.int_lit.num_base);
         return false;
     }
     return true;
