@@ -1,5 +1,5 @@
 /* ANSI-C code produced by gperf version 3.0.3 */
-/* Command-line: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/gperf --ignore-case --compare-strncmp --readonly-tables --language=ANSI-C --struct-type --hash-function-name=hash_keyword --lookup-function-name=is_keyword --output-file=/Users/coleblakley/test/ada-compiler/keywords.c /Users/coleblakley/test/ada-compiler/keywords.gperf  */
+/* Command-line: gperf --ignore-case --compare-strncmp --readonly-tables --language=ANSI-C --struct-type --hash-function-name=hash_keyword --lookup-function-name=is_keyword --output-file=keywords.c keywords.gperf  */
 /* Computed positions: -k'1,3,$' */
 
 #if !((' ' == 32) && ('!' == 33) && ('"' == 34) && ('#' == 35) \
@@ -29,10 +29,8 @@
 #error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gnu-gperf@gnu.org>."
 #endif
 
-#line 1 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
 
 #include "token.h"
-#line 4 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
 struct keyword_token { const char* name; TokenKind kind; };
 
 #define TOTAL_KEYWORDS 63
@@ -147,155 +145,92 @@ is_keyword (register const char *str, register unsigned int len)
   static const struct keyword_token wordlist[] =
     {
       {""}, {""}, {""},
-#line 68 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"xor", TOKEN_XOR},
       {""}, {""}, {""},
-#line 14 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"or", TOKEN_OR},
-#line 23 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"out", TOKEN_OUT},
-#line 31 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"terminate", TOKEN_TERMINATE},
       {""}, {""},
-#line 67 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"reverse", TOKEN_REVERSE},
-#line 47 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"use", TOKEN_USE},
-#line 36 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"else", TOKEN_ELSE},
-#line 45 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"entry", TOKEN_ENTRY},
-#line 61 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"for", TOKEN_FOR},
       {""}, {""},
-#line 60 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"case", TOKEN_CASE},
-#line 9 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"of", TOKEN_OF},
       {""},
-#line 35 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"at", TOKEN_AT},
-#line 62 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"not", TOKEN_NOT},
-#line 34 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"then", TOKEN_THEN},
-#line 50 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"range", TOKEN_RANGE},
-#line 63 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"return", TOKEN_RETURN},
       {""},
-#line 39 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"elsif", TOKEN_ELSIF},
-#line 27 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"task", TOKEN_TASK},
-#line 6 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"abort", TOKEN_ABORT},
-#line 16 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"accept", TOKEN_ACCEPT},
       {""},
-#line 64 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"constant", TOKEN_CONSTANT},
-#line 49 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"exception", TOKEN_EXCEPTION},
-#line 32 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"array", TOKEN_ARRAY},
-#line 10 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"select", TOKEN_SELECT},
-#line 58 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"renames", TOKEN_RENAMES},
       {""},
-#line 54 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"when", TOKEN_WHEN},
       {""},
-#line 20 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"access", TOKEN_ACCESS},
-#line 25 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"do", TOKEN_DO},
-#line 11 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"abs", TOKEN_ABS},
-#line 38 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"type", TOKEN_TYPE},
       {""},
-#line 53 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"record", TOKEN_RECORD},
-#line 7 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"declare", TOKEN_DECLARE},
       {""},
-#line 51 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"exit", TOKEN_EXIT},
-#line 46 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"raise", TOKEN_RAISE},
       {""},
-#line 30 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"package", TOKEN_PACKAGE},
-#line 57 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"new", TOKEN_NEW},
-#line 41 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"procedure", TOKEN_PROCEDURE},
       {""}, {""},
-#line 29 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"is", TOKEN_IS},
-#line 15 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"separate", TOKEN_SEPARATE},
-#line 13 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"goto", TOKEN_GOTO},
-#line 22 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"if", TOKEN_IF},
-#line 65 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"function", TOKEN_FUNCTION},
-#line 19 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"subtype", TOKEN_SUBTYPE},
-#line 24 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"all", TOKEN_ALL},
-#line 66 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"null", TOKEN_NULL},
-#line 56 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"while", TOKEN_WHILE},
       {""},
-#line 26 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"in", TOKEN_IN},
       {""},
-#line 43 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"loop", TOKEN_LOOP},
-#line 12 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"delay", TOKEN_DELAY},
       {""}, {""},
-#line 42 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"end", TOKEN_END},
-#line 59 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"with", TOKEN_WITH},
       {""},
-#line 18 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"others", TOKEN_OTHERS},
       {""}, {""}, {""},
-#line 17 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"delta", TOKEN_DELTA},
       {""},
-#line 8 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"generic", TOKEN_GENERIC},
-#line 55 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"rem", TOKEN_REM},
       {""}, {""},
-#line 33 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"pragma", TOKEN_PRAGMA},
       {""}, {""}, {""}, {""}, {""},
-#line 37 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"private", TOKEN_PRIVATE},
-#line 28 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"and", TOKEN_AND},
-#line 48 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"body", TOKEN_BODY},
       {""}, {""}, {""}, {""}, {""}, {""},
-#line 21 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"digits", TOKEN_DIGITS},
-#line 40 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"limited", TOKEN_LIMITED},
       {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
       {""},
-#line 52 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"mod", TOKEN_MOD},
       {""}, {""}, {""}, {""}, {""}, {""},
-#line 44 "/Users/coleblakley/test/ada-compiler/keywords.gperf"
       {"begin", TOKEN_BEGIN}
     };
 
