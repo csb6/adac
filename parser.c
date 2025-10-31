@@ -1,4 +1,5 @@
 #include "parser.h"
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include "ast.h"
@@ -36,23 +37,56 @@ bool expect_token(ParseContext* ctx, TokenKind kind)
 }
 
 static
+void prepare_num_str(const StringView* text, char* buffer, int buffer_sz)
+{
+    const char* text_end = text->value + text->len;
+    const char* buffer_end = buffer + buffer_sz - 1; // Leave space for null terminator
+    const char* c = text->value;
+    char* b = buffer;
+    while(c < text_end && b < buffer_end) {
+        if(isalnum(*c)) {
+            *b = *c;
+            ++b;
+        }
+        ++c;
+    }
+    *b = '\0';
+}
+
+static
 bool parse_integer_type_definition(ParseContext* ctx, IntType* int_type)
 {
+    char num_buffer[128];
+
+    // Lower bound
     // TODO: support more complex expressions
     if(!expect_token(ctx, TOKEN_NUM_LITERAL)) {
         return false;
     }
-    // TODO: min
-    mpz_init_set_ui(int_type->range.lower_bound, 0);
+    num_buffer[0] = '\0';
+    StringView num_str_view = token_to_str(ctx->input_start, &ctx->token);
+    prepare_num_str(&num_str_view, num_buffer, sizeof(num_buffer));
+    if(mpz_init_set_str(int_type->range.lower_bound, num_buffer, (int)ctx->token.u.num_base) < 0) {
+        error_print(ctx->input_start, ctx->curr, "Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx->token.u.num_base);
+        return false;
+    }
+
     if(!expect_token(ctx, TOKEN_DOUBLE_DOT)) {
         return false;
     }
+
+    // Upper bound
     // TODO: support more complex expressions
     if(!expect_token(ctx, TOKEN_NUM_LITERAL)) {
         return false;
     }
-    // TODO: max
-    mpz_init_set_ui(int_type->range.upper_bound, 128);
+    num_buffer[0] = '\0';
+    num_str_view = token_to_str(ctx->input_start, &ctx->token);
+    prepare_num_str(&num_str_view, num_buffer, sizeof(num_buffer));
+    if(mpz_init_set_str(int_type->range.upper_bound, num_buffer, (int)ctx->token.u.num_base) < 0) {
+        error_print(ctx->input_start, ctx->curr, "Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx->token.u.num_base);
+        return false;
+    }
     return true;
 }
 

@@ -59,7 +59,7 @@ typedef struct {
     TokenKind kind;
     union {
         uint8_t num_base;
-    } extra;
+    } u;
 } Token;
 
 StringView token_to_str(const char* text_start, const Token* token);

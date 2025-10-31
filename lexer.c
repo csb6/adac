@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "lexer.h"
 #include <ctype.h>
+#include <stdbool.h>
 #include <string.h>
 #include "error.h"
 #pragma GCC diagnostic push
@@ -43,15 +44,26 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
     while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
         ++curr;
     }
+    uint32_t num_base = 10;
+    bool is_based = false;
     if(curr != input_end) {
         if(*curr == '#') {
             // Based literals
             // TODO: there can be based literals with "decimal" points (sigh)
-            // TODO: store base in token->extra.num_base
-            // TODO: validate that base is within [1,16]
-            // TODO: validate that digits A-F are appropriate for given base
             // TODO: allow substitution of '#' with '"' subject to rules in LRM 2.10
-            ++curr;
+            is_based = true;
+            num_base = 0;
+            for(const char* b = token_start; b < curr; ++b) {
+                if(isdigit(*b)) {
+                    num_base = num_base * 10 + (*b - '0');
+                }
+            }
+            if(num_base < 2 || num_base > 16) {
+                error_print(input_start, curr, "Base of numeric literal must be in range [2, 16]");
+                return curr;
+            }
+            ++curr; // Skip over '#'
+            token_start = curr;
             while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
                 ++curr;
             }
@@ -97,8 +109,10 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
         }
     }
     token->kind = TOKEN_NUM_LITERAL;
+    token->u.num_base = (uint8_t)num_base;
     token->start = token_start - input_start;
-    token->len = curr - token_start;
+    // Omit trailing '#' from based literals
+    token->len = is_based ? (curr - token_start - 1) : (curr - token_start);
     return curr;
 }
 
