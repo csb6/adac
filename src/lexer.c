@@ -27,8 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #define set_simple_token(token_kind) \
     token->kind = token_kind; \
-    token->start = curr - input_start; \
-    token->len = 1;
+    token->text.value = curr; \
+    token->text.len = 1;
 
 static
 int is_graphic_character(char c)
@@ -111,8 +111,8 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
     token->kind = TOKEN_NUM_LITERAL;
     token->u.int_lit.num_base = (uint8_t)num_base;
     token->u.int_lit.has_fraction = has_fraction;
-    token->start = token_start - input_start;
-    token->len = curr - token_start;
+    token->text.value = token_start;
+    token->text.len = curr - token_start;
     return curr;
 }
 
@@ -146,17 +146,16 @@ const char* lex_string_literal(const char* input_start, const char* input_end, c
         return curr;
     }
     token->kind = TOKEN_STRING_LITERAL;
-    token->start = token_start - input_start;
-    token->len = curr - token_start;
+    token->text.value = token_start;
+    token->text.len = curr - token_start;
     ++curr; // Skip final '"'
     return curr;
 }
 
 static
-const char* lex_identifier_or_keyword(const char* input_start, const char* input_end, const char* curr, Token* token)
+const char* lex_identifier_or_keyword(const char* input_end, const char* curr, Token* token)
 {
     const char* token_start = curr;
-    token->start = curr - input_start;
     ++curr;
     while(curr != input_end && isalpha(*curr)) {
         ++curr;
@@ -170,7 +169,8 @@ const char* lex_identifier_or_keyword(const char* input_start, const char* input
             ++curr;
         }
     }
-    token->len = curr - token_start;
+    token->text.value = token_start;
+    token->text.len = curr - token_start;
     return curr;
 }
 
@@ -242,7 +242,6 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                     ++curr;
                 } else {
                     set_simple_token(TOKEN_SINGLE_QUOTE)
-                    token->len = 1;
                 }
                 ++curr;
                 break;
@@ -250,14 +249,14 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 curr = lex_string_literal(input_start, input_end, curr, token);
                 break;
             case '*':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end && curr[1] == '*') {
                     token->kind = TOKEN_EXP;
-                    token->len = 2;
+                    token->text.len = 2;
                     ++curr;
                 } else {
                     token->kind = TOKEN_MULT;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
@@ -271,98 +270,98 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 }
                 break;
             case '.':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end && curr[1] == '.') {
                     token->kind = TOKEN_DOUBLE_DOT;
-                    token->len = 2;
+                    token->text.len = 2;
                     ++curr;
                 } else {
                     token->kind = TOKEN_DOT;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
             case '/':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end && curr[1] == '=') {
                     token->kind = TOKEN_NEQ;
-                    token->len = 2;
+                    token->text.len = 2;
                     ++curr;
                 } else {
                     token->kind = TOKEN_DIVIDE;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
             case ':':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end && curr[1] == '=') {
                     token->kind = TOKEN_ASSIGN;
-                    token->len = 2;
+                    token->text.len = 2;
                     ++curr;
                 } else {
                     token->kind = TOKEN_COLON;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
             case '<':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end) {
                     if(curr[1] == '=') {
                         token->kind = TOKEN_LTE;
-                        token->len = 2;
+                        token->text.len = 2;
                         ++curr;
                     } else if(curr[1] == '<') {
                         token->kind = TOKEN_L_LABEL_BRACKET;
-                        token->len = 2;
+                        token->text.len = 2;
                         ++curr;
                     } else if(curr[1] == '>') {
                         token->kind = TOKEN_BOX;
-                        token->len = 2;
+                        token->text.len = 2;
                         ++curr;
                     }
                 }
-                if(token->len != 2) {
+                if(token->text.len != 2) {
                     token->kind = TOKEN_LT;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
             case '=':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end && curr[1] == '<') {
                     token->kind = TOKEN_ARROW;
-                    token->len = 2;
+                    token->text.len = 2;
                     ++curr;
                 } else {
                     token->kind = TOKEN_EQ;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
             case '>':
-                token->start = curr - input_start;
+                token->text.value = curr;
                 if(curr + 1 != input_end) {
                     if(curr[1] == '=') {
                         token->kind = TOKEN_GTE;
-                        token->len = 2;
+                        token->text.len = 2;
                         ++curr;
                     } else if(curr[1] == '>') {
                         token->kind = TOKEN_R_LABEL_BRACKET;
-                        token->len = 2;
+                        token->text.len = 2;
                         ++curr;
                     }
                 }
-                if(token->len != 2) {
+                if(token->text.len != 2) {
                     token->kind = TOKEN_GT;
-                    token->len = 1;
+                    token->text.len = 1;
                 }
                 ++curr;
                 break;
             default:
                 if(isalpha(*curr)) {
-                    curr = lex_identifier_or_keyword(input_start, input_end, curr, token);
+                    curr = lex_identifier_or_keyword(input_end, curr, token);
                 } else if(isdigit(*curr)) {
                     curr = lex_numeric_literal(input_start, input_end, curr, token);
                 } else {

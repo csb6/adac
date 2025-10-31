@@ -30,7 +30,7 @@ void next_token(void)
 static
 void print_unexpected_token_error(void)
 {
-    StringView token_str = token_to_str(ctx.input_start, &ctx.token);
+    StringView token_str = token_to_str(&ctx.token);
     print_parse_error("Unexpected token: '%.*s'", token_str.len, token_str.value);
 }
 
@@ -84,13 +84,12 @@ bool parse_integer_type_definition(IntType* int_type)
         return false;
     }
     num_buffer[0] = '\0';
-    StringView num_str_view = token_to_str(ctx.input_start, &ctx.token);
-    if(!prepare_num_str(&num_str_view, num_buffer, sizeof(num_buffer))) {
+    if(!prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer))) {
         print_parse_error("Numeric literal is too long to be processed (max is 127 characters in length)");
         return false;
     }
     if(mpz_init_set_str(int_type->range.lower_bound, num_buffer, (int)ctx.token.u.int_lit.num_base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx.token.u.int_lit.num_base);
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.num_base);
         return false;
     }
 
@@ -108,10 +107,9 @@ bool parse_integer_type_definition(IntType* int_type)
         return false;
     }
     num_buffer[0] = '\0';
-    num_str_view = token_to_str(ctx.input_start, &ctx.token);
-    prepare_num_str(&num_str_view, num_buffer, sizeof(num_buffer));
+    prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer));
     if(mpz_init_set_str(int_type->range.upper_bound, num_buffer, (int)ctx.token.u.int_lit.num_base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", num_str_view.len, num_str_view.value, ctx.token.u.int_lit.num_base);
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.num_base);
         return false;
     }
     return true;
@@ -123,8 +121,7 @@ bool parse_full_type_declaration(TypeDecl* type_decl)
     next_token();
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
-            type_decl->name.value = ctx.input_start + ctx.token.start;
-            type_decl->name.len = ctx.token.len;
+            type_decl->name = ctx.token.text;
             // TODO: discriminant_part
             if(!expect_token(TOKEN_IS)) {
                 return false;

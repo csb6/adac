@@ -18,15 +18,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "token.h"
 #include <string.h>
 
-StringView token_to_str(const char* text_start, const Token* token)
+StringView token_to_str(const Token* token)
 {
-    StringView token_name = {0};
+    StringView token_name = token->text;
     if(token->kind > TOKEN_NUM_TOKEN_KINDS) {
         token_name.value = "Invalid token";
         token_name.len = strlen(token_name.value);
-    } else {
-        token_name.value = text_start + token->start;
-        token_name.len = token->len;
     }
 
     return token_name;

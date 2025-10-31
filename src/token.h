@@ -55,8 +55,7 @@ enum {
 };
 
 typedef struct {
-    uint32_t start;
-    uint32_t len;
+    StringView text;
     TokenKind kind;
     union {
         struct {
@@ -66,6 +65,6 @@ typedef struct {
     } u;
 } Token;
 
-StringView token_to_str(const char* text_start, const Token* token);
+StringView token_to_str(const Token* token);
 
 #endif /* ADA_TOKEN_H */
