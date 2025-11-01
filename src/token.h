@@ -59,7 +59,7 @@ typedef struct {
     TokenKind kind;
     union {
         struct {
-            uint8_t num_base;
+            uint8_t base;
             bool has_fraction;
         } int_lit;
     } u;

@@ -109,7 +109,7 @@ const char* lex_numeric_literal(const char* input_start, const char* input_end, 
         }
     }
     token->kind = TOKEN_NUM_LITERAL;
-    token->u.int_lit.num_base = (uint8_t)num_base;
+    token->u.int_lit.base = (uint8_t)num_base;
     token->u.int_lit.has_fraction = has_fraction;
     token->text.value = token_start;
     token->text.len = curr - token_start;

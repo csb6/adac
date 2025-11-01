@@ -6,6 +6,17 @@
 #include "mini-gmp.h"
 #include "string_view.h"
 
+struct Declaration_;
+struct Type_;
+struct Expression_;
+
+/* PACKAGES */
+
+typedef struct PackageSpec_ {
+    StringView name;
+    struct Declaration_* decls; // TODO: support representation_clause/use_clause in this list
+} PackageSpec;
+
 /* TYPES */
 
 typedef uint8_t TypeKind;
@@ -25,22 +36,21 @@ enum {
     // 3.8: Access types
     TYPE_ACCESS, TYPE_INCOMPLETE,
 
+    TYPE_PLACEHOLDER,
     TYPE_KIND_COUNT
 };
-
-struct Type;
 
 // 3.3: Types and Subtypes
 // 3.4: Derived Types (these are just subtypes that do not implicitly convert to other subtypes with same base type)
 typedef struct {
-    struct Type* inner_type;
+    struct Type_* inner_type;
     // TODO: constraints
 } SubType;
 
 // 3.5: Scalar Types
 typedef struct {
-    mpz_t lower_bound;
-    mpz_t upper_bound; // inclusive
+    struct Expression_* lower_bound;
+    struct Expression_* upper_bound; // inclusive
 } IntRange;
 
 typedef struct {
@@ -49,8 +59,8 @@ typedef struct {
 
 // 3.6: Array types
 typedef struct {
-    struct Type* index_type;
-    struct Type* component_type;
+    struct Type_* index_type;
+    struct Type_* component_type;
     // TODO: constraints
     // TODO: multidimensional arrays
 } ArrayType;
@@ -65,37 +75,22 @@ typedef struct {
 
 // 3.8: Access types
 typedef struct {
-    struct Type* inner_type;
+    struct Type_* inner_type;
 } AccessType;
 
-typedef struct {
+typedef struct Type_ {
     TypeKind kind;
     union {
-        IntType int_type;
+        IntType int_;
         SubType subtype;
         ArrayType array;
         RecordType record;
         AccessType access;
+        StringView placeholder_name;
     } u;
 } Type;
 
-/* EXPRESSIONS */
-
-typedef uint8_t ExprKind;
-enum {
-    EXPR_INT
-};
-
-typedef struct {
-    mpz_t value;
-} IntLiteral;
-
-typedef struct {
-    ExprKind kind;
-    union {
-        IntLiteral int_literal;
-    } u;
-} Expression;
+extern Type universal_int_type;
 
 /* DECLARATIONS */
 
@@ -111,7 +106,7 @@ enum {
 typedef struct {
     StringView identifier;
     Type* type;
-    Expression* init_expr;
+    struct Expression_* init_expr;
     bool is_constant;
 } ObjectDecl;
 
@@ -122,12 +117,31 @@ typedef struct {
     // TODO: discriminant_part
 } TypeDecl;
 
-typedef struct {
+typedef struct Declaration_ {
     DeclKind kind;
     union {
         ObjectDecl object;
         TypeDecl type;
     } u;
+    struct Declaration_* next;
 } Declaration;
+
+/* EXPRESSIONS */
+
+typedef uint8_t ExprKind;
+enum {
+    EXPR_INT_LIT
+};
+
+typedef struct {
+    mpz_t value;
+} IntLiteral;
+
+typedef struct Expression_ {
+    ExprKind kind;
+    union {
+        IntLiteral int_lit;
+    } u;
+} Expression;
 
 #endif /* ADA_AST_H */

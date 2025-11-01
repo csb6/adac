@@ -17,9 +17,268 @@ typedef struct {
     Token token;
 } ParseContext;
 
+Type universal_int_type = {.kind = TYPE_UNIV_INTEGER};
+
 static ParseContext ctx;
 
+/* PACKAGE */
+static bool parse_package_spec(PackageSpec* package_spec);
+/* DECLARATIONS */
+static bool parse_basic_declaration(Declaration* decl);
+static bool parse_object_declaration(ObjectDecl* obj_decl);
+static bool parse_full_type_declaration(TypeDecl* type_decl);
+static bool parse_integer_type_definition(IntType* int_type);
+/* EXPRESSIONS */
+static Expression* parse_expression(void);
+static Expression* parse_numeric_literal(void);
+/* UTILITIES */
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
+static void next_token(void);
+static bool expect_token(TokenKind kind);
+static void print_unexpected_token_error(void);
+static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
+
+PackageSpec* parser_parse(const char* input_start, const char* input_end)
+{
+    memset(&ctx, 0, sizeof(ctx));
+    PackageSpec* package_spec = calloc(1, sizeof(PackageSpec));
+    ctx.curr = input_start;
+    ctx.input_start = input_start;
+    ctx.input_end = input_end;
+
+    next_token();
+    if(!parse_package_spec(package_spec)) {
+        return NULL;
+    }
+    return package_spec;
+}
+
+static
+bool parse_package_spec(PackageSpec* package_spec)
+{
+    if(!expect_token(TOKEN_PACKAGE)) {
+        return false;
+    }
+    next_token();
+
+    if(!expect_token(TOKEN_IDENT)) {
+        return false;
+    }
+    package_spec->name = ctx.token.text;
+    next_token();
+
+    if(!expect_token(TOKEN_IS)) {
+        return false;
+    }
+    next_token();
+
+    Declaration* prev_decl = NULL;
+    bool done = false;
+    while(!done) {
+        switch(ctx.token.kind) {
+            case TOKEN_END:
+                done = true;
+                next_token();
+                break;
+            case TOKEN_ERROR:
+                return false;
+            default: {
+                Declaration* decl = calloc(1, sizeof(Declaration));
+                // TODO: parse representation_clause/use_clause here too
+                if(!parse_basic_declaration(decl)) {
+                    return false;
+                }
+                if(prev_decl) {
+                    prev_decl->next = decl;
+                    prev_decl = decl;
+                } else {
+                    package_spec->decls = decl;
+                    prev_decl = decl;
+                }
+            }
+        }
+    }
+
+    // TODO: support optional trailing name
+    if(!expect_token(TOKEN_SEMICOLON)) {
+        return false;
+    }
+    next_token();
+
+    return expect_token(TOKEN_EOF);
+}
+
+static
+bool parse_basic_declaration(Declaration* decl)
+{
+    switch(ctx.token.kind) {
+        case TOKEN_IDENT:
+            decl->kind = DECL_OBJECT;
+            if(!parse_object_declaration(&decl->u.object)) {
+                return NULL;
+            }
+            break;
+        case TOKEN_TYPE:
+            decl->kind = DECL_FULL_TYPE;
+            // TODO: incomplete and private type declarations
+            if(!parse_full_type_declaration(&decl->u.type)) {
+                return NULL;
+            }
+            break;
+        case TOKEN_ERROR:
+            return NULL;
+        default:
+            print_unexpected_token_error();
+            return NULL;
+    }
+    return decl;
+}
+
+static
+bool parse_object_declaration(ObjectDecl* obj_decl)
+{
+    // TODO: support identifier_list
+    obj_decl->identifier = ctx.token.text;
+    next_token();
+    if(!expect_token(TOKEN_COLON)) {
+        return false;
+    }
+
+    next_token();
+    if(ctx.token.kind == TOKEN_CONSTANT) {
+        obj_decl->is_constant = true;
+        next_token();
+    }
+
+    if(ctx.token.kind == TOKEN_IDENT) {
+        // Type name
+        // TODO: properly parse this as a subtype_indication or constrained_array_definition
+        // TODO: use pool to reduce allocations for identical placeholders
+        obj_decl->type = calloc(1, sizeof(Type));
+        obj_decl->type->kind = TYPE_PLACEHOLDER;
+        obj_decl->type->u.placeholder_name = ctx.token.text;
+        next_token();
+    } else if(obj_decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
+        // number_declaration
+        obj_decl->type = &universal_int_type;
+    } else {
+        print_unexpected_token_error();
+        return false;
+    }
+
+    if(ctx.token.kind == TOKEN_ASSIGN) {
+        next_token();
+        obj_decl->init_expr = parse_expression();
+        if(!obj_decl->init_expr) {
+            return false;
+        }
+    }
+
+    if(!expect_token(TOKEN_SEMICOLON)) {
+        return false;
+    }
+    next_token();
+    return true;
+}
+
+static
+bool parse_full_type_declaration(TypeDecl* type_decl)
+{
+    next_token(); // Skip 'type' keyword
+    switch(ctx.token.kind) {
+        case TOKEN_IDENT:
+            type_decl->name = ctx.token.text;
+            next_token();
+            // TODO: discriminant_part
+            if(!expect_token(TOKEN_IS)) {
+                return false;
+            }
+            next_token();
+            switch(ctx.token.kind) {
+                case TOKEN_RANGE:
+                    type_decl->type = calloc(1, sizeof(Type));
+                    type_decl->type->kind = TYPE_INTEGER;
+                    if(!parse_integer_type_definition(&type_decl->type->u.int_)) {
+                        return false;
+                    }
+                    break;
+                case TOKEN_ERROR:
+                    return false;
+                default:
+                    print_unexpected_token_error();
+                    return false;
+            }
+            break;
+        case TOKEN_ERROR:
+            return false;
+        default:
+            print_unexpected_token_error();
+            return false;
+    }
+    if(!expect_token(TOKEN_SEMICOLON)) {
+        return false;
+    }
+    next_token();
+    return true;
+}
+
+static
+bool parse_integer_type_definition(IntType* int_type)
+{
+    next_token(); // Skip 'range' keyword
+    int_type->range.lower_bound = parse_expression();
+    if(!int_type->range.lower_bound) {
+        return false;
+    }
+
+    if(!expect_token(TOKEN_DOUBLE_DOT)) {
+        return false;
+    }
+    next_token();
+
+    int_type->range.upper_bound = parse_expression();
+    return int_type->range.upper_bound != NULL;
+}
+
+static
+Expression* parse_expression(void)
+{
+    switch(ctx.token.kind) {
+        case TOKEN_NUM_LITERAL:
+            return parse_numeric_literal();
+        case TOKEN_ERROR:
+            return NULL;
+        default:
+            print_unexpected_token_error();
+            return NULL;
+    }
+}
+
+// TODO: use pool since likely to reuse same numeric literals
+static
+Expression* parse_numeric_literal(void)
+{
+    char num_buffer[128];
+
+    if(ctx.token.u.int_lit.has_fraction) {
+        print_parse_error("TODO: support non-integer numeric literals");
+        return NULL;
+    }
+
+    num_buffer[0] = '\0';
+    if(!prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer))) {
+        print_parse_error("Numeric literal is too long to be processed (max supported is 127 characters)");
+        return NULL;
+    }
+    Expression* expr = calloc(1, sizeof(Expression));
+    expr->kind = EXPR_INT_LIT;
+    if(mpz_init_set_str(expr->u.int_lit.value, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.base);
+        return NULL;
+    }
+    next_token();
+    return expr;
+}
 
 static
 void next_token(void)
@@ -28,15 +287,8 @@ void next_token(void)
 }
 
 static
-void print_unexpected_token_error(void)
-{
-    StringView token_str = token_to_str(&ctx.token);
-    print_parse_error("Unexpected token: '%.*s'", token_str.len, token_str.value);
-}
-
 bool expect_token(TokenKind kind)
 {
-    next_token();
     if(ctx.token.kind == TOKEN_ERROR) {
         return false;
     }
@@ -45,6 +297,13 @@ bool expect_token(TokenKind kind)
         return false;
     }
     return true;
+}
+
+static
+void print_unexpected_token_error(void)
+{
+    StringView token_str = token_to_str(&ctx.token);
+    print_parse_error("Unexpected token: '%.*s'", token_str.len, token_str.value);
 }
 
 static
@@ -67,121 +326,4 @@ bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz)
     }
     *b = '\0';
     return true;
-}
-
-static
-bool parse_integer_type_definition(IntType* int_type)
-{
-    char num_buffer[128];
-
-    // Lower bound
-    // TODO: support more complex expressions
-    if(!expect_token(TOKEN_NUM_LITERAL)) {
-        return false;
-    }
-    if(ctx.token.u.int_lit.has_fraction) {
-        print_parse_error("Integer type must have integer bounds");
-        return false;
-    }
-    num_buffer[0] = '\0';
-    if(!prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer))) {
-        print_parse_error("Numeric literal is too long to be processed (max is 127 characters in length)");
-        return false;
-    }
-    if(mpz_init_set_str(int_type->range.lower_bound, num_buffer, (int)ctx.token.u.int_lit.num_base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.num_base);
-        return false;
-    }
-
-    if(!expect_token(TOKEN_DOUBLE_DOT)) {
-        return false;
-    }
-
-    // Upper bound
-    // TODO: support more complex expressions
-    if(!expect_token(TOKEN_NUM_LITERAL)) {
-        return false;
-    }
-    if(ctx.token.u.int_lit.has_fraction) {
-        print_parse_error("Integer type must have integer bounds");
-        return false;
-    }
-    num_buffer[0] = '\0';
-    prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer));
-    if(mpz_init_set_str(int_type->range.upper_bound, num_buffer, (int)ctx.token.u.int_lit.num_base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.num_base);
-        return false;
-    }
-    return true;
-}
-
-static
-bool parse_full_type_declaration(TypeDecl* type_decl)
-{
-    next_token();
-    switch(ctx.token.kind) {
-        case TOKEN_IDENT:
-            type_decl->name = ctx.token.text;
-            // TODO: discriminant_part
-            if(!expect_token(TOKEN_IS)) {
-                return false;
-            }
-            next_token();
-            switch(ctx.token.kind) {
-                case TOKEN_RANGE:
-                    type_decl->type = calloc(1, sizeof(Type));
-                    type_decl->type->kind = TYPE_INTEGER;
-                    if(!parse_integer_type_definition(&type_decl->type->u.int_type)) {
-                        return false;
-                    }
-                    break;
-                case TOKEN_ERROR:
-                    return false;
-                default:
-                    print_unexpected_token_error();
-                    return false;
-            }
-            break;
-        case TOKEN_ERROR:
-            return false;
-        default:
-            print_unexpected_token_error();
-            return false;
-    }
-    return expect_token(TOKEN_SEMICOLON);
-}
-
-Declaration* parse_basic_declaration(void)
-{
-    Declaration* decl = calloc(1, sizeof(Declaration));
-    next_token();
-    switch(ctx.token.kind) {
-        case TOKEN_TYPE:
-            decl->kind = DECL_FULL_TYPE;
-            // TODO: incomplete and private type declarations
-            if(!parse_full_type_declaration(&decl->u.type)) {
-                return NULL;
-            }
-            break;
-        case TOKEN_ERROR:
-            return NULL;
-        default:
-            print_unexpected_token_error();
-            return NULL;
-    }
-    return decl;
-}
-
-void parser_parse(const char* input_start, const char* input_end)
-{
-    memset(&ctx, 0, sizeof(ctx));
-    ctx.curr = input_start;
-    ctx.input_start = input_start;
-    ctx.input_end = input_end;
-    while(ctx.curr < input_end) {
-        Declaration* decl = parse_basic_declaration();
-        if(decl == NULL) {
-            return;
-        }
-    }
 }
