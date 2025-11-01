@@ -36,7 +36,7 @@ The build produces a standalone executable `adac` that can then be run:
 
     adac path_to_ada_source_file
 
-Currently, this simply tokenizes to given file and prints out information about each token.
+Currently, this simply parses the given file, emitting error messages if any are encountered.
 
 ## Useful links
 
