@@ -1,0 +1,734 @@
+------------------------------------------------------------------------------
+--                                                                          --
+--                             GNAT   DOCUMENTS                             --
+--                                I N T R O                                 --
+--                          U N I X  V E R S I O N                          --
+--                                                                          --
+--                                                                          -- 
+--                                                                          --
+--             Copyright (c) 1992,1993, NYU, All Rights Reserved            --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
+-- terms  of the GNU  General  Public  License  as  published  by the  Free --
+-- Software  Foundation;  either version 2,  or (at your option)  any later --
+-- version.  GNAT is distributed  in the hope  that it will be useful,  but --
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANT- --
+-- ABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public --
+-- License  for  more details.  You should have received  a copy of the GNU --
+-- General Public License along with GNAT;  see file COPYING. If not, write --
+-- to the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. --
+--                                                                          --
+------------------------------------------------------------------------------
+
+Contents.
+---------
+   Running GNAT
+   Using the binder.
+   Using GNAT for syntax checking.
+   RTL (Run-Time Library)
+   Options.  
+   Gcc switches and GNAT switches.  
+   Constraint Checking and Pragma Suppress
+   Using GNAT for semantics checking.  
+   Order of compilation Issues.
+   File name rules.
+   Getting Internal Debugging Information.
+   When GNAT crashes.
+   Using gdb.
+   Features supported.
+   Files.
+   Copyright considerations.
+   How to get in touch with us.
+   Schedule
+   A short gnat paper.
+   The GNAT development team.
+------------------------------------------------------------------------------ 
+
+Running GNAT.
+-------------
+Two steps are needed to create an executable file: it must first be compiled,
+and then bound with other object files it needs to execute. In some simple 
+cases both steps can be performed with one command. Compilation typically
+takes place in a directory that contains all the sources files for your Ada
+library.
+
+A small example.
+----------------
+
+Files hello.adb, io.ads, io.adb, cio.c and bind_hello.c are the
+components of our modest version of "Hello World". All of these files can
+be found in the current distribution (in examples/simple_io). The command:
+
+      gcc -o hello hello.adb io.adb cio.c bind_hello.c
+
+creates the executable called "hello" in your current directory. Typing
+
+      hello
+
+will allow you to verify that the system is alive and willing to enter into 
+a primitive dialogue.
+
+The same result can be obtained with separate commands:
+
+      gcc -c hello.adb
+      gcc -c io.adb
+      gcc -c cio.c
+      gcc -c bind_hello.c
+      gcc -o hello bind_hello.o hello.o io.o cio.o
+
+Here, separate commands are used for each compilation step. The gcc switch -c
+indicates that we only want to compile, not link. The last step produces the
+executable by means of one final compilation and a subsequent linking with 
+previouly created object files.
+
+As the example indicates, gcc recognizes the extension .adb and calls the
+components of GNAT accordingly. The first step in the sequence above produces
+the file hello.o. It also produces a file hello.ali, which contains dependency
+information, used by the binder to verify consistency and determine order of 
+elaboration. The "ali" file is the basic building block for the implementation
+of library management in GNAT.
+
+The gcc system has a large number of switches to control compilation
+options. The switches that are specific to GNAT are entered in the
+format:  -gnatX,  where X is a sequence of option flags. Available
+options are described below.
+
+Using the Binder.
+-----------------
+
+The file bind_hello.c, used in our small example, is actually the output
+of the binder. The binder is a separate program, invoked by the command
+'gnatbind', whose task is to produce the driver program that causes all Ada
+elaboration procedures to be invoked, and the main program to be called. The
+input to the binder is the .ali file of the main program:
+
+       gnatbind hello.ali
+
+which produces bind_hello.c. Our small example can therefore be compiled and
+executed thus:
+
+      gcc -c hello.adb io.adb cio.c
+      gnatbind hello.ali      
+      gcc -o hello bind_hello.c hello.o io.o cio.o
+
+
+Here we have combined the compilations of the sources into a single step.
+
+To see exactly what object files need to be linked together look at
+the bind_XXX.c (XXX is the program name) file produced by gnatbind.
+In the "main" procedure there are comments containing the names of ali
+files. These represent the object files that need to be linked together.
+Usually you will just link in the files that you actually compile but
+certain programs might need to link in GNAT Run-Time Library modules. This
+might be the case for programs that use for example 'Address, 'Tag,
+the image attribute, dynamic exponentiation, etc.  This will be more
+automated in the future when there will be a real Run-Time Library.
+
+Constraint Checking and Pragma Suppress
+---------------------------------------
+In the current version there are some checks performed that are mentioned in
+the LRM in section 11.7. These are:
+
+range checks on signed integer and enumeration types
+  (assignment, in parameters and initial values in object declarations)
+index checks
+access checks
+
+Since this is relatively new there might still be some cases where exceptions
+are raised where they shouldn't. To disable constraint checks, compile the
+program with the "-gnatp" option. This is equivalent to having Pragma suppress
+applied to everything. Gdb can be used to find where the exception was raised.
+See the section on  "Using gdb" for further information.
+
+Using GNAT for syntax checking
+------------------------------
+
+The current release of GNAT implements the full Ada 9X grammar as described in 
+annotated Ada Reference Manual for Ada 9X (AARM, version 3.0) We think the 
+parser gives excellent error messages (try it and see!) and is pleasantly 
+fast (again, try and see!)
+
+To run GNAT in syntax checking only mode, use the switch "s",
+that is to say, enter the command:
+
+	gcc -c -gnats file
+
+where file is the name of the file to be checked (wild cards can be used to
+check a set of files, as in *.adb). Note that the 'compile only' flag has to
+be given for gcc, as well as the 'syntax only' flag which is GNAT-specific.
+We will remove this redundancy in subsequent releases. 
+
+The syntax checker is complete, and quite robust. If you manage
+to blow it up, or if it fails to diagnose an error, or lets a syntactically
+invalid program through, definitely let us know (see separate section below). 
+If you find an error message you think could be improved, let us know as well. 
+Of course no compiler can ever have perfect error messages (that would involve
+mind reading), but we are committed to doing as well as possible, so we are
+happy to get suggestions in this department.
+
+RTL (Run Time Library) files
+----------------------------
+You need to have some standard files around in your directory, such as for
+example the source of the spec of package System, and the object file for
+System. The distribution contains a directory called "rtl" containing the
+specs and bodies of necessary files. A makefile is included which builds
+the necessary object files. Run the makefile and then copy all the files
+(source, object and ali) from this directory except Makefile to the directory
+you will be working in. Later on we will implement search paths for these
+files, but for now everything must be in your current directory.
+
+Options.
+--------
+
+Error reporting, as well as other aspects of the behavior of the system,
+are  controlled by the following flags. All of these must be entered with
+the prefix '-gnat'. For example, '-gnatv83' specifies verbose mode for
+output, and Ada83 syntax checking. 
+
+  a       Assertions enabled. Pragma Assert and Debug to be activated.
+  b	  Generate brief messages to stderr even if verbose mode set.
+  c	  Check syntax and semantics only (no code generation attempted)
+  e	  Error messages generated immediately, not saved up till end
+  f	  Full errors. Normally only the first error on each line is reported.
+  g       GNAT style checks enabled.
+          (column alignment, spacing, capitalization. see any source file
+           for examples).
+  ix	  Identifier character set, x indicates which set:
+	    1-4 = Latin 1-4, p = IBM PC, f/n = full/no upper (default = p)
+  knnn   Limit file names to k characters (k = krunch)
+  l	  Output full source listing with embedded error messages
+  mnnn   Limit number of detected errors to nnn (1-999)
+  n	  No inlining of subprograms (ignore pragma Inline)
+  p       Automatic suppression of all run-time checks mentioned in LRM 11.7
+  r	  Reference manual column layout required
+  s	  Syntax check only
+  t       Do semantic processing even if there are syntax errors.
+  u	  List units for this compilation
+  v	  Verbose mode. Full error output with source lines to stdout.
+  wx	  Warning mode. s = suppress, e = treat as error
+  83	  Enforce Ada 83 restrictions
+  sfile   Source file names (wild cards allowed for multiple files)
+
+Some of these options are explained in more detail below. For full information.
+refer to file usage.adb, in this distribution.
+
+For first-time users, and for first-compilation attempts, the following mode
+of operation is recommended:
+
+      gcc -c -gnatc let_try_this.adb 
+
+Gcc swiches and GNAT switches.
+------------------------------
+
+The command line switches will be more fully integrated in later releases.
+For now, gcc recognizes a few GNAT-specific switches, so that these can be
+given without the prefix "gnat". These are "k8" (file name limit), "83"
+(Ada83 syntax) and "w" (warning mode). Thus, the following commands are
+identical:
+
+     gcc -ws  -k8 file.adb
+     gcc -gnatws  -k8 file.adb
+
+i.e. both of them suppress warning messages from GNAT, and expect file names
+to be 8 characters long at most (see below for usage).
+
+In addition, the following gcc switches are passed through and recognized by 
+GNAT with the same effects as in cc1 (as for C files): "-g*"; "-O*"; "-p"; 
+"-pg"; "-f*"; "-d*"; "-S".  For example, 
+
+      gcc -c -g math.adb
+
+will generate debugging information that can be used with the debugger gdb.
+(see below).
+
+The other flags that control gcc itself (notably -B and -c) and the 
+assembler, behave as usual. Please consult your GCC documentation for details.
+
+Using GNAT  for semantics checking
+----------------------------------
+
+The command to perform semantic checking is:
+
+	gcc -c -gnatc file
+
+To operate in this mode, since WITH'ed files must be accessed, the GNAT
+semantic restrictions on file structuring must be followed:
+
+     o	All files must be in the same directory (a temporary restriction,
+	later on, we will implement a search path)
+
+     o	Each file must contain only one compilation unit (we may at 
+        least partially relax this restriction in subsequent releases).
+
+     o	The file name and unit name must match as described below,  under
+        File name rules (we will provide an alternative scheme in which 
+        a file is used to record the correspondence between unit names and 
+        file names, but this isn't done yet.)
+
+The coverage of semantic checks is still  incomplete, and the system
+is not very robust in the presence of semantically illegal programs.
+Nevertheless, this release supports many more features of Ada9X than the
+previous one, and semantic checking is correspondingly more extensive. 
+
+When you run in this mode, you may get "not implemented yet" messages,
+blowups, undetected semantic errors etc. Don't bother to tell us about any
+of these -- we know only too well what still needs to be worked on! 
+
+Here again, use of the 'report errors immediately' switch will help pinpoint
+the source of the trouble if the system misbehaves. 
+
+Note that in semantic checking mode, there is no trace of an Ada library, but
+of course the sources for all units on which the unit being compiled depends
+must be around (in the same directory, as noted above).
+
+Order of Compilation Issues.
+----------------------------
+
+You may have noticed that in our first example, we did not compile explicitly
+the package declaration in file io.ads. This is the result of the model we
+chose to implement library management. Details of the model can be found in
+file gnote1. Some of the unexpected consequences of the model (unexpected
+from the point of view of existing Ada compiler systems) are the following: 
+
+
+     o	There is no point in compiling generics or specifications (except for
+	package specifications with no bodies), since these are compiled as
+	needed by clients. If you do attempt a useless compilation, you will
+	get a warning message. It is also useless to compile subunits in this
+	mode, since they are compiled as needed by the parent.
+
+     o	There are no order of compilation requirements, and performing a
+	compilation never obsoletes anything. The only way you can obsolete
+	something and require recompilations is if one of the relevant source
+	files is modified.
+
+     o	There is no library as such, apart from the .ali files,whose format 
+	is also described in libfmt.ads. For now,  we find it convenient to
+        create separate .ali files,but eventually the information therein will
+        be incorporated into the object file directly. 
+
+     o	When you compile a unit, the source files for the specs of all 
+        units that it WITH's, all its subunits, and the bodies of any
+	generics it instantiates must be around, or you will get a fatal error
+	message.
+
+The above may seem surprising. Just to provide one immediate assurance,
+all of this does not mean that we are violating Ada's strict consistency 
+rules; they are enforced instead by the binder. 
+
+File Name Rules
+---------------
+
+As mentioned above, the current version of GNAT requires that file names
+match compilation unit names. The matching rules are as follows:
+
+     o	The file name is obtained by replacing dots in the unit name with
+	minus signs, and adding a suffix distinguishing bodies and specs.
+        The suffix for specs is ".ads" and for bodies is ".adb".
+
+	For example, the unchecked deallocation files would be called:
+
+	    unchecked_deallocation.ads
+	    unchecked_deallocation.adb
+
+	 in a modern system with no arbitrary file name length restrictions 
+         (most systems that support GCC are in this category, e.g. most 
+         Unixes, OS/2, NT, Nextstep).
+
+     o	When running under primitive systems like DOS which permit only short
+	file names, the file name itself gets crunched to 8 characters.
+	The exact details of the crunching algorithm are in the full
+	documentation. You can always find out the name it expects by
+        compiling it (since it warns you if it's wrong). Briefly:
+
+	  Only the first and last components of a subunit name are retained
+
+	  If there are no - or _ characters in the result, it is merely
+	  truncated to 8 characters.
+
+	  If there are - or _ characters, then each piece is truncated to
+	  the same length so that the total is 8 characters, favoring later
+	  components if there is a character left over.
+
+	 In DOS, the unchecked deallocation files names would be abbreviated:
+
+	    unc_deal.ads
+	    unc_deal.adb
+
+Of course the DOS limitations end up restricting the choice of unit names,
+since file names must be unique. As noted earlier, the final system will also
+have the option of providing a centralized file name directory (a kind of
+vestigial library) to avoid these restrictions, and allow complete freedom
+in choice of file names.
+
+Getting Internal Debugging Information.
+---------------------------------------
+
+Most compilers have secret internal debugging switches and modes. GNAT is
+no exception, except that nothing about GNAT is secret. The list is
+contained in the file debug.doc.  You will have to get the sources of the
+compiler for full documentation of the effect of these, but feel free to
+experiment with them. The switches that print the source of the program
+(reconstructed from the internal tree) are of general interest, as are the
+options to print the full internal tree, and the entity table (that is to
+say, the symbol table information). 
+
+When GNAT crashes. 
+------------------
+
+There are several things you can do when GNAT does the unexpected while
+compiling your Ada program, such as aborting with a segmentation fault, 
+raising an internal exception, or otherwise terminating abnormally. The
+following lines of action are of course palliatives that will become
+unecessary as the system becomes more complete and robust. The following
+strategies are presented in increasing order of difficulty, corresponding
+to the sophistication of the user, and her curiosity about the functioning
+of the compiler. 
+
+  1. run gcc with the -gnatf and -gnate switches.
+     The 'f' switch causes all errors on a given line to be reported. In
+     its absence, only the first error on a line is displayed. 
+
+     The 'e' switch causes errors to be displayed as soon as they are 
+     encountered, rather than after compilation is terminated.
+
+Often this will be enough to identify the construct that produced the crash.
+
+  2. run gcc with -v (verbose) switch. In this mode, gcc produces ongoing 
+     information about progress of the compilation and in particular the name 
+     of each procedure as it begins to generate code for it. This switch
+     allows you to find which Ada procedure it was compiling when it ran into 
+     a code generation problem. 
+
+  3. run gcc with the -gnatdc switch. This is a GNAT-specific switch that
+     does for the front-end what -v does for the back-end. The system prints
+     the name of each unit, either compilation unit or nested unit, as it
+     is being analyzed. 
+
+  4. run gdb directly on the gnat1 executable. Gnat1 is the front-end of
+     GNAT, and can be run independently (normally it is just called from gcc).
+     You can use gdb on gnat1 as you would on a C program (but see below for
+     caveats). The "where" command is the first line of attack; the variable
+     "lineno"  (seen by "print lineno") used by the second phase of gnat1
+     and by the gcc back-end, indicates the source line at which the execution
+     stopped, and "input_filename" the name of the source file.
+
+Using gdb
+---------
+
+Gdb awaits modifications to handle Ada properly, and for now can only be
+used as it would be for a c program. (someone is working on the proper
+extensions,  and these will appear in subsequent releases). In the meantime,
+the following naming conventions will allow you to find the Ada entities
+defined in your program:
+
+a)  The names of all entities (variables, subprograms, etc) are converted to
+    lower case. 
+
+b)  Entities that appear in library package declarations  have the name
+    package_name__subprogram_name (Note the two underscores separating 
+    package name from subprogram name). 
+
+Exceptions can be caught by breaking in the "catch_except" routine and then
+doing a "bt" or "where" command.
+
+Features supported
+------------------
+
+The parser is a full Ada9X parser,and includes the latest decisions of the
+mapping team, including the keyowrd -abstract-. Semantic analysis and code 
+generation are in constant evolution, and several important Ada9X features
+have been implemented in this release. In particular, tagged types, type
+extensions,  and dynamic dispatching (but no private extensions yet) as well
+as the full hierarchical library mechanism. 
+ 
+
+Chapter 2
+   pragma List, Page
+
+Chapter 3
+   Object declarations
+   Number declarations
+
+   Subtype declarations
+
+   Type declarations
+     Derived types and classes
+     Enumeration types
+        attributes (first, last, range, pos, val, image)
+     Class-Wide types
+     Character types
+        attributes (first, last, range, pos, val, image)
+     Boolean types
+     Integer types
+        attributes (first, last, range, pos, val, image)
+     Modular types.
+       subtypes
+     Floating point (only operations on the predefined types)
+     Array types
+       attributes first, last, range, length
+     Record types
+       Discriminants and Discriminant constraints
+       Variant Parts
+     Tagged Types and extensions (without discriminant)
+     Dispatching
+     Access types
+     Access to subprograms
+     Incomplete types
+
+Chapter 4
+     Indexed Components
+     Slices
+     Selected Components
+     Aggregates (record and array)
+     Exponentiation
+     Expressions (all forms)
+        static concatenation
+     type conversions  (except array conversions)
+     membership tests, conversion with class-wide types
+
+Chaper 5
+     statements (all forms)
+
+Chapter 6
+     subprogram declaration and bodies
+     subprogram calls 
+       named and positional associations
+       default parameters
+     overloading of subprograms and operators
+     functions returning unconstrained arrays
+  
+Chapter 7
+     package declaration and bodies
+     private types 
+ 
+Chapter 8
+    use clauses
+    object, subprogram and package (including library package) renaming 
+    exception renaming 
+
+Chapter 10
+    library units
+    with clauses
+    stubs and subunits
+    pragma elaborate
+    child units
+
+Chapter 11
+    exceptions
+       declarations
+       handlers
+       raise statement
+    limited constraint checking on integer/enumeration types under
+      the following catagories:
+        Index Checks
+        Access Checks
+        Range Checks
+          Initial values in object declarations.
+          Assignment
+          parameter passing of IN parameters
+          type conversions
+
+Chapter 12
+    Generic units
+    In and In-out generic parameters.
+    Generic formal integer types.
+    Generic formal array types.
+    Generic formal access types.
+    Generic formal subprograms
+
+Chapter 13
+    package System is more complete
+       Address attribute
+    pragma Import
+    pragma Interface, Interface_Name
+    Unchecked deallocation
+    simple record representation clauses
+    Unchecked conversion 
+
+Chapter 14
+    package IO_Exceptions/Ada.IO_Exceptions
+    package Text_IO/Ada.Text_IO
+      sections 14.3.1, 14.3.2, 14.3.3, 14.3.4, 14.3.5, 14.3.6
+      section 14.3.7 (Integer_IO) for type Integer, but NOT Long_Integer and
+        NOT Long_Long_Integer
+    
+
+Features currently not supported
+--------------------------------
+
+Chapter 3
+    Derived types
+      from private types
+
+    private type extensions
+
+    Floating point declaration with constraint
+      Floating point attributes
+    Fixed point declaration
+    Fixed point attributes
+    tagged types with discriminants, 
+
+Chapter 4
+    Attributes other than first, last, pos, val, address
+    dynamic concatenation
+    aggregates for tagged types.
+ 
+Chapter 6
+    full conformance rules
+
+Chapter 9
+    Tasks and protected types (some semantic processing,  no runtime)
+    package Calendar
+
+Chapter 11
+    No constraint checking on floating point types or modular types.
+    Range checks which are not listed in the supported features section above.
+
+Chapter 12
+    Generic formal derived types.
+    Generic formal packages.
+    
+Chapter 14
+    Text_IO
+      section 14.3.7 (Integer_IO) for Long_Integer and Long_Long_Integer
+      section 14.3.8 (Float_IO) only Put and not Get supported
+       Long_Integer and Long_Long_Integer not supported.
+      section 14.3.8 (Fixed_IO) not supported yet
+      section 14.3.9 (Enumeration_IO) not supported yet
+      Ada 9X Modular_IO and Decimal_IO not supported.
+    Sequential_IO
+    Direct_IO
+    Stream_IO
+
+Files.
+------
+
+If you want to examine the workings of the GNAT system, the following
+haiku-like description of its organization might be of minimal use:
+
+File with prefix "sc" contain the lexical scanner.
+
+All files prefixed with "par" are components of the parser. The numbers 
+correspond to chapters of the Ada83 LRM (or the corresponding sections of 
+the Ada9X LRM).  For example, parsing of select statements can be found 
+in par-ch9.
+
+All files prefixed with "sem" perform semantic analysis. Same numbering scheme.
+For example, all issues involving context clauses can be found in sem_ch10.
+
+All files prefixed with "exp" perform AST normalization and expansion. 
+For example, the construction of record initialization procedures is 
+done in exp_ch3.
+
+The files prefixed with "bind" implement the binder, which verifies the
+consistency of the compilation,  determines an order of elaboration, and
+generates the bind file.
+
+The file atree details the low-level data structures used by the front-end.
+The file sinfo details the structure of the AST as produced by the parser.
+The file einfo details the attributes of all entities, computed during
+semantic analysis.
+
+Library management issues are dealt with in files with prefix "lib".
+
+Files with prefix a- are Ada-specific gcc files. They are the components of
+Gigi (gnat-to-gnu), the program that translates the Ada AST into gcc tree 
+fragments. Gigi makes use of C versions of atree, einfo and sinfo, called 
+a-atree[ch], a-einfo.[ch] and a-sinfo.h respectively.  
+
+All the other .c files are modifications of common GCC files. 
+
+Happy browsing!
+
+
+Copyright Considerations
+------------------------
+
+For now, everything is copyrighted by NYU, using the GNU public license. This
+means that you can copy everything freely, but you can't incorporate the code
+directly into a commercial program. For more information on the GNU license,
+see the file header. One important note is that it will be possible
+to use GNAT to generate software that is not itself covered by the GNU license.
+Eventually the copyright will be transferred to the Free Software Foundation,
+so that GNAT can be distributed directly by FSF under the same restrictions (or
+what we like to think of as lack of restrictions!)
+
+How to Get in Touch with Us
+---------------------------
+
+To get on our external INTERNET mailing list, send a message to:
+
+	gnat-request@cs.nyu.edu
+
+To send reports to us on the system, or ask questions, send messages to
+
+	gnat-report@cs.nyu.edu
+
+To contact team members, send messages to:
+
+	dewar@cs.nyu.edu
+	schonberg@cs.nyu.edu
+
+To obtain electronically the latest version of the system, FTP from:
+
+	cs.nyu.edu (directory pub/gnat)
+
+This FTP directory also includes full sources for the system, full
+documentation and technical notes, as well as executables of the system
+for several targets. We are sorry that our limited resources do not allow
+us to distribute the system through other media.
+
+We trust that  this information will be mirrored at other FTP sites around 
+the world (we encourage such mirroring to occur) which will make it easier
+for users in other continents to obtain the GNAT system without heavy
+communication uncertainties.
+
+Schedule.
+---------
+We will make available new releases of GNAT at 2 week intervals, until
+the final delivery for this phase of the project, in December of this year.
+Please recall that releases of the system are still only snapshots of work
+in progress. We hope that it will be of some use in the work of others,
+even in its current embryonic form. 
+
+A short gnat paper
+------------------
+A TeX file of a short paper describing something about the GNAT project is
+included under the name gnat-paper.tex.
+
+The GNAT development team.
+---------------------------
+
+	New York University
+
+	     Bernard Banner (*)
+	     Cyrille Comar (*)
+	     Robert Dewar (*)
+	     Sam Figueroa (*)
+	     Richard Kenner (*)
+	     Bruno LeClerc (*)
+	     Brett Porter (*)
+	     Gail Schenker (*)
+	     Edmond Schonberg (*)
+
+	Florida State University (Tasking runtime work)
+
+	     Ted Baker
+	     Ted Giering (*)
+	     Frank Muller
+
+	Ecole Nationale Superieure de Telecommunications
+
+	     Franco Gasperoni (*)
+	     Yvon Kermarrec
+	     Laurent Pautet
+
+	Elsewhere
+
+	     Paul Hilfinger (*) (University of California, Berkeley)
+	     Jean Pierre Rosen (*) (Paris)
+	     Richard Stallman (Free Software Foundation)
+
+(*) partially supported by the NYU GNAT project
+    (ARPA, USAF, AJPO, Ada 9X project office)

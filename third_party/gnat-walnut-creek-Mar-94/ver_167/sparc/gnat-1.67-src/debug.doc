@@ -1,0 +1,121 @@
+------------------------------------------------------------------------------
+--									    --
+--			   GNAT COMPILER COMPONENTS			    --
+--									    --
+--				  D E B U G				    --
+--									    --
+--				Documentation				    --
+--									    --
+--			       $Revision: 1.5 $ 			    --
+--									    --
+--	       Copyright (c) 1992,1993, NYU, All Rights Reserved	    --
+--									    --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
+-- terms  of the GNU  General  Public  License	as  published  by the  Free --
+-- Software  Foundation;  either version 2,  or (at your option)  any later --
+-- version.  GNAT is distributed  in the hope  that it will be useful,	but --
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANT- --
+-- ABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public --
+-- License  for  more details.	You should have received  a copy of the GNU --
+-- General Public License along with GNAT;  see file COPYING. If not, write --
+-- to the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. --
+--									    --
+------------------------------------------------------------------------------
+
+This documentation file contains a description of the current usage of the
+dynamic debug flags declared in package Debug and set in package Switch.
+
+
+Options for Tree and Source Print
+---------------------------------
+
+This facility allows printing to Standard_Output of generated trees and
+also of source recreated from these generated trees.
+
+ The basic options are:
+
+   -dt	 Print generated tree of main unit (but not withed units) after the
+	 last phase (i.e. after parsing if there are parse errors or if in
+	 syntax check only mode, and otherwise after semantics/expansion),
+
+   -ds	 Print recreated source from tree of main unit (but not withed units)
+	 after the last phase (i.e. after parsing if parse errors or if in
+	 syntax check only mode, and otherwise after semantics/expansion),
+
+ Additional options are:
+
+   -du	 Print generated tree of main unit after parsing and before
+	 semantics. If this is used together with -dt and semantics
+	 takes place, then both trees will be separately printed
+
+   -dw	 Print recreated source from three of main unit after parsing and
+	 before semantics. If this is used together with -ds and semantics
+	 takes place, then both sources will be separately printed
+
+   -dy	 Print generated tree for package Standard after last phase
+
+   -dz	 Print recreated source for package Standard after last phase
+
+   -df	 Modifies the effect of -ds -dt -du -dw switches so that in
+	 addition to output for the main unit, trees/sources will also
+	 be output for all subsidiary units, including those directly
+	 withed and those implicitly loaded.
+
+   -dg	 Modifies the form of any recreated source printed to include
+	 only the generated (rewritten) tree without any {} characters
+
+   -do	 Modifies the form of any recreated source printed to include
+	 only the original tree. Note that if expansion has taken place,
+	 the expander is allowed to clobber the tree, so even with -do
+	 you will see the clobbered tree.
+
+   Note: in the absense of -dg and -do, source trees are printed with
+   both the original tree before rewriting, and the rewritten generated
+   tree, with sections from the latter enclosed in {} curly brackets.
+
+
+Other debugging switches
+------------------------
+
+   -da	 Generate messages tracking semantic analyzer progress. A message
+	 will be output as each node is analyzed, resolved or expanded.
+
+   -dc	 List names of units as they are compiled
+
+   -dd	 Dynamic allocation of tables messages generated. Each time one of
+	 the dynamic tables (package Table) is expanded, a message is
+	 generated.
+
+   -de	 List the entity table
+
+   -dh	 Force unit loads even in syntax only mode. This is useful in debugging
+	 the basic unit loading mechanism, separate from semantic analysis.
+
+   -di	 Generate messages for visibility linking/delinking
+
+   -dk   Force the compiler to crash as soon as Debug_Error, Compiler_Error
+         or any standard exception are raised. That is the only way to get
+         a traceback, now that these exceptions are handled in the procedure
+         gnat.
+ 
+   -dl	 Generate unit load trace messages. Each time a unit load is attempted
+	 a message is generated, showing the unit name, and whether the unit
+	 has already been loaded.
+
+   -dn	 Generate messages for node/list allocation. A message is generated
+	 for each node or list allocated.
+
+   -dp	 Generate messages for parser scope stack push/pops. Each time the
+	 parser stack is pushed or popped, a message is generated.
+
+   -dr	 Generate parser resynchronization messages. When one of the parser
+	 resync routines in Par.Sync is called, two messages are generated
+	 at the start and end of the token scan.
+
+Debug Flag Usage for Binder
+---------------------------
+
+   -dc	 List units as they are chosen in the dependency analysis
+
+   -dn	 List details of manipulation of Num_Pred values used in the
+	 dependency analysis

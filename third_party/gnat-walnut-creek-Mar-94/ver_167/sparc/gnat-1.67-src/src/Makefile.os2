@@ -1,0 +1,3194 @@
+# Makefile for GNU C compiler version 2.5.7 for OS/2 2.x.
+#   Copyright (C) 1987, 1988, 1990-1993 Free Software Foundation, Inc.
+#   Contributed by Samuel Figueroa (figueroa@cs.nyu.edu)
+
+#This file is part of GNU CC.
+
+#GNU CC is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2, or (at your option)
+#any later version.
+
+#GNU CC is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with GNU CC; see the file COPYING.  If not, write to
+#the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+
+# This syntax in this makefile is compatible with that required by the NMAKE
+# utility, which is part of IBM's Developer's Toolkit for OS/2.
+# Not all targets work; specifically, targets having to do with installation
+# and those containing shell scripts do not work.  Otherwise, this makefile
+# is similar in functionality to Makefile.in, which is included with gcc.
+
+# The targets for external use include:
+# all, doc, proto, install, install-cross, install-cross-rest,
+# uninstall, TAGS, mostlyclean, clean, distclean, realclean,
+# stage1, stage2, stage3, stage4.
+
+# Suppress smart makes who think they know how to automake Yacc files
+.y.c:
+
+# Variables that exist for you to override.
+# See below for how to change them for certain systems.
+
+# Selection of languages to be made.
+LANGUAGES = c c++ objective-c ada proto
+
+ALLOCA =
+ALLOCA_FLAGS =
+ALLOCA_FINISH = true
+
+# Various ways of specifying flags for compilations:  
+# CFLAGS is for the user to override to, e.g., do a bootstrap with -O2.
+# BOOT_CFLAGS is the value of CFLAGS to pass
+# to the stage2 and stage3 compilations
+# XCFLAGS is used for most compilations but not when using the GCC just built.
+XCFLAGS = -O
+CFLAGS =
+BOOT_CFLAGS = -O2 $(CFLAGS)
+# These exists to be overridden by the x-* and t-* files, respectively.
+X_CFLAGS =
+T_CFLAGS =
+
+X_CPPFLAGS =
+T_CPPFLAGS =
+
+CC = gcc
+BISON = bison
+BISONFLAGS =
+AR = lib
+OLDAR_FLAGS = #qc
+AR_FLAGS = #rc
+SHELL = /bin/sh
+# on sysV, define this as cp.
+INSTALL = install -c
+# These permit overriding just for certain files.
+INSTALL_PROGRAM = $(INSTALL)
+INSTALL_DATA = $(INSTALL)
+SYMLINK = copy
+
+# Define this as & to perform parallel make on a Sequent.
+# Note that this has some bugs, and it seems currently necessary 
+# to compile all the gen* files first by hand to avoid erroneous results.
+P =
+
+# How to invoke ranlib.
+# RANLIB = ranlib
+# Test to use to see whether ranlib exists on the system.
+# RANLIB_TEST = [ -f /usr/bin/ranlib -o -f /bin/ranlib ]
+
+# How to invoke patch.
+PATCH = gnupatch
+
+# Compiler to use for compiling gcc1.lib.
+# OLDCC should not be the GNU C compiler,
+# since that would compile typical gcc1.lib functions such as mulsi3
+# into infinite recursions.
+OLDCC = icc
+
+# CFLAGS for use with OLDCC, for compiling gcc1.lib.
+# NOTE: -O does not work on some Unix systems!
+CCLIBFLAGS = -O -Ms $(INCLUDES)
+
+# Version of ar to use when compiling gcc1.lib.
+OLDAR = lib
+
+# The GCC to use for compiling gcc2.lib, enquire, and cross-test.
+# Usually the one we just built.
+# Don't use this as a dependency--use $(GCC_PASSES) or $(GCC_PARTS).
+GCC_FOR_TARGET = .\xgcc
+
+# This is used instead of ALL_CFLAGS when compiling with GCC_FOR_TARGET.
+# It omits XCFLAGS, and specifies -B.\.
+# It also specifies -B$(tooldir)/ to find as and ld for a cross compiler.
+GCC_CFLAGS=-B.\ -g $(INTERNAL_CFLAGS) $(X_CFLAGS) $(T_CFLAGS) $(CFLAGS) $(CROSS_GCC_CFLAGS) #-I\GCC\INCLUDE
+
+# Special flags for compiling enquire.
+# We disable optimization to make floating point more reliable.
+ENQUIRE_CFLAGS = -DNO_MEM -DNO_STDDEF -DNO_LONG_DOUBLE_IO -O0
+ENQUIRE_LDFLAGS = $(LDFLAGS)
+
+# Tools to use when building a cross-compiler.
+# These are used because `configure' appends `cross-make'
+# to the makefile when making a cross-compiler.
+
+TARGET_TOOLPREFIX = $(tooldir)/bin/
+AR_FOR_TARGET = $(TARGET_TOOLPREFIX)ar
+AR_FOR_TARGET_FLAGS = rc
+RANLIB_FOR_TARGET = $(TARGET_TOOLPREFIX)ranlib
+RANLIB_TEST_FOR_TARGET = [ -f $(TARGET_TOOLPREFIX)ranlib ]
+
+# Dir to search for system headers.  Overridden by cross-make.
+SYSTEM_HEADER_DIR = D:\IBM.C\include
+
+# Control whether to run fixproto.
+STMP_FIXPROTO = #stmp-fixproto
+
+# There may be a premade insn-attrtab.c for this machine.
+# (You could rebuild it with genattrtab as usual, but it takes a long time.)
+# PREMADE_ATTRTAB is the file name of the file to use.
+# PREMADE_ATTRTAB_MD is the md file it corresponds to.
+PREMADE_ATTRTAB_MD = Makefile  # Guaranteed not to cmp equal to md.
+PREMADE_ATTRTAB = 
+
+target=i386-os2
+xmake_file=..\Makefile.in
+tmake_file=..\Makefile.in
+version=2.5.7
+mainversion=2.5
+
+# Directory where sources are, from where we are.
+srcdir = .
+# Common prefix for installation directories.
+# NOTE: This directory must exist when you start installation.
+# The \\ may mess up the installation routines and making a cross-compiler.
+prefix = \\gcc
+# Directory in which to put localized header files. On the systems with
+# gcc as the native cc, `local_prefix' may not be `prefix' which is
+# `/usr'.
+local_prefix = $(prefix)
+# Directory in which to put host dependent programs and libraries
+exec_prefix = $(prefix)
+# Directory in which to put the executable for the command `gcc'
+bindir = $(exec_prefix)\\bin
+# Directory in which to put the directories used by the compiler.
+libdir = $(exec_prefix)\\lib
+# Directory in which the compiler finds executables, libraries, etc.
+libsubdir = $(libdir)\\gcc-lib\\$(target)\\$(version)
+# Directory for header file assert.h.
+includedir = $(prefix)\include
+# assertdir is overridden in cross-make.
+assertdir = $(includedir)
+# Extension (if any) to put in installed man-page filename.
+manext = .1
+# Directory in which to put man pages.
+mandir = $(prefix)\man\man1
+# Directory in which to find other cross-compilation tools and headers.
+# Used in install-cross.
+tooldir = $(prefix)\\$(target)
+# Dir for temp files.
+tmpdir = \tmp
+
+# Additional system libraries to link with.
+CLIB=
+
+# Change this to a null string if obstacks are installed in the
+# system library.
+OBSTACK=obstack.obj
+
+# Specify the rule for actually making libgcc.a,
+LIBGCC = gcc.lib
+# and the rule for installing it.
+INSTALL_LIBGCC = install-libgcc
+
+# Specify the rule for actually making gcc1.lib.
+# The value may be empty; that means to do absolutely nothing
+# with or for gcc1.lib.
+LIBGCC1 = #gcc1.lib
+
+# Specify the rule for making libgcc1.a for a cross-compiler.
+# The default rule assumes that libgcc1.a is supplied by the user.
+CROSS_LIBGCC1 = libgcc1.cross
+
+# Specify the rule for actually making gcc2.lib.
+LIBGCC2 = gcc2.lib
+
+# Options to use when compiling gcc2.lib.
+# -g1 causes output of debug info only for file-scope entities.
+# we use this here because that should be enough, and also
+# so that -g1 will be tested.
+# $(LIBGCC2_INCLUDES) is at the end rather than before $(GCC_CFLAGS) because
+# most likely there will be too many parameters for the ADDTOLIB2 batch file.
+# Therefore, this batch file lists at least some of the include paths, which
+# most likely makes the include paths in $(LIBGCC2_INCLUDES) redundant.
+LIBGCC2_CFLAGS = -O2 $(GCC_CFLAGS) -g1 $(LIBGCC2_INCLUDES)
+
+# Additional options to use when compiling gcc2.lib.
+# Some targets override this to -Iinclude
+LIBGCC2_INCLUDES = $(INCLUDES)
+
+# Things which must be built before building gcc2.lib.
+# Some targets override this to stmp-int-hdrs
+LIBGCC2_DEPS =
+
+# Enquire target (This is a variable so that a target can choose not to
+# build it.)
+ENQUIRE = enquire
+
+# Cross-test target (must also be overridable for a target)
+CROSS_TEST = cross-test
+
+# List of extra executables that should be compiled for this target machine
+# that are used for compiling from source code to object code.
+# The rules for compiling them should be in the t-* file for the machine.
+EXTRA_PASSES =
+
+# Like EXTRA_PASSES, but these are used when linking.
+EXTRA_PROGRAMS = 
+
+# List of extra object files that should be compiled for this target machine.
+# The rules for compiling them should be in the t-* file for the machine.
+EXTRA_PARTS =
+
+# List of extra object files that should be compiled and linked with
+# compiler proper (cc1, cc1obj, cc1plus).
+EXTRA_OBJS =
+
+# List of additional header files to install.
+# Often this is edited directly by `configure'.
+EXTRA_HEADERS =
+
+# Set this to `ld' to enable use of collect2.
+# USE_COLLECT2 =
+# It is convenient for configure to add the assignment at the beginning,
+# so don't override it here.
+
+# List of extra C and assembler files to add to gcc1.lib.
+# Assembler files should have names ending in `.asm'.
+LIB1FUNCS_EXTRA = 
+
+# List of extra C and assembler files to add to gcc2.lib.
+# Assembler files should have names ending in `.asm'.
+LIB2FUNCS_EXTRA = 
+
+# Program to convert libraries.
+LIBCONVERT = 
+
+# Control whether header files are installed.
+# We will change this to install-fixincludes eventually.
+# It would be useful for people to try this now.
+INSTALL_HEADERS=install-headers
+
+# Select which version of fixincludes to use (I.E. regular versus SVR4)
+FIXINCLUDES=fixincludes
+
+# Additional directories of header files to run fixincludes on.
+# On most systems, this is empty.
+OTHER_FIXINCLUDES_DIRS=
+
+# List of things which should already be built whenever we try to use xgcc
+# to compile anything (without linking).
+GCC_PASSES=xgcc.exe cc1.exe cpp.exe $(EXTRA_PASSES)
+
+# List of things which should already be built whenever we try to use xgcc
+# to link anything.
+GCC_PARTS=$(GCC_PASSES) $(LIBGCC) $(EXTRA_PROGRAMS) $(USE_COLLECT2) $(EXTRA_PARTS)
+
+# Directory to link to, when using the target `maketest'.
+DIR = ..\gcc
+
+# Guaranteed to not exist when not passing md through cpp.
+MD_FILE = md-cpp-not-used
+
+# Flags to use when cross-building GCC.
+# Prefix to apply to names of object files when using them
+# to run on the machine we are compiling on.
+HOST_PREFIX=
+# Prefix to apply to names of object files when compiling them
+# to run on the machine we are compiling on.
+# The default for this variable is chosen to keep these rules 
+# out of the way of the other rules for compiling the same source files.
+HOST_PREFIX_1=loser-
+HOST_CC=$(CC)
+HOST_CFLAGS=$(ALL_CFLAGS)
+HOST_CLIB=$(CLIB)
+HOST_LDFLAGS=$(LDFLAGS)
+HOST_CPPFLAGS=$(ALL_CPPFLAGS)
+HOST_ALLOCA=$(ALLOCA)
+HOST_MALLOC=$(MALLOC)
+HOST_OBSTACK=$(OBSTACK)
+
+# Choose the real default target.
+ALL=all.internal
+
+# Choose the real install target.
+INSTALL_TARGET=install-native
+
+# Source for float.h.  Overridden by cross-make.
+FLOAT_H=float.h-nat
+
+# End of variables for you to override.
+
+# Definition of `all' is here so that new rules inserted by sed
+# do not specify the default target.
+# The real definition is under `all.internal' (for native compilers)
+# or `all.cross' (for cross compilers).
+all: all.indirect
+
+# This tells GNU Make version 3 not to put all variables in the environment.
+.NOEXPORT:
+
+# sed inserts variable overrides after the following line.
+####target overrides
+####host overrides
+####cross overrides
+####build overrides
+
+# Now figure out from those variables how to compile and link.
+
+all.indirect: $(ALL)
+
+# IN_GCC tells obstack.h to use gstddef.h.
+INTERNAL_CFLAGS = $(CROSS) -DIN_GCC
+
+# This is the variable actually used when we compile.
+ALL_CFLAGS = $(INTERNAL_CFLAGS) $(X_CFLAGS) $(T_CFLAGS) $(CFLAGS) $(XCFLAGS)
+
+# Likewise.
+ALL_CPPFLAGS = $(CPPFLAGS) $(X_CPPFLAGS) $(T_CPPFLAGS)
+
+# Even if ALLOCA is set, don't use it if compiling with GCC.
+# USE_ALLOCA= ` case "$(CC)" in "$(OLDCC)") echo $(ALLOCA) ;; esac `
+!IF "$(CC)" == "$(OLDCC)"
+USE_ALLOCA= $(ALLOCA)
+!ELSE
+USE_ALLOCA= 
+!ENDIF
+# USE_HOST_ALLOCA= ` case "$(HOST_CC)"@"$(HOST_ALLOCA)" in "$(OLDCC)"@?*) echo $(HOST_PREFIX)$(HOST_ALLOCA) ;; esac `
+!IF "$(HOST_CC)" == "$(OLDCC)" && "$(HOST_ALLOCA)" != ""
+USE_HOST_ALLOCA= $(HOST_PREFIX)$(HOST_ALLOCA)
+!ELSE
+USE_HOST_ALLOCA= 
+!ENDIF
+# USE_HOST_MALLOC= ` case "$(HOST_MALLOC)" in ?*) echo $(HOST_PREFIX)$(HOST_MALLOC) ;; esac `
+!IF "$(HOST_MALLOC)" == ""
+USE_HOST_MALLOC= 
+!ELSE
+USE_HOST_MALLOC= $(HOST_PREFIX)$(HOST_MALLOC)
+!ENDIF
+# USE_HOST_OBSTACK= ` case "$(HOST_OBSTACK)" in ?*) echo $(HOST_PREFIX)$(HOST_OBSTACK) ;; esac `
+!IF "$(HOST_OBSTACK)" == ""
+USE_HOST_OBSTACK= 
+!ELSE
+USE_HOST_OBSTACK= $(HOST_PREFIX)$(HOST_OBSTACK)
+!ENDIF
+
+# Dependency on obstack, alloca, malloc or whatever library facilities
+# are not installed in the system libraries.
+# We don't use USE_ALLOCA because backquote expansion doesn't work in deps.
+LIBDEPS= $(OBSTACK) $(ALLOCA) $(MALLOC)
+
+# Likewise, for use in the tools that must run on this machine
+# even if we are cross-building GCC.
+# We don't use USE_ALLOCA because backquote expansion doesn't work in deps.
+HOST_LIBDEPS= $(HOST_PREFIX)$(HOST_OBSTACK) $(HOST_PREFIX)$(HOST_ALLOCA) $(HOST_PREFIX)$(HOST_MALLOC)
+
+# How to link with both our special library facilities
+# and the system's installed libraries.
+LIBS = $(OBSTACK) $(USE_ALLOCA) $(MALLOC) $(CLIB)
+
+# Likewise, for use in the tools that must run on this machine
+# even if we are cross-building GCC.
+HOST_LIBS = $(USE_HOST_OBSTACK) $(USE_HOST_ALLOCA) $(USE_HOST_MALLOC)  \
+	    $(HOST_CLIB)
+
+HOST_RTL = $(HOST_PREFIX)rtl.obj
+HOST_RTLANAL = $(HOST_PREFIX)rtlanal.obj
+HOST_PRINT = $(HOST_PREFIX)print-rtl.obj
+
+# Specify the directories to be searched for header files.
+# Both . and srcdir are used, in that order,
+# so that tm.h and config.h will be found in the compilation
+# subdirectory rather than in the source directory.
+INCLUDES = -I. -I$(srcdir) -I$(srcdir)\config #-I\GCC\INCLUDE
+SUBDIR_INCLUDES = -I.. -I..\$(srcdir) -I..\$(srcdir)\config
+
+# Always use -I$(srcdir)\config when compiling.
+.c.obj:
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $<
+
+# This tells GNU make version 3 not to export all the variables
+# defined in this file into the environment.
+.NOEXPORT:
+
+# Lists of files for various purposes.
+
+# A list of all the language-specific executables.
+COMPILERS = cc1.exe cc1plus.exe cc1obj.exe gnat1.exe
+
+# Language-specific object files for C.
+C_OBJS = c-parse.obj c-lang.obj c-lex.obj c-pragma.obj \
+   c-decl.obj c-typeck.obj c-convert.obj c-aux-info.obj c-common.obj c-iterate.obj
+
+# Language-specific object files for Objectionable C.
+OBJC_OBJS = objc-parse.obj objc-actions.obj \
+   c-lex.obj c-decl.obj c-typeck.obj c-convert.obj c-aux-info.obj c-common.obj c-pragma.obj
+
+# Language-specific object files for C++.
+CPLUS_OBJS1 = cp-parse.obj cp-decl.obj cp-decl2.obj \
+   cp-typeck.obj cp-type2.obj cp-tree.obj cp-ptree.obj
+CPLUS_OBJS2 = cp-cvt.obj cp-search.obj cp-lex.obj cp-gc.obj cp-call.obj \
+   cp-class.obj cp-init.obj cp-method.obj cp-except.obj
+CPLUS_OBJS3 = cp-expr.obj cp-pt.obj cp-edsel.obj cp-xref.obj \
+   $(CPLUS_INPUT) cp-spew.obj c-common.obj cp-error.obj cp-errfn.obj
+CPLUS_OBJS = $(CPLUS_OBJS1) $(CPLUS_OBJS2) $(CPLUS_OBJS3)
+
+# Languages-specific object files for Ada.
+GNAT1_C_OBJS = bind_gnat1drv.obj a-adaint.obj a-gtran3.obj a-misc.obj a-trans3.obj \
+ a-trans4.obj a-trans.obj a-uint.obj
+
+GNAT_ADA_OBJS1 = alloc.obj atree.obj casing.obj comperr.obj csets.obj debug.obj debug_sem.obj \
+ einfo.obj errcount.obj errout.obj excep.obj expand.obj exp_attr.obj exp_ch2.obj exp_ch3.obj
+
+GNAT_ADA_OBJS2 = exp_ch4.obj exp_ch5.obj exp_ch6.obj exp_ch7.obj exp_ch8.obj exp_ch9.obj exp_ch10.obj \
+ exp_ch11.obj exp_ch12.obj exp_ch13.obj exp_prag.obj exp_util.obj fname.obj frontend.obj
+
+GNAT_ADA_OBJS3 = gnatvsn.obj lib.obj libfmt.obj limits.obj namet.obj nmake.obj opt.obj osint.obj output.obj \
+ par.obj rtsfind.obj scans.obj scn.obj sem.obj sem_attr.obj sem_ch3.obj sem_ch4.obj
+
+GNAT_ADA_OBJS4 = sem_ch5.obj sem_ch6.obj sem_ch7.obj sem_ch8.obj sem_ch9.obj sem_ch10.obj sem_ch11.obj \
+ sem_ch12.obj sem_ch13.obj sem_disp.obj sem_eval.obj sem_prag.obj sem_res.obj sem_type.obj
+
+GNAT_ADA_OBJS5 = sem_util.obj sinfo.obj sinfo-change.obj sinput.obj snames.obj sprint.obj stand.obj \
+ stringt.obj switch.obj sysid.obj system.obj system-assertions.obj system-traceback.obj
+
+GNAT_ADA_OBJS6 = system_environment.obj tbuild.obj treepr.obj \
+ treeprs.obj ttypes.obj types.obj uintp.obj uname.obj unixlib.obj usage.obj
+
+GNAT_ADA_OBJS = $(GNAT_ADA_OBJS1) $(GNAT_ADA_OBJS2) $(GNAT_ADA_OBJS3) \
+ $(GNAT_ADA_OBJS4) $(GNAT_ADA_OBJS5) $(GNAT_ADA_OBJS6)
+
+GNATF_OBJS1 = frontdrv.obj xref.obj xref_tab.obj a-adaint.obj
+GNATF_OBJS =  $(GNAT_ADA_OBJS) $(GNATF_OBJS1)
+
+GNAT1_ADA_OBJS1 = back_end.obj gnat1drv.obj
+GNAT1_ADA_OBJS = $(GNAT_ADA_OBJS) $(GNAT1_ADA_OBJS1)
+
+GNAT1_OBJS = $(GNAT1_C_OBJS) $(GNAT1_ADA_OBJS)
+
+GNATBIND_OBJS1 = gnatbind.obj ali.obj alloc.obj bcheck.obj binde.obj binderr.obj bindgen.obj \
+  bindusg.obj butil.obj debug.obj errcount.obj excep.obj gnatvsn.obj libfmt.obj
+GNATBIND_OBJS2 = limits.obj namet.obj opt.obj osint.obj output.obj switch.obj sysid.obj system.obj \
+  system-assertions.obj system-traceback.obj system_environment.obj \
+  types.obj unixlib.obj a-adaint.obj
+GNATBIND_OBJS = $(GNATBIND_OBJS1) $(GNATBIND_OBJS2)
+
+
+# Files specific to the C interpreter bytecode compiler(s).
+BC_OBJS = bc-emit.obj bc-optab.obj
+
+# Language-independent object files.
+OBJS1 = toplev.obj version.obj tree.obj print-tree.obj stor-layout.obj fold-const.obj \
+ function.obj stmt.obj expr.obj calls.obj expmed.obj explow.obj optabs.obj varasm.obj
+OBJS2 = rtl.obj print-rtl.obj rtlanal.obj emit-rtl.obj real.obj \
+ dbxout.obj sdbout.obj dwarfout.obj xcoffout.obj
+OBJS3 = integrate.obj jump.obj cse.obj loop.obj unroll.obj flow.obj stupid.obj combine.obj \
+ regclass.obj local-alloc.obj global.obj reload.obj reload1.obj caller-save.obj
+OBJS4 = insn-peep.obj reorg.obj sched.obj final.obj recog.obj reg-stack.obj \
+ insn-opinit.obj insn-recog.obj insn-extract.obj insn-output.obj insn-emit.obj \
+ insn-attrtab.obj aux-output.obj getpwd.obj convert.obj $(EXTRA_OBJS)
+OBJS = $(OBJS1) $(OBJS2) $(OBJS3) $(OBJS4)
+
+# GEN files are listed separately, so they can be built before doing parallel
+#  makes for cc1 or cc1plus.  Otherwise sequent parallel make attempts to load
+#  them before rtl.obj is compiled.
+GEN= genemit.exe genoutput.exe genrecog.exe genextract.exe genflags.exe gencodes.exe genconfig.exe genpeep.exe
+
+# Files to be copied away after each stage in building.
+STAGESTUFF = *.obj insn-flags.h insn-config.h insn-codes.h \
+ insn-output.c insn-recog.c insn-emit.c insn-extract.c insn-peep.c \
+ insn-attr.h insn-attrtab.c insn-opinit.c \
+ stamp-flags stamp-config stamp-codes \
+ stamp-output stamp-recog stamp-emit stamp-extract stamp-peep \
+ stamp-attr stamp-attrtab stamp-opinit stamp-proto \
+ genemit.exe genoutput.exe genrecog.exe genextract.exe genflags.exe gencodes.exe genconfig.exe genpeep.exe \
+ genattrtab.exe genattr.exe genopinit.exe \
+ bc-arity.h bc-opcode.h bc-opname.h \
+ stamp-bcarity stamp-bcopcode stamp-bcopname \
+ bi-arity bi-opcode bi-opname \
+ $(GCC_PASSES) $(EXTRA_PARTS) $(EXTRA_PROGRAMS) gcc-cross cccp.exe g++.exe g++-cross \
+ cc1plus.exe cc1obj.exe enquire.exe protoize.exe unprotoize.exe specs collect2.exe $(USE_COLLECT2)
+
+# Members of gcc1.lib.
+LIB1FUNCS1 = _mulsi3 _udivsi3 _divsi3 _umodsi3 _modsi3 \
+   _lshrsi3 _lshlsi3 _ashrsi3 _ashlsi3 \
+   _divdf3 _muldf3 _negdf2 _adddf3 _subdf3
+LIB1FUNCS2 = _fixdfsi _fixsfsi _floatsidf _floatsisf _truncdfsf2 _extendsfdf2 \
+   _addsf3 _negsf2 _subsf3 _mulsf3 _divsf3
+LIB1FUNCS3 = _eqdf2 _nedf2 _gtdf2 _gedf2 _ltdf2 _ledf2 \
+   _eqsf2 _nesf2 _gtsf2 _gesf2 _ltsf2 _lesf2
+LIB1FUNCS = $(LIB1FUNCS1) $(LIB1FUNCS2) $(LIB1FUNCS3)
+
+# Library members defined in libgcc2.c.
+LIB2FUNCS1 = _muldi3 _divdi3 _moddi3 _udivdi3 _umoddi3 _negdi2 \
+     _lshrdi3 _lshldi3 _ashldi3 _ashrdi3 _ffsdi2
+LIB2FUNCS2 = _udiv_w_sdiv _udivmoddi4 _cmpdi2 _ucmpdi2 _floatdidf _floatdisf \
+    _fixunsdfsi _fixunssfsi _fixunsdfdi _fixdfdi _fixunssfdi _fixsfdi \
+    _fixxfdi _fixunsxfdi _floatdixf _fixunsxfsi
+LIB2FUNCS3 = _fixtfdi _fixunstfdi _floatditf \
+    __gcc_bcmp _varargs _eprintf _op_new _new_handler _op_delete \
+    _bb _shtab _clear_cache _trampoline __main _exit _ctors
+LIB2FUNCS = $(LIB2FUNCS1) $(LIB2FUNCS2) $(LIB2FUNCS3)
+
+# Header files that are made available under the same name
+# to programs compiled with GCC.
+USER_H = va-alpha.h va-h8300.h va-i860.h va-i960.h va-mips.h va-m88k.h \
+    va-pa.h va-pyr.h va-sparc.h va-clipper.h va-spur.h proto.h $(EXTRA_HEADERS)
+
+# The files that "belong" in CONFIG_H are deliberately omitted
+# because having them there would not be useful in actual practice.
+# All they would do is cause complete recompilation every time
+# one of the machine description files is edited.
+# That may or may not be what one wants to do.
+# If it is, rm *.obj is an easy way to do it.
+# CONFIG_H = config.h tm.h
+CONFIG_H =
+RTL_H = rtl.h rtl.def machmode.h machmode.def
+TREE_H = tree.h real.h tree.def machmode.h machmode.def
+CPLUS_TREE_H = $(TREE_H) cp-tree.h cp-tree.def
+BYTECODE_H = bytecode.h bc-emit.h bc-optab.h
+
+# Avoid a lot of time thinking about remaking Makefile.in and *.def.
+.SUFFIXES: .in .def
+
+# Say how to compile Ada programs.
+.SUFFIXES: .ada .adb .ads
+
+ADA_FLAGS = $(ALL_CFLAGS) -gnatg -gnata
+GNATBIND = gnatbind
+
+.ada.obj:
+	$(CC) -c $(ADA_FLAGS) $<
+.adb.obj:
+	$(CC) -c $(ADA_FLAGS) $<
+.ads.obj:
+	$(CC) -c $(ADA_FLAGS) $<
+
+Makefile: $(srcdir)\Makefile.in $(srcdir)\configure $(srcdir)\version.c \
+   $(srcdir)\config\$(xmake_file) $(srcdir)\config\$(tmake_file)
+	sh config.status
+
+all.internal: start.encap rest.encap
+# This is what to compile if making a cross-compiler.
+all.cross: native gcc-cross g++-cross specs $(LIBGCC) stmp-headers $(STMP_FIXPROTO) $(CROSS_TEST) $(ENQUIRE) $(EXTRA_PARTS)
+# This is what to compile if making gcc with a cross-compiler.
+all.build: native xgcc g++.exe $(EXTRA_PARTS)
+# This is what must be made before installing GCC and converting libraries.
+start.encap: native xgcc.exe specs $(LIBGCC1) xlimits.h
+# Use this to make a GCC that will be used only to recompile GCC.
+for-bootstrap: start.encap $(LIBGCC)
+# These can't be made, with COFF encapsulation, until after GCC can run.
+rest.encap: $(LIBGCC) gfloat.h $(STMP_FIXPROTO) $(EXTRA_PARTS)
+# This is what is made with the host's compiler
+# whether making a cross compiler or not.
+native: config.status cpp.exe $(LANGUAGES) $(EXTRA_PASSES) $(EXTRA_PROGRAMS) $(USE_COLLECT2)
+
+# Define the names for selecting languages in LANGUAGES.
+# Note that it would be nice to move the dependency on g++
+# into the C++ rule, but that needs a little bit of work
+# to do the right thing within all.cross.
+C c : cc1.exe
+C++ c++: cc1plus.exe
+OBJC objc: cc1obj.exe objc-runtime
+OBJECTIVE-C objective-c: cc1obj.exe objc-runtime
+ADA Ada ada: gnat1.exe gnatbind.exe
+PROTO: proto.exe
+
+# Really, really stupid make features, such as SUN's KEEP_STATE, may force
+# a target to build even if it is up-to-date.  So we must verify that
+# config.status does not exist before failing.
+config.status: config.h hconfig.h tconfig.h tm.h aux-output.c md CreateMiscFiles.cmd
+	CreateMiscFiles
+#	@if [ ! -f config.status ] ; then \
+#!	  error You must configure gcc.  Look at the INSTALL file for details.
+#	  false; \
+#	else \
+#	  true; \
+#	fi
+config.h hconfig.h tconfig.h: $(srcdir)\config\i386\xm-os2.h
+	-rm -f $@
+	copy $(srcdir)\config\i386\xm-os2.h $@
+	touch $@
+tm.h: $(srcdir)\config\i386\os2.h
+	-rm -f $@
+	copy $(srcdir)\config\i386\os2.h $@
+	touch $@
+aux-output.c: $(srcdir)\config\i386\i386.c
+	-rm -f $@
+	copy $(srcdir)\config\i386\i386.c $@
+	touch $@
+md: $(srcdir)\config\i386\i386.md
+	-rm -f $@
+	copy $(srcdir)\config\i386\i386.md $@
+	touch $@
+
+
+# On the target machine, finish building a cross compiler.
+# This does the things that can't be done on the host machine.
+rest.cross: $(LIBGCC) gfloat.h specs
+
+# Verify that it works to compile and link cross-test.
+# If it does, then there are sufficient replacements for libgcc1.a.
+cross-test: cross-test.o native gcc-cross $(LIBGCC) $(GCC_PARTS)
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) cross-test.o -o $@
+cross-test.o: cross-test.c native gcc-cross
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(ALL_CPPFLAGS) -c $(srcdir)/cross-test.c
+
+# Recompile all the language-independent object files.
+# This is used only if the user explicitly asks for it.
+compilations: $(OBJS)
+
+# We call this executable `xgcc' rather than `gcc'
+# to avoid confusion if the current directory is in the path
+# and CC is `gcc'.  It is renamed to `gcc' when it is installed.
+xgcc.exe: config.status gcc.obj version.obj $(LIBDEPS)
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o xgcc.exe gcc.obj version.obj $(LIBS)
+
+# Dump a specs file to make -B.\ read these specs over installed ones.
+specs: xgcc.exe
+	$(GCC_FOR_TARGET) -dumpspecs > specs
+
+# Create the compiler driver for g++.
+g++.exe: config.status g++.obj $(LIBDEPS)
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o g++.exe g++.obj $(LIBS)
+
+# We do want to create an executable named `xgcc', so we can use it to
+# compile libgcc2.a.
+# Also create gcc-cross, so that install-common will install properly.
+gcc-cross: xgcc
+	copy xgcc gcc-cross
+
+# Create a version of the g++ driver which calls the cross-compiler.
+g++-cross: $(srcdir)/g++.c
+	$(CC) $(ALL_CFLAGS) $(INCLUDES) $(LDFLAGS) -o g++-cross \
+	   -DGCC_NAME=\"$(target)-gcc\" $(srcdir)/g++.c version.o $(LIBS)
+
+cc1.exe: config.status $(P) $(C_OBJS) $(OBJS) $(BC_OBJS) $(LIBDEPS)
+#	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o cc1.exe $(C_OBJS) $(OBJS) $(BC_OBJS) $(LIBS)
+	rm -f cc1.lnk
+	echo $(C_OBJS) + >cc1.lnk
+	echo $(OBJS1) + >>cc1.lnk
+	echo $(OBJS2) + >>cc1.lnk
+	echo $(OBJS3) + >>cc1.lnk
+	echo $(OBJS4) + >>cc1.lnk
+	echo $(BC_OBJS) $(LIBS) >>cc1.lnk
+	echo cc1 /NOI /DE /PM:VIO /align:16 /exepack /base:65536 /stack:4194304, NUL, libc os2; >>cc1.lnk
+	link386 @cc1.lnk
+
+cc1plus.exe: config.status $(P) $(CPLUS_OBJS) $(OBJS) $(BC_OBJS) $(LIBDEPS)
+#	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o cc1plus.exe $(CPLUS_OBJS) $(BC_OBJS) $(OBJS) $(LIBS)
+	rm -f cc1plus.lnk
+	echo $(CPLUS_OBJS1) +  >cc1plus.lnk
+	echo $(CPLUS_OBJS2) + >>cc1plus.lnk
+	echo $(CPLUS_OBJS3) + >>cc1plus.lnk
+	echo $(OBJS1) + >>cc1plus.lnk
+	echo $(OBJS2) + >>cc1plus.lnk
+	echo $(OBJS3) + >>cc1plus.lnk
+	echo $(OBJS4) + >>cc1plus.lnk
+	echo $(BC_OBJS) $(LIBS) >>cc1plus.lnk
+	echo cc1plus $(LDFLAGS) /NOI /DE /PM:VIO /align:16 /exepack /base:65536 /stack:4194304; >>cc1plus.lnk
+	link386 @cc1plus.lnk
+
+cc1obj.exe: config.status $(P) $(OBJC_OBJS) $(OBJS) $(BC_OBJS) $(LIBDEPS)
+#	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o cc1obj.exe $(OBJC_OBJS) $(OBJS) $(BC_OBJS) $(LIBS)
+	rm -f cc1obj.lnk
+	echo $(OBJC_OBJS) + >cc1obj.lnk
+	echo $(OBJS1) + >>cc1obj.lnk
+	echo $(OBJS2) + >>cc1obj.lnk
+	echo $(OBJS3) + >>cc1obj.lnk
+	echo $(OBJS4) + >>cc1obj.lnk
+	echo $(BC_OBJS) $(LIBS) >>cc1obj.lnk
+	echo cc1obj $(LDFLAGS) /NOI /DE /PM:VIO /align:16 /exepack /base:65536 /stack:4194304; >>cc1obj.lnk
+	link386 @cc1obj.lnk
+
+gnat1.exe: config.status $(P) $(GNAT1_OBJS) $(OBJS) $(BC_OBJS) $(LIBDEPS)
+#	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o gnat1.exe $(GNAT1_OBJS) $(OBJS) $(BC_OBJS) $(LIBS)
+	rm -f gnat1.lnk
+	echo $(GNAT1_C_OBJS)	+  >gnat1.lnk
+	echo $(GNAT_ADA_OBJS1)	+ >>gnat1.lnk
+	echo $(GNAT_ADA_OBJS2)	+ >>gnat1.lnk
+	echo $(GNAT_ADA_OBJS3)	+ >>gnat1.lnk
+	echo $(GNAT_ADA_OBJS4)	+ >>gnat1.lnk
+	echo $(GNAT_ADA_OBJS5)	+ >>gnat1.lnk
+	echo $(GNAT_ADA_OBJS6)	+ >>gnat1.lnk
+	echo $(GNAT1_ADA_OBJS1) + >>gnat1.lnk
+	echo $(OBJS1)		+ >>gnat1.lnk
+	echo $(OBJS2)		+ >>gnat1.lnk
+	echo $(OBJS3)		+ >>gnat1.lnk
+	echo $(OBJS4)		+ >>gnat1.lnk
+	echo $(BC_OBJS) $(LIBS) >>gnat1.lnk
+	echo gnat1 /NOI /DE /PM:VIO /align:16 /exepack /base:65536 /stack:4194304, NUL, libc os2; >>gnat1.lnk
+	link386 @gnat1.lnk
+
+gnatf.exe: $(P) $(GNATF_OBJS) bind_frontdrv.obj
+#	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o gnatf.exe $(GNATF_OBJS) bind_frontdrv.obj
+	rm -f gnatf.lnk
+	echo $(GNAT_ADA_OBJS1)	+  >gnatf.lnk
+	echo $(GNAT_ADA_OBJS2)	+ >>gnatf.lnk
+	echo $(GNAT_ADA_OBJS3)	+ >>gnatf.lnk
+	echo $(GNAT_ADA_OBJS4)	+ >>gnatf.lnk
+	echo $(GNAT_ADA_OBJS5)	+ >>gnatf.lnk
+	echo $(GNAT_ADA_OBJS6)	+ >>gnatf.lnk
+	echo $(GNATF_OBJS1)	+ >>gnatf.lnk
+	echo bind_frontdrv.obj	  >>gnatf.lnk
+	echo gnatf /NOI /DE /PM:VIO /align:16 /exepack /base:65536 /stack:4194304, NUL, libc os2; >>gnatf.lnk
+	link386 @gnatf.lnk
+
+gnatbind.exe: $(P) $(GNATBIND_OBJS) bind_gnatbind.obj
+#	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o gnatbind.exe $(GNATBIND_OBJS) bind_gnatbind.obj
+	rm -f gnatbind.lnk
+	echo $(GNATBIND_OBJS1) + >gnatbind.lnk
+	echo $(GNATBIND_OBJS2) bind_gnatbind.obj >>gnatbind.lnk
+	echo gnatbind /NOI /DE /PM:VIO /align:16 /exepack /base:65536 /stack:4194304, NUL, libc os2; >>gnatbind.lnk
+	link386 @gnatbind.lnk
+
+# .s files for cross-building
+gnat-cross: force
+	$(MAKE) $(GNAT1_ADA_OBJS) CC="gcc -Bstage1/" CFLAGS="-S -gnatp"
+
+# Copy float.h from its source.
+gfloat.h: $(FLOAT_H)
+	rm -f gfloat.h
+	copy $(FLOAT_H) gfloat.h
+	touch gfloat.h
+
+# Create float.h source for the native machine.
+float.h-nat: enquire.exe
+	-.\enquire -f > tmp-float.h
+	mv tmp-float.h float.h-nat
+
+# Create a dummy float.h source for a cross-compiler.
+float.h-cross:
+	echo "#error float.h values not known for cross-compiler" > float.h-cross
+
+# Used to compile enquire with standard cc, but have forgotten why.
+# Let's try with GCC.
+enquire.exe: enquire.obj $(GCC_PARTS)
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(ENQUIRE_LDFLAGS) enquire.obj -o $@
+enquire.obj: $(srcdir)\enquire.c $(GCC_PASSES)
+#	-if [ "$(srcdir)" != "." ]; then rm -f .\enquire.c; else true; fi
+#	-cp $(srcdir)\enquire.c . > \dev\null 2>&1
+# Breaking this line caused a problem with one version of GNU make.
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(ALL_CPPFLAGS) $(ENQUIRE_CFLAGS) -I. -c $(srcdir)\enquire.c
+
+# Build the version of limits.h that we will install.
+xlimits.h: glimits.h limitx.h limity.h
+	if exist $(SYSTEM_HEADER_DIR)\limits.h \
+	  copy /a $(srcdir)\limitx.h+$(srcdir)\glimits.h+$(srcdir)\limity.h xlimits.h
+	if not exist $(SYSTEM_HEADER_DIR)\limits.h \
+	  copy $(srcdir)\glimits.h xlimits.h
+
+# Build gcc.lib.
+# This is done in two parts because some functions, in libgcc1.c,
+# must be compiled with something other than GCC,
+# while the rest, in libgcc2.c, must be compiled with xgcc.
+# That means we can't do libgcc2.c until after xgcc, cc1, etc.
+
+# Use this as value of LIBGCC1 to cause conversion to GNU library format.
+# LIBCONVERT should put its output in libgcc1.conv.
+libgcc1.conv: gcc1.lib
+	$(LIBCONVERT) gcc1.lib libgcc1.conv
+
+# Use this as value of LIBGCC1 to inhibit use of libgcc1.c entirely.
+# Make an empty file instead.
+libgcc1.null: $(GCC_PASSES)
+	echo "__foo () {}" > dummy.c
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) -c dummy.c
+	$(OLDAR) $(OLDAR_FLAGS) libgcc1.null dummy.obj;
+	rm -f dummy.obj
+	rm -f dummy.c
+
+# This is $(LIBGCC1) for a cross-compiler.
+# We have no automatic way of building libgcc1.a, 
+# so it's up to the installer to find a way to do that.
+# This rule deliberately does not depend on libgcc1.a
+# so that it will fail if the installer hasn't provided it.
+libgcc1.cross:
+	mv libgcc1.a libgcc1.cross || (echo You must find a way to make libgcc1.a; false)
+
+# Compile the library of arithmetic subroutines with the native compiler.
+# Don't compile it with GCC!
+# (That would cause most arithmetic functions to call themselves.)
+gcc1.lib: libgcc1.c $(CONFIG_H) $(LIB1FUNCS_EXTRA) config.status
+	-rm -f tmpgcc1.lib
+# Actually build it in tmpgcc1.lib, then rename at end,
+# so that gcc1.lib itself remains nonexistent if compilation is aborted.
+# -e causes any failing command to make this rule fail.
+# -e doesn't work in certain shells, so we test $$? as well.
+# lynx has a broken ar, it always complains when the initial library is
+# empty, thus this command works only if we don't do -e
+# There is a trailing backslash (\) deleted from the following line.
+#	set -e;
+	for %%n in ($(LIB1FUNCS1)) do \
+	  addtolib1 %%n $(srcdir)\libgcc1.c $(OLDCC) $(CCLIBFLAGS)
+	for %%n in ($(LIB1FUNCS2)) do \
+	  addtolib1 %%n $(srcdir)\libgcc1.c $(OLDCC) $(CCLIBFLAGS)
+	for %%n in ($(LIB1FUNCS3)) do \
+	  addtolib1 %%n $(srcdir)\libgcc1.c $(OLDCC) $(CCLIBFLAGS)
+# Some shells crash when a loop has no items.
+# So make sure there is always at least one--`..'.
+# Then ignore it.
+# We don't use -e here because there are if statements
+# that should not make the command give up when the if condition is false.
+# Instead, we test for failure after each command where it matters.
+!	if "$(LIB1FUNCS_EXTRA)" != ""
+	-for file in .. $(LIB1FUNCS_EXTRA); \
+	do \
+	  if [ x$${file} != x.. ]; then \
+	    name=`echo $${file} | sed -e 's/[.]c$$//' -e 's/[.]asm$$//'`; \
+	    echo $${name}; \
+	    if [ $${name}.asm = $${file} ]; then \
+	      cp $${file} $${name}.s || exit 1; file=$${name}.s; \
+	    else true; fi; \
+	    $(OLDCC) $(CCLIBFLAGS) $(INCLUDES) -c $${file}; \
+	    if [ $$? -eq 0 ] ; then true; else exit 1; fi; \
+	    $(OLDAR) $(OLDAR_FLAGS) tmpgcc1.lib $${name}.obj; \
+	    if [ $$? -eq 0 ] ; then true; else exit 1; fi; \
+	    rm -f $${name}.[so]; \
+	  else true; \
+	  fi; \
+	done
+!	endif
+	rm -f gcc1.lib
+	mv tmpgcc1.lib gcc1.lib
+
+# Compiling gcc2.lib requires making sure that cc1, etc. have been compiled.
+# But recompiling cc1 should not force recompilation of gcc2.lib.
+# If you want to force recompilation, delete gcc2.lib.
+# Depend on install-cross-tools to make sure we set up properly 
+# to run the assembler before we try compiling anything.
+# install-cross-tools does nothing if not cross compiling.
+libgcc2.ready: $(GCC_PASSES) $(LIBGCC2_DEPS)
+	-if not exist libgcc2.ready \
+		touch libgcc2.ready
+
+gcc2.lib: libgcc2.c libgcc2.ready $(CONFIG_H) $(LIB2FUNCS_EXTRA) \
+   machmode.h longlong.h gbl-ctors.h config.status
+# Actually build it in tmpgcc2.lib, then rename at end,
+# so that gcc2.lib itself remains nonexistent if compilation is aborted.
+	-rm -f tmpgcc2.lib
+!	if "$(LIBGCC1)" != ""
+	copy $(LIBGCC1) tmpgcc2.lib
+!	endif
+# -e causes any failing command to make this rule fail.
+# -e doesn't work in certain shells, so we test $$? as well.
+# lynx has a broken ar, it always complains when the initial library is
+# empty, thus this command works only if we don't do -e
+# There is a trailing backslash (\) deleted from the following line.
+#	set -e;
+	for %%n in ($(LIB2FUNCS1)) do \
+	  addtolib2 %%n $(srcdir)\libgcc2.c $(GCC_FOR_TARGET) $(LIBGCC2_CFLAGS)
+	for %%n in ($(LIB2FUNCS2)) do \
+	  addtolib2 %%n $(srcdir)\libgcc2.c $(GCC_FOR_TARGET) $(LIBGCC2_CFLAGS)
+	for %%n in ($(LIB2FUNCS3)) do \
+	  addtolib2 %%n $(srcdir)\libgcc2.c $(GCC_FOR_TARGET) $(LIBGCC2_CFLAGS)
+# Some shells crash when a loop has no items.
+# So make sure there is always at least one--`..'.
+# Then ignore it.
+# We don't use -e here because there are if statements
+# that should not make the command give up when the if condition is false.
+# Instead, we test for failure after each command where it matters.
+!	if "$(LIB2FUNCS_EXTRA)" != ""
+	-for file in .. $(LIB2FUNCS_EXTRA); \
+	do \
+	  if [ x$${file} != x.. ]; then \
+	    name=`echo $${file} | sed -e 's/[.]c$$//' -e 's/[.]asm$$//'`; \
+	    echo $${name}; \
+	    if [ $${name}.asm = $${file} ]; then \
+	      cp $${file} $${name}.s || exit 1; file=$${name}.s; \
+	    else true; fi; \
+	    $(GCC_FOR_TARGET) $(LIBGCC2_CFLAGS) $(INCLUDES) -c $${file}; \
+	    if [ $$? -eq 0 ] ; then true; else exit 1; fi; \
+	    $(AR) $(AR_FLAGS) tmpgcc2.lib $${name}.obj; \
+	    rm -f $${name}.[so]; \
+	  else true; \
+	  fi; \
+	done
+!	endif
+	rm -f gcc2.lib
+	mv tmpgcc2.lib gcc2.lib
+# These lines were deleted from above the mv command
+# because ranlibing libgcc.a itself should suffice.
+#	-if [ x${HPUX_GAS} = x ] ; then \
+#	  if $(RANLIB_TEST) ; then $(RANLIB) tmplibgcc2.a; else true; fi \
+#	else true; fi
+
+# Combine the various libraries into a single library, gcc.lib.
+gcc.lib: $(LIBGCC1) $(LIBGCC2)
+	rm -f gcc.lib
+	copy $(LIBGCC2) gcc.lib
+#	-if $(RANLIB_TEST) ; then $(RANLIB) tmpgcc.lib; else true; fi
+# Actually build it in tmpgcc.lib, then rename at end,
+# so that gcc.lib itself remains nonexistent if compilation is aborted.
+#	mv tmpgcc.lib gcc.lib
+
+objc-runtime: objc.lib
+
+# Build the Objective C runtime library.
+objc.lib: cc1obj libgcc2.ready
+	if [ -d objc ]; then true; else mkdir objc; fi
+	thisdir1=`pwd`; \
+	srcdir1=`cd $(srcdir); pwd`; \
+	cd objc; \
+	$(MAKE) -f $${srcdir1}\objc\Makefile objc.lib \
+	  srcdir=$${srcdir1} tooldir=$(tooldir) AR="$(AR)" AR_FLAGS="$(AR_FLAGS)" \
+	  GCC_FOR_TARGET="$${thisdir1}\xgcc" \
+	  GCC_CFLAGS="-B$${thisdir1}\ $(GCC_CFLAGS)"
+	-rm -f objc.lib
+	ln objc\objc.lib . >\dev\null 2>&1 || cp objc\objc.lib .
+#	-if $(RANLIB_TEST) ; then $(RANLIB) objc.lib; else true; fi
+
+# This is used by objc\Makefile if the user runs that directly.
+subobjc.lib: cc1obj libgcc2.ready
+	thisdir1=`pwd`; \
+	srcdir1=`cd $(srcdir); pwd`; \
+	cd objc; \
+	$(MAKE) -f $$srcdir1\objc\Makefile objc.lib \
+	  srcdir=$$srcdir1 tooldir=$(tooldir) AR="$(AR)" AR_FLAGS="$(AR_FLAGS)" \
+	  GCC_FOR_TARGET="$$thisdir1\xgcc" \
+	  GCC_CFLAGS="-B$$thisdir1\ $(GCC_CFLAGS)"
+
+# Compile two additional files that are linked with every program
+# linked using GCC on system V, for the sake of C++ constructors.
+crtbegin.obj:	crtstuff.c $(GCC_PASSES) $(CONFIG_H) gbl-ctors.h
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(INCLUDES) -DCRT_BEGIN \
+	  -finhibit-size-directive -fno-inline-functions \
+	  -g0 -c $(srcdir)\crtstuff.c -o crtbegin.obj
+
+crtend.obj:	crtstuff.c $(GCC_PASSES) $(CONFIG_H) gbl-ctors.h
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(INCLUDES) -DCRT_END \
+	  -finhibit-size-directive -fno-inline-functions \
+	  -g0 -c $(srcdir)\crtstuff.c -o crtend.obj
+
+# Compiling object files from source files.
+
+# Note that dependencies on obstack.h are not written
+# because that file is not part of GCC.
+# Dependencies on gvarargs.h are not written
+# because all that file does, when not compiling with GCC,
+# is include the system varargs.h.
+
+# C language specific files.
+
+c-parse.obj : $(srcdir)\c-parse.c $(CONFIG_H) $(TREE_H) c-lex.h c-parse.h \
+    c-tree.h input.h flags.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c $(srcdir)\c-parse.c
+$(srcdir)\c-parse.c $(srcdir)\c-parse.h: $(srcdir)\c-parse.y
+#!	IF "$(srcdir)" != "."
+#	  cd $(srcdir)
+#!	ENDIF
+#        $(BISON) $(BISONFLAGS) -d c-parse.y -o c-parse.c
+	touch $(srcdir)\c-parse.c
+	touch $(srcdir)\c-parse.h
+$(srcdir)\c-parse.y: $(srcdir)\c-parse.in
+#	sed -e "/^ifobjc$$/,/^end ifobjc$$/d" \
+#	  -e "/^ifc$$/d" -e "/^end ifc$$/d" \
+#	  $(srcdir)/c-parse.in > $(srcdir)/c-parse.y
+	touch $(srcdir)\c-parse.y
+
+c-decl.obj : c-decl.c $(CONFIG_H) $(TREE_H) c-tree.h c-lex.h flags.h
+c-typeck.obj : c-typeck.c $(CONFIG_H) $(TREE_H) c-tree.h flags.h
+c-lang.obj : c-lang.c $(CONFIG_H) $(TREE_H)
+c-lex.obj : c-lex.c $(CONFIG_H) $(TREE_H) c-lex.h c-tree.h c-parse.h \
+    input.h flags.h
+c-aux-info.obj : c-aux-info.c  $(CONFIG_H) $(TREE_H) c-tree.h flags.h
+c-convert.obj : c-convert.c $(CONFIG_H) $(TREE_H) flags.h
+c-pragma.obj: c-pragma.c $(CONFIG_H) $(TREE_H)
+c-iterate.obj: c-iterate.c $(CONFIG_H) $(TREE_H) $(RTL_H) c-tree.h flags.h
+
+# C++ language specific files.
+
+cp-parse.obj : $(srcdir)\cp-parse.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h cp-lex.h
+!	IF "$(srcdir)" == "."
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) cp-parse.c
+!	ELSE
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(srcdir)\cp-parse.c
+!	ENDIF
+
+$(srcdir)\cp-parse.c $(srcdir)\cp-parse.h : $(srcdir)\cp-parse.y
+	@echo expect 27 shift/reduce conflicts and 14 reduce/reduce conflicts
+!	IF "$(srcdir)" != "."
+	  cd $(srcdir)
+!	ENDIF
+	$(BISON) $(BISONFLAGS) -d -o cp-parse.c cp-parse.y
+!	IF "$(srcdir)" != "."
+	  cd $(srcdir)
+!	ENDIF
+	grep '^#define[ 	]*YYEMPTY' cp-parse.c >>cp-parse.h
+
+cp-spew.obj : cp-spew.c $(CONFIG_H) $(CPLUS_TREE_H) \
+   $(srcdir)\cp-parse.h flags.h cp-lex.h
+cp-lex.obj : cp-lex.c $(CONFIG_H) $(CPLUS_TREE_H) \
+   $(srcdir)\cp-parse.h $(srcdir)\cp-input.c flags.h cp-hash.h cp-lex.h
+cp-decl.obj : cp-decl.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h \
+  cp-lex.h cp-decl.h stack.h
+cp-decl2.obj : cp-decl2.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h \
+  cp-lex.h cp-decl.h
+cp-type2.obj : cp-type2.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h
+cp-typeck.obj : cp-typeck.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h $(RTL_H)
+cp-class.obj : cp-class.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h
+cp-call.obj : cp-call.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h
+cp-init.obj : cp-init.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h $(RTL_H)
+cp-method.obj : cp-method.c $(CONFIG_H) $(CPLUS_TREE_H)
+cp-cvt.obj : cp-cvt.c $(CONFIG_H) $(CPLUS_TREE_H)
+cp-search.obj : cp-search.c $(CONFIG_H) $(CPLUS_TREE_H) stack.h flags.h
+cp-tree.obj : cp-tree.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h
+cp-ptree.obj : cp-ptree.c $(CONFIG_H) $(CPLUS_TREE_H)
+cp-gc.obj : cp-gc.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h
+cp-except.obj : cp-except.c $(CONFIG_H) $(CPLUS_TREE_H) flags.h $(RTL_H)
+cp-expr.obj : cp-expr.c $(CONFIG_H) $(CPLUS_TREE_H) $(RTL_H) flags.h \
+  expr.h insn-codes.h
+cp-edsel.obj : cp-edsel.c $(CONFIG_H) $(CPLUS_TREE_H) stack.h flags.h
+cp-xref.obj : cp-xref.c $(CONFIG_H) $(CPLUS_TREE_H) input.h
+cp-pt.obj : cp-pt.c $(CONFIG_H) $(CPLUS_TREE_H) cp-decl.h cp-parse.h
+cp-error.obj : cp-error.c $(CONFIG_H) $(CPLUS_TREE_H)
+cp-errfn.obj : cp-errfn.c $(CONFIG_H) $(CPLUS_TREE_H)
+
+g++.obj : g++.c $(CONFIG_H) gvarargs.h
+
+# Ada language specific files.
+
+ada_extra_files : treeprs.ads sysid.ads a-einfo.h a-sinfo.h nmake.adb \
+	nmake.ads
+
+bind_gnat1drv.c : $(GNAT1_ADA_OBJS)
+	$(GNATBIND) -n gnat1drv.ali
+bind_gnat1drv.obj : bind_gnat1drv.c
+
+bind_frontdrv.c : $(GNATF_OBJS)
+	$(GNATBIND) frontdrv.ali
+
+bind_frontdrv.obj : bind_frontdrv.c
+
+
+bind_gnatbind.c : $(GNATBIND_OBJS)
+	$(GNATBIND) gnatbind.ali
+bind_gnatbind.obj : bind_gnatbind.c
+
+treeprs.ads : treeprs.adt sinfo.ads xtreeprs.spt
+	gtreeprs
+
+sysid.ads : sysid~d.ads
+	rm -f sysid.ads
+	copy sysid~d.ads sysid.ads
+	touch sysid.ads
+
+a-einfo.h : einfo.ads einfo.adb xeinfo.spt
+	xeinfo
+
+a-sinfo.h : sinfo.ads xsinfo.spt
+	xsinfo
+
+nmake.adb : nmake.adt sinfo.ads xnmake.spt
+	gnmake -b
+
+nmake.ads :  nmake.adt sinfo.ads xnmake.spt
+	gnmake -s
+
+mk-ttypes.obj : mk-ttypes.c hconfig.h machmode.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\mk-ttypes.c
+mk-ttypes.exe : mk-ttypes.obj $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o mk-ttypes.exe \
+	 mk-ttypes.obj $(HOST_LIBS)
+
+ttypes.ads: stamp-ttypes
+stamp-ttypes : ttypes.adt mk-ttypes.exe $(srcdir)\move-if-change.cmd
+	.\mk-ttypes ttypes.adt > tmp-ttypes.ads
+	$(srcdir)\move-if-change tmp-ttypes.ads ttypes.ads
+	touch stamp-ttypes
+
+mk-ttypes-fpt.obj : mk-ttypes-fpt.c hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\mk-ttypes-fpt.c
+mk-ttypes-fpt.exe : mk-ttypes-fpt.obj $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o mk-ttypes-fpt.exe \
+	 mk-ttypes-fpt.obj $(HOST_LIBS)
+
+ttypes-fpt.ads: stamp-ttypes-fpt
+stamp-ttypes-fpt : ttypes-fpt.adt mk-ttypes-fpt.exe $(srcdir)\move-if-change.cmd
+	.\mk-ttypes-fpt ttypes-fpt.adt > tmp-ttypes-fpt.ads
+	$(srcdir)\move-if-change tmp-ttypes-fpt.ads ttypes-fpt.ads
+	touch stamp-ttypes-fpt
+
+A_MISC_H = a-misc.h a-tree.def
+
+a-adaint.obj : $(CONFIG_H)
+
+a-gtran3.obj : $(CONFIG_H) $(TREE_H) obstack.h flags.h convert.h a-ada.h \
+   a-types.h a-atree.h a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h \
+   a-trans.h a-trans3.h a-trans4.h a-gtran3.h $(A_MISC_H) a-rtree.h
+
+a-ptypes.obj : $(CONFIG_H)
+
+a-misc.obj : $(CONFIG_H) $(TREE_H) a-ada.h a-types.h a-atree.h a-sinfo.h \
+   a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-trans3.h $(A_MISC_H) \
+   a-rtree.h flags.h $(RTL_H) expr.h insn-codes.h
+
+a-trans3.obj : $(CONFIG_H) $(TREE_H) flags.h a-ada.h a-types.h a-atree.h \
+   a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-gtran3.h \
+   a-trans3.h a-trans4.h $(A_MISC_H) a-rtree.h convert.h
+
+a-trans4.obj : $(CONFIG_H) $(TREE_H) flags.h a-ada.h a-types.h a-atree.h \
+   a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-trans3.h \
+   a-trans4.h $(A_MISC_H)
+
+a-trans.obj : $(CONFIG_H) $(TREE_H) flags.h a-ada.h a-types.h a-atree.h \
+   a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-trans3.h \
+   a-gtran3.h a-trans4.h $(A_MISC_H) a-rtree.h
+
+a-uint.obj : $(CONFIG_H) $(TREE_H) a-ada.h a-types.h a-atree.h a-sinfo.h \
+   a-einfo.h a-namet.h a-string.h a-uint.h
+
+ali.obj : ali.ads ali.adb alloc.ads binderr.ads butil.ads debug.ads \
+   limits.ads namet.ads opt.ads osint.ads output.ads system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+alloc.obj : alloc.ads
+
+atree.obj : alloc.ads atree.ads atree.adb atree-ts.adb comperr.ads debug.ads \
+   einfo.ads output.ads sinfo.ads system.ads system-assertions.ads \
+   table.ads table.adb types.ads unchecked_conversion.ads \
+   unchecked_conversion.adb unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+back_end.obj : alloc.ads atree.ads back_end.ads back_end.adb casing.ads \
+   debug.ads einfo.ads lib.ads limits.ads namet.ads output.ads sinfo.ads \
+   stringt.ads system.ads table.ads table.adb types.ads uintp.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+bcheck.obj : ali.ads alloc.ads bcheck.ads bcheck.adb binderr.ads debug.ads \
+   gnatvsn.ads libfmt.ads limits.ads namet.ads opt.ads output.ads \
+   system.ads table.ads table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+binde.obj : ali.ads alloc.ads binde.ads binde.adb binderr.ads butil.ads \
+   debug.ads limits.ads namet.ads opt.ads output.ads system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+binderr.obj : alloc.ads binderr.ads binderr.adb butil.ads debug.ads \
+   errcount.ads excep.ads limits.ads namet.ads opt.ads osint.ads \
+   output.ads system.ads system-traceback.ads table.ads table.adb \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+bindgen.obj : ali.ads alloc.ads binde.ads bindgen.ads bindgen.adb debug.ads \
+   limits.ads namet.ads opt.ads osint.ads output.ads system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+bindusg.obj : bindusg.ads bindusg.adb osint.ads output.ads sysid.ads \
+   system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+butil.obj : alloc.ads butil.ads butil.adb debug.ads limits.ads namet.ads \
+   output.ads system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+casing.obj : alloc.ads casing.ads casing.adb csets.ads debug.ads limits.ads \
+   namet.ads output.ads scans.ads system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+comperr.obj : comperr.ads comperr.adb debug.ads errcount.ads excep.ads \
+   osint.ads output.ads system.ads system-traceback.ads treepr.ads \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+csets.obj : csets.ads csets.adb opt.ads system.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+debug.obj : debug.ads debug.adb output.ads system.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+debug_sem.obj : alloc.ads atree.ads debug.ads debug_sem.ads debug_sem.adb \
+   einfo.ads output.ads sinfo.ads sinput.ads system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+einfo.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads einfo.adb \
+   limits.ads namet.ads output.ads sinfo.ads snames.ads system.ads \
+   system-assertions.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+errcount.obj : errcount.ads system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+errout.obj : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
+   errcount.ads errout.ads errout.adb excep.ads exp_util.ads lib.ads \
+   limits.ads namet.ads opt.ads output.ads scans.ads sinfo.ads sinput.ads \
+   stand.ads system.ads table.ads table.adb types.ads uintp.ads uname.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+excep.obj : excep.ads
+
+exp_attr.obj : alloc.ads atree.ads debug.ads einfo.ads exp_attr.ads \
+   exp_attr.adb exp_ch9.ads limits.ads namet.ads nmake.ads opt.ads \
+   output.ads rtsfind.ads sem.ads sem_res.ads sinfo.ads snames.ads \
+   stand.ads system.ads table.ads table.adb tbuild.ads ttypes.ads \
+   types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+exp_ch10.obj : exp_ch10.ads
+
+exp_ch11.obj : exp_ch11.ads
+
+exp_ch12.obj : exp_ch12.ads
+
+exp_ch13.obj : alloc.ads atree.ads debug.ads einfo.ads exp_ch13.ads \
+   exp_ch13.adb exp_ch3.ads nmake.ads output.ads rtsfind.ads sinfo.ads \
+   snames.ads system.ads table.ads table.adb tbuild.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+exp_ch2.obj : alloc.ads atree.ads debug.ads einfo.ads exp_ch2.ads \
+   exp_ch2.adb output.ads sinfo.ads system.ads table.ads table.adb \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+exp_ch3.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
+   exp_ch3.ads exp_ch3.adb exp_ch9.ads exp_util.ads limits.ads namet.ads \
+   nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch3.ads \
+   sem_res.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
+   system-assertions.ads table.ads table.adb tbuild.ads types.ads \
+   uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+exp_ch4.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
+   exp_ch4.ads exp_ch4.adb exp_ch9.ads exp_util.ads limits.ads namet.ads \
+   nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_eval.ads \
+   sem_res.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
+   table.ads table.adb tbuild.ads types.ads uintp.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+exp_ch5.obj : alloc.ads atree.ads debug.ads einfo.ads exp_ch5.ads \
+   exp_ch5.adb exp_ch9.ads exp_util.ads nmake.ads opt.ads output.ads \
+   rtsfind.ads sem.ads sem_util.ads sinfo.ads snames.ads system.ads \
+   table.ads table.adb tbuild.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+exp_ch6.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
+   exp_ch6.ads exp_ch6.adb exp_ch9.ads exp_util.ads limits.ads namet.ads \
+   nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch3.ads \
+   sem_disp.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
+   system-assertions.ads table.ads table.adb tbuild.ads types.ads \
+   uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+exp_ch7.obj : exp_ch7.ads exp_ch7.adb exp_ch9.ads system.ads types.ads \
+   unchecked_deallocation.adb
+
+exp_ch8.obj : exp_ch8.ads
+
+exp_ch9.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
+   exp_ch3.ads exp_ch9.ads exp_ch9.adb exp_util.ads limits.ads namet.ads \
+   nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_res.ads sinfo.ads \
+   snames.ads stand.ads system.ads system-assertions.ads table.ads \
+   table.adb tbuild.ads types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+exp_prag.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
+   exp_prag.ads exp_prag.adb exp_util.ads nmake.ads opt.ads output.ads \
+   rtsfind.ads sem.ads sinfo.ads snames.ads system.ads \
+   system-assertions.ads table.ads table.adb tbuild.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+exp_util.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads \
+   errcount.ads exp_util.ads exp_util.adb lib.ads limits.ads namet.ads \
+   nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch13.ads \
+   sem_res.ads sem_util.ads sinfo.ads sinput.ads snames.ads stand.ads \
+   system.ads system-assertions.ads table.ads table.adb tbuild.ads \
+   ttypes.ads types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+expand.obj : alloc.ads atree.ads debug.ads debug_sem.ads einfo.ads \
+   exp_attr.ads exp_ch10.ads exp_ch11.ads exp_ch12.ads exp_ch13.ads \
+   exp_ch2.ads exp_ch3.ads exp_ch4.ads exp_ch5.ads exp_ch6.ads exp_ch7.ads \
+   exp_ch8.ads exp_ch9.ads exp_prag.ads exp_util.ads expand.ads expand.adb \
+   opt.ads output.ads sinfo.ads sinput.ads system.ads table.ads table.adb \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+fname.obj : alloc.ads comperr.ads csets.ads debug.ads fname.ads fname.adb \
+   limits.ads namet.ads opt.ads osint.ads output.ads system.ads \
+   system-assertions.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+frontend.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
+   frontend.ads frontend.adb lib.ads limits.ads namet.ads opt.ads \
+   output.ads par.ads rtsfind.ads scn.ads sem.ads sinfo.ads snames.ads \
+   sprint.ads stand.ads stringt.ads system.ads table.ads table.adb \
+   treepr.ads types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb usage.ads
+
+gnat1drv.obj : alloc.ads atree.ads back_end.ads casing.ads comperr.ads \
+   csets.ads debug.ads einfo.ads errcount.ads errout.ads excep.ads \
+   frontend.ads gnat1drv.ads gnat1drv.adb gnatvsn.ads lib.ads limits.ads \
+   namet.ads opt.ads osint.ads output.ads par.ads sinfo.ads system.ads \
+   system-assertions.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb usage.ads
+
+gnatbind.obj : ali.ads alloc.ads bcheck.ads binde.ads binderr.ads \
+   bindgen.ads bindusg.ads butil.ads debug.ads errcount.ads excep.ads \
+   gnatbind.adb gnatvsn.ads libfmt.ads limits.ads namet.ads opt.ads \
+   osint.ads output.ads system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+gnatvsn.obj : gnatvsn.ads system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+lib.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
+   fname.ads gnatvsn.ads lib.ads lib.adb lib-list.adb lib-load.adb \
+   lib-sort.adb lib-writ.adb libfmt.ads limits.ads namet.ads osint.ads \
+   output.ads par.ads scn.ads sinfo.ads system.ads table.ads table.adb \
+   types.ads uname.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+libfmt.obj : libfmt.ads system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+limits.obj : limits.ads
+
+namet.obj : alloc.ads debug.ads limits.ads namet.ads namet.adb namet-ch.adb \
+   output.ads system.ads system-assertions.ads table.ads table.adb \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+nmake.obj : alloc.ads atree.ads debug.ads einfo.ads nmake.ads nmake.adb \
+   output.ads sinfo.ads snames.ads system.ads table.ads table.adb \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+opt.obj : opt.ads system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+osint.obj : alloc.ads debug.ads limits.ads namet.ads opt.ads osint.ads \
+   osint.adb output.ads switch.ads sysid.ads system.ads \
+   system-assertions.ads system_environment.ads table.ads table.adb \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb \
+   unixlib.ads
+
+output.obj : output.ads output.adb system.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb unixlib.ads
+
+par.obj : alloc.ads atree.ads casing.ads comperr.ads csets.ads debug.ads \
+   einfo.ads errout.ads excep.ads fname.ads lib.ads limits.ads namet.ads \
+   nmake.ads opt.ads output.ads par.ads par.adb par-ch10.adb par-ch11.adb \
+   par-ch12.adb par-ch13.adb par-ch2.adb par-ch3.adb par-ch4.adb \
+   par-ch5.adb par-ch6.adb par-ch7.adb par-ch8.adb par-ch9.adb \
+   par-endh.adb par-labl.adb par-load.adb par-prag.adb par-sync.adb \
+   par-tchk.adb par-util.adb scans.ads scn.ads sinfo.ads sinfo-change.ads \
+   sinput.ads snames.ads system.ads table.ads table.adb tbuild.ads \
+   types.ads uintp.ads uname.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+rtsfind.obj : alloc.ads atree.ads casing.ads comperr.ads csets.ads debug.ads \
+   einfo.ads excep.ads fname.ads lib.ads limits.ads namet.ads nmake.ads \
+   opt.ads output.ads rtsfind.ads rtsfind.adb sem.ads sem_util.ads \
+   sinfo.ads snames.ads system.ads table.ads table.adb tbuild.ads \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+scans.obj : scans.ads scans.adb system.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+scn.obj : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
+   errout.ads lib.ads limits.ads namet.ads opt.ads output.ads scans.ads \
+   scn.ads scn.adb scn-nlit.adb scn-slit.adb sinfo.ads sinput.ads \
+   snames.ads stringt.ads system.ads table.ads table.adb types.ads \
+   uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem.obj : alloc.ads atree.ads casing.ads comperr.ads debug.ads debug_sem.ads \
+   einfo.ads errout.ads exp_util.ads expand.ads lib.ads limits.ads \
+   namet.ads opt.ads output.ads sem.ads sem.adb sem_attr.ads sem_ch10.ads \
+   sem_ch11.ads sem_ch12.ads sem_ch13.ads sem_ch3.ads sem_ch4.ads \
+   sem_ch5.ads sem_ch6.ads sem_ch7.ads sem_ch8.ads sem_ch9.ads \
+   sem_prag.ads sem_util.ads sinfo.ads sinput.ads snames.ads stand.ads \
+   system.ads table.ads table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_attr.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
+   namet.ads nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_attr.ads \
+   sem_attr.adb sem_ch6.ads sem_ch8.ads sem_eval.ads sem_res.ads \
+   sem_type.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
+   table.ads table.adb tbuild.ads types.ads uintp.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_ch10.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads \
+   errcount.ads errout.ads lib.ads limits.ads namet.ads nmake.ads opt.ads \
+   output.ads sem.ads sem_ch10.ads sem_ch10.adb sem_ch6.ads sem_ch7.ads \
+   sem_ch8.ads sem_util.ads sinfo.ads sinfo-change.ads snames.ads \
+   stand.ads stringt.ads system.ads table.ads table.adb tbuild.ads \
+   types.ads uname.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch11.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
+   namet.ads opt.ads output.ads sem_ch11.ads sem_ch11.adb sem_ch5.ads \
+   sem_ch8.ads sem_util.ads sinfo.ads stand.ads system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch12.obj : alloc.ads atree.ads casing.ads comperr.ads debug.ads \
+   einfo.ads errout.ads exp_util.ads lib.ads limits.ads namet.ads opt.ads \
+   output.ads sem.ads sem_ch10.ads sem_ch12.ads sem_ch12.adb sem_ch13.ads \
+   sem_ch3.ads sem_ch6.ads sem_ch7.ads sem_ch8.ads sem_res.ads \
+   sem_util.ads sinfo.ads snames.ads stand.ads system.ads table.ads \
+   table.adb tbuild.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch13.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads excep.ads \
+   limits.ads namet.ads nmake.ads opt.ads output.ads rtsfind.ads sem.ads \
+   sem_ch13.ads sem_ch13.adb sem_ch3.ads sem_ch8.ads sem_eval.ads \
+   sem_res.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
+   table.ads table.adb ttypes.ads types.ads uintp.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_ch3.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
+   exp_util.ads limits.ads namet.ads nmake.ads opt.ads output.ads \
+   rtsfind.ads sem.ads sem_ch12.ads sem_ch13.ads sem_ch3.ads sem_ch3.adb \
+   sem_ch5.ads sem_ch6.ads sem_ch7.ads sem_ch8.ads sem_ch9.ads \
+   sem_eval.ads sem_res.ads sem_type.ads sem_util.ads sinfo.ads snames.ads \
+   stand.ads system.ads system-assertions.ads table.ads table.adb \
+   tbuild.ads ttypes.ads types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch4.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads \
+   exp_util.ads limits.ads namet.ads nmake.ads opt.ads output.ads sem.ads \
+   sem_ch3.ads sem_ch4.ads sem_ch4.adb sem_ch8.ads sem_type.ads \
+   sem_util.ads sinfo.ads snames.ads stand.ads system.ads table.ads \
+   table.adb tbuild.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch5.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
+   limits.ads namet.ads opt.ads output.ads sem.ads sem_ch3.ads sem_ch5.ads \
+   sem_ch5.adb sem_ch8.ads sem_disp.ads sem_eval.ads sem_res.ads \
+   sem_type.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
+   table.ads table.adb types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch6.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
+   exp_util.ads lib.ads limits.ads namet.ads nmake.ads opt.ads output.ads \
+   rtsfind.ads sem.ads sem_ch3.ads sem_ch4.ads sem_ch6.ads sem_ch6.adb \
+   sem_ch8.ads sem_ch9.ads sem_disp.ads sem_res.ads sem_util.ads sinfo.ads \
+   sinfo-change.ads snames.ads stand.ads stringt.ads system.ads table.ads \
+   table.adb tbuild.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_ch7.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
+   lib.ads limits.ads namet.ads opt.ads output.ads sem.ads sem_ch13.ads \
+   sem_ch3.ads sem_ch7.ads sem_ch7.adb sem_ch8.ads sem_util.ads sinfo.ads \
+   snames.ads stand.ads system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_ch8.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
+   limits.ads namet.ads nmake.ads opt.ads output.ads sem.ads sem_attr.ads \
+   sem_ch3.ads sem_ch4.ads sem_ch5.ads sem_ch6.ads sem_ch8.ads sem_ch8.adb \
+   sem_res.ads sem_type.ads sem_util.ads sinfo.ads sinfo-change.ads \
+   snames.ads stand.ads system.ads table.ads table.adb tbuild.ads \
+   types.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_ch9.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
+   namet.ads opt.ads output.ads sem.ads sem_ch3.ads sem_ch4.ads \
+   sem_ch5.ads sem_ch6.ads sem_ch8.ads sem_ch9.ads sem_ch9.adb sem_res.ads \
+   sem_util.ads sinfo.ads snames.ads stand.ads system.ads table.ads \
+   table.adb tbuild.ads ttypes.ads types.ads uintp.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_disp.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads \
+   exp_ch6.ads output.ads sem_disp.ads sem_disp.adb sem_util.ads sinfo.ads \
+   system.ads table.ads table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_eval.obj : alloc.ads atree.ads comperr.ads debug.ads debug_sem.ads \
+   einfo.ads errout.ads excep.ads limits.ads namet.ads output.ads \
+   sem_eval.ads sem_eval.adb sem_util.ads sinfo.ads sinput.ads snames.ads \
+   stand.ads stringt.ads system.ads system-assertions.ads table.ads \
+   table.adb tbuild.ads types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_prag.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
+   namet.ads nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch8.ads \
+   sem_eval.ads sem_prag.ads sem_prag.adb sem_res.ads sem_util.ads \
+   sinfo.ads snames.ads stand.ads system.ads table.ads table.adb \
+   tbuild.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sem_res.obj : alloc.ads atree.ads comperr.ads debug.ads debug_sem.ads \
+   einfo.ads errout.ads expand.ads limits.ads namet.ads nmake.ads opt.ads \
+   output.ads rtsfind.ads sem.ads sem_attr.ads sem_ch3.ads sem_ch4.ads \
+   sem_ch5.ads sem_disp.ads sem_eval.ads sem_res.ads sem_res.adb \
+   sem_type.ads sem_util.ads sinfo.ads sinput.ads snames.ads stand.ads \
+   stringt.ads system.ads table.ads table.adb tbuild.ads types.ads \
+   uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_type.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
+   errout.ads limits.ads namet.ads output.ads sem_ch6.ads sem_ch8.ads \
+   sem_type.ads sem_type.adb sem_util.ads sinfo.ads snames.ads stand.ads \
+   system.ads system-assertions.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sem_util.obj : alloc.ads atree.ads casing.ads comperr.ads csets.ads \
+   debug.ads einfo.ads errout.ads lib.ads limits.ads namet.ads nmake.ads \
+   opt.ads output.ads sem.ads sem_eval.ads sem_res.ads sem_type.ads \
+   sem_util.ads sem_util.adb sinfo.ads sinput.ads snames.ads stand.ads \
+   system.ads table.ads table.adb tbuild.ads types.ads uintp.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sinfo-change.obj : alloc.ads atree.ads debug.ads einfo.ads output.ads \
+   sinfo.ads sinfo-change.ads sinfo-change.adb system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sinfo.obj : alloc.ads atree.ads comperr.ads debug.ads einfo.ads output.ads \
+   sinfo.ads sinfo.adb system.ads system-assertions.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sinput.obj : alloc.ads casing.ads debug.ads lib.ads limits.ads namet.ads \
+   output.ads scans.ads sinput.ads sinput.adb system.ads table.ads \
+   table.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+snames.obj : alloc.ads comperr.ads debug.ads limits.ads namet.ads output.ads \
+   snames.ads snames.adb system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+sprint.obj : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
+   lib.ads limits.ads namet.ads opt.ads output.ads sinfo.ads sprint.ads \
+   sprint.adb stand.ads stringt.ads system.ads table.ads table.adb \
+   types.ads uintp.ads uname.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+stand.obj : alloc.ads atree.ads csets.ads debug.ads einfo.ads limits.ads \
+   namet.ads nmake.ads opt.ads output.ads sinfo.ads snames.ads stand.ads \
+   stand.adb stringt.ads system.ads table.ads table.adb ttypes.ads \
+   types.ads uintp.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+stringt.obj : alloc.ads debug.ads output.ads stringt.ads stringt.adb \
+   system.ads system-assertions.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+switch.obj : debug.ads opt.ads osint.ads output.ads switch.ads switch.adb \
+   sysid.ads system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+sysid.obj : sysid.ads
+
+system-assertions.obj : system.ads system-assertions.ads
+
+system-traceback.obj : debug.ads system.ads system-traceback.ads \
+   system-traceback.adb types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+system.obj : system.ads
+
+system_environment.obj : system.ads system_environment.ads \
+   system_environment.adb
+
+tbuild.obj : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
+   namet.ads nmake.ads output.ads sinfo.ads snames.ads stand.ads \
+   system.ads table.ads table.adb tbuild.ads tbuild.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+treepr.obj : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
+   lib.ads limits.ads namet.ads opt.ads output.ads sinfo.ads sinput.ads \
+   stand.ads stringt.ads system.ads table.ads table.adb treepr.ads \
+   treepr.adb treeprs.ads types.ads uintp.ads uname.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+treeprs.obj : sinfo.ads system.ads treeprs.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+ttypes.obj : ttypes.ads
+
+types.obj : system.ads types.ads types.adb unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+uintp.obj : alloc.ads comperr.ads debug.ads limits.ads namet.ads output.ads \
+   system.ads system-assertions.ads table.ads table.adb types.ads \
+   uintp.ads uintp.adb unchecked_deallocation.ads \
+   unchecked_deallocation.adb
+
+uname.obj : alloc.ads atree.ads casing.ads comperr.ads debug.ads einfo.ads \
+   lib.ads limits.ads namet.ads output.ads sinfo.ads system.ads \
+   system-assertions.ads table.ads table.adb types.ads uname.ads uname.adb \
+   unchecked_deallocation.ads unchecked_deallocation.adb
+
+unixlib.obj : system.ads types.ads unchecked_deallocation.ads \
+   unchecked_deallocation.adb unixlib.ads unixlib.adb
+
+usage.obj : opt.ads osint.ads output.ads sysid.ads system.ads types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb usage.ads \
+   usage.adb
+
+xref.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads lib.ads \
+   limits.ads namet.ads osint.ads output.ads sinfo.ads sprint.ads \
+   stand.ads system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb xref.ads xref.adb \
+   xref_tab.ads
+
+xref_tab.obj : alloc.ads atree.ads casing.ads debug.ads einfo.ads lib.ads \
+   limits.ads namet.ads osint.ads output.ads sinfo.ads sinput.ads \
+   stand.ads system.ads table.ads table.adb types.ads \
+   unchecked_deallocation.ads unchecked_deallocation.adb xref_tab.ads \
+   xref_tab.adb
+
+# To make a configuration always use collect2, set USE_COLLECT2 to ld.
+ld: collect2
+	rm -f ld
+	ln collect2 ld
+
+collect2.exe : collect2.obj version.obj $(LIBDEPS)
+# Don't try modifying collect2 (aka ld) in place--it might be linking this.
+	-rm -f collect2
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o collect2.exe collect2.obj version.obj $(LIBS)
+
+collect2.obj : collect2.c $(CONFIG_H) gstab.h
+!	IF "$(srcdir)" == "."
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	-DTARGET_MACHINE="$(target)" \
+	-c collect2.c
+!	ELSE
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	-DTARGET_MACHINE="$(target)" \
+	-c $(srcdir)\collect2.c
+!	ENDIF
+
+# Objectionable C language specific files.
+
+objc-parse.obj : $(srcdir)\objc-parse.c $(CONFIG_H) $(TREE_H) c-lex.h \
+   c-tree.h input.h flags.h objc-actions.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c $(srcdir)\objc-parse.c
+$(srcdir)\objc-parse.c : $(srcdir)\objc-parse.y
+!	IF "$(srcdir)" != "."
+	  cd $(srcdir)
+!	ENDIF
+	$(BISON) $(BISONFLAGS) objc-parse.y -o objc-parse.c
+$(srcdir)\objc-parse.y: $(srcdir)\c-parse.in $(srcdir)\cond.awk
+!	IF "$(srcdir)" != "."
+	  cd $(srcdir)
+!	ENDIF
+	awk -f cond.awk objc=1 c-parse.in > objc-parse.y
+
+objc-actions.obj : objc-actions.c $(CONFIG_H) $(TREE_H) c-tree.h c-lex.h \
+   flags.h objc-actions.h
+
+# A file used by all variants of C.
+
+c-common.obj : c-common.c $(CONFIG_H) $(TREE_H) c-tree.h c-lex.h flags.h
+
+# Language-independent files.
+
+gcc.obj: gcc.c $(CONFIG_H) gvarargs.h config.status
+!	IF "$(srcdir)" == "."
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+  -DSTANDARD_STARTFILE_PREFIX="$(libdir)\\" \
+  -DSTANDARD_EXEC_PREFIX="$(libdir)\\gcc-lib\\" \
+  -DDEFAULT_TARGET_MACHINE="$(target)" \
+  -DTOOLDIR_BASE_PREFIX="$(prefix)\\" \
+  -DTOOLDIR="$(tooldir)\\" \
+  $(MAYBE_TARGET_DEFAULT) \
+  -c gcc.c
+!	ELSE
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+  -DSTANDARD_STARTFILE_PREFIX="$(libdir)\\" \
+  -DSTANDARD_EXEC_PREFIX="$(libdir)\\gcc-lib\\" \
+  -DDEFAULT_TARGET_MACHINE="$(target)" \
+  -DTOOLDIR_BASE_PREFIX="$(prefix)\\" \
+  -DTOOLDIR="$(tooldir)\\" \
+  $(MAYBE_TARGET_DEFAULT) \
+  -c $(srcdir)\gcc.c
+!	ENDIF
+gcc.c: patches-gcc257.os2
+	$(PATCH) < %s
+
+dumpvers.exe: dumpvers.c
+
+version.obj: version.c
+obstack.obj: obstack.c
+	$(CC) -c -D____386BSD____ $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) obstack.c
+
+convert.obj: convert.c $(CONFIG_H) $(TREE_H) flags.h convert.h
+
+tree.obj : tree.c $(CONFIG_H) $(TREE_H) gvarargs.h flags.h function.h
+print-tree.obj : print-tree.c $(CONFIG_H) $(TREE_H)
+stor-layout.obj : stor-layout.c $(CONFIG_H) $(TREE_H) function.h
+fold-const.obj : fold-const.c $(CONFIG_H) $(TREE_H) flags.h 
+toplev.obj : toplev.c $(CONFIG_H) $(TREE_H) $(RTL_H) flags.h input.h \
+   insn-attr.h xcoffout.h defaults.h
+!	IF "$(srcdir)" == "."
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	  $(MAYBE_TARGET_DEFAULT) $(MAYBE_USE_COLLECT2) \
+	  -c toplev.c
+!	ELSE
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	  $(MAYBE_TARGET_DEFAULT) $(MAYBE_USE_COLLECT2) \
+	  -c $(srcdir)\toplev.c
+!	ENDIF
+toplev.c : patches-gcc257.os2
+	$(PATCH) < %s
+
+rtl.obj : rtl.c $(CONFIG_H) $(RTL_H)
+
+print-rtl.obj : print-rtl.c $(CONFIG_H) $(RTL_H)
+rtlanal.obj : rtlanal.c $(CONFIG_H) $(RTL_H)
+
+toplev.obj: bytecode.h bc-emit.h
+varasm.obj : varasm.c $(CONFIG_H) $(TREE_H) $(RTL_H) flags.h function.h \
+   defaults.h insn-codes.h expr.h hard-reg-set.h regs.h xcoffout.h bytecode.h
+function.obj : function.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h function.h  \
+   insn-flags.h insn-codes.h expr.h regs.h hard-reg-set.h insn-config.h \
+   recog.h output.h bytecode.h
+stmt.obj : stmt.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h function.h  \
+   insn-flags.h insn-config.h insn-codes.h hard-reg-set.h expr.h loop.h \
+   recog.h bytecode.h bc-typecd.h bc-typecd.def bc-opcode.h bc-optab.h \
+   bc-emit.h
+expr.obj : expr.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h function.h  \
+   insn-flags.h insn-codes.h expr.h insn-config.h recog.h output.h \
+   typeclass.h bytecode.h bc-opcode.h bc-typecd.h bc-typecd.def bc-optab.h \
+   bc-emit.h modemap.def
+calls.obj : calls.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h expr.h insn-codes.h \
+   insn-flags.h gvarargs.h
+expmed.obj : expmed.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h  \
+   insn-flags.h insn-config.h insn-codes.h expr.h recog.h real.h
+explow.obj : explow.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h hard-reg-set.h \
+   insn-config.h expr.h recog.h insn-flags.h insn-codes.h
+optabs.obj : optabs.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h  \
+   insn-flags.h insn-config.h insn-codes.h expr.h recog.h reload.h
+dbxout.obj : dbxout.c $(CONFIG_H) $(TREE_H) $(RTL_H) flags.h regs.h \
+   insn-config.h reload.h gstab.h xcoffout.h defaults.h output.h
+sdbout.obj : sdbout.c $(CONFIG_H) $(TREE_H) $(RTL_H) gsyms.h flags.h \
+   insn-config.h reload.h
+dwarfout.obj : dwarfout.c $(CONFIG_H) $(TREE_H) $(RTL_H) dwarf.h flags.h \
+   insn-config.h reload.h output.h defaults.h
+xcoffout.obj : xcoffout.c $(CONFIG_H) $(TREE_H) $(RTL_H) xcoffout.h flags.h
+emit-rtl.obj : emit-rtl.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h gvarargs.h \
+   function.h regs.h insn-config.h insn-codes.h real.h expr.h bytecode.h \
+   bc-opcode.h bc-typecd.h bc-typecd.def bc-optab.h bc-emit.h bc-opname.h
+real.obj : real.c $(CONFIG_H) $(TREE_H)
+getpwd.obj : getpwd.c $(CONFIG_H)
+
+integrate.obj : integrate.c $(CONFIG_H) $(RTL_H) $(TREE_H) flags.h integrate.h \
+   insn-flags.h insn-config.h insn-codes.h expr.h real.h function.h \
+   bytecode.h
+
+jump.obj : jump.c $(CONFIG_H) $(RTL_H) flags.h hard-reg-set.h regs.h \
+   insn-config.h insn-flags.h insn-codes.h expr.h real.h
+stupid.obj : stupid.c $(CONFIG_H) $(RTL_H) regs.h hard-reg-set.h flags.h
+
+cse.obj : cse.c $(CONFIG_H) $(RTL_H) regs.h hard-reg-set.h flags.h real.h \
+   insn-config.h recog.h
+loop.obj : loop.c $(CONFIG_H) $(RTL_H) flags.h loop.h insn-config.h \
+   insn-flags.h insn-codes.h regs.h hard-reg-set.h recog.h expr.h real.h
+unroll.obj : unroll.c $(CONFIG_H) $(RTL_H) insn-config.h insn-codes.h \
+   integrate.h regs.h flags.h expr.h loop.h
+flow.obj : flow.c $(CONFIG_H) $(RTL_H) flags.h insn-config.h \
+   basic-block.h regs.h hard-reg-set.h output.h
+combine.obj : combine.c $(CONFIG_H) $(RTL_H) gvarargs.h flags.h  \
+   insn-config.h insn-flags.h insn-codes.h insn-attr.h regs.h expr.h \
+   basic-block.h recog.h real.h hard-reg-set.h
+regclass.obj : regclass.c $(CONFIG_H) $(RTL_H) hard-reg-set.h flags.h \
+   basic-block.h regs.h insn-config.h recog.h reload.h real.h bytecode.h
+local-alloc.obj : local-alloc.c $(CONFIG_H) $(RTL_H) flags.h basic-block.h \
+   regs.h hard-reg-set.h insn-config.h recog.h output.h
+global.obj : global.c $(CONFIG_H) $(RTL_H) flags.h  \
+   basic-block.h regs.h hard-reg-set.h insn-config.h output.h
+
+reload.obj : reload.c $(CONFIG_H) $(RTL_H) flags.h \
+   reload.h recog.h hard-reg-set.h insn-config.h insn-codes.h regs.h real.h
+reload1.obj : reload1.c $(CONFIG_H) $(RTL_H) flags.h expr.h \
+   reload.h regs.h hard-reg-set.h insn-config.h insn-flags.h insn-codes.h \
+   basic-block.h recog.h output.h
+caller-save.obj : caller-save.c $(CONFIG_H) $(RTL_H) flags.h \
+   regs.h hard-reg-set.h insn-config.h basic-block.h recog.h reload.h expr.h
+reorg.obj : reorg.c $(CONFIG_H) $(RTL_H) conditions.h hard-reg-set.h \
+   basic-block.h regs.h insn-config.h insn-attr.h insn-flags.h recog.h \
+   flags.h output.h
+sched.obj : sched.c $(CONFIG_H) $(RTL_H) basic-block.h regs.h hard-reg-set.h \
+   flags.h insn-config.h insn-attr.h
+final.obj : final.c $(CONFIG_H) $(RTL_H) $(TREE_H) gvarargs.h flags.h regs.h \
+   recog.h conditions.h insn-config.h insn-attr.h real.h output.h \
+   hard-reg-set.h insn-flags.h insn-codes.h gstab.h xcoffout.h defaults.h
+recog.obj : recog.c $(CONFIG_H) $(RTL_H)  \
+   regs.h recog.h hard-reg-set.h flags.h insn-config.h insn-attr.h \
+   insn-flags.h insn-codes.h real.h
+reg-stack.obj : reg-stack.c $(CONFIG_H) $(RTL_H) $(TREE_H) \
+   regs.h hard-reg-set.h flags.h insn-config.h
+
+aux-output.obj : aux-output.c $(CONFIG_H) \
+   $(RTL_H) regs.h hard-reg-set.h real.h insn-config.h conditions.h \
+   insn-flags.h output.h insn-attr.h insn-codes.h
+
+# Build auxiliary files that support ecoff format.
+mips-tfile: mips-tfile.o version.o $(LIBDEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o mips-tfile mips-tfile.obj version.obj $(LIBS)
+
+mips-tfile.obj : mips-tfile.c $(CONFIG_H) $(RTL_H)
+
+mips-tdump: mips-tdump.obj version.obj $(LIBDEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o mips-tdump mips-tdump.obj version.obj $(LIBS)
+
+mips-tdump.obj : mips-tdump.c $(CONFIG_H) $(RTL_H)
+
+# Normally this target is not used; but it is used if you
+# define ALLOCA=alloca.obj.  In that case, you must get a suitable alloca.c
+# from the GNU Emacs distribution.
+alloca.obj:	alloca.c
+!	IF "$(srcdir)" == "."
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(ALLOCA_FLAGS) \
+	  -c alloca.c
+!	ELSE
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(ALLOCA_FLAGS) \
+	  -c $(srcdir)\alloca.c
+!	ENDIF
+	$(ALLOCA_FINISH)
+
+# Generate header and source files from the machine description, 
+# and compile them.
+
+.PRECIOUS: insn-config.h insn-flags.h insn-codes.h \
+  insn-emit.c insn-recog.c insn-extract.c insn-output.c insn-peep.c \
+  insn-attr.h insn-attrtab.c
+
+# The following pair of rules has this effect:
+# genconfig is run only if the md has changed since genconfig was last run;
+# but the file insn-config.h is touched only when its contents actually change.
+
+# Each of the other insn-* files is handled by a similar pair of rules.
+
+# This causes an anomaly in the results of make -n
+# because insn-* is older than stamp-*
+# and thus make -n thinks that insn-* will be updated
+# and force recompilation of things that depend on it.
+# We use move-if-changed precisely to avoid such recompilation.
+# But there is no way to teach make -n that it will be avoided.
+
+# Each of the insn-*.[ch] rules used to have a semicolon at the end,
+# for otherwise the system Make on SunOS 4.1 never tries
+# to recompile insn-*.o.  However, this causes the OS/2 NMAKE utility
+# to think that insn-*.[ch] is being updated.
+
+insn-config.h: stamp-config
+stamp-config : md genconfig.exe $(srcdir)\move-if-change.cmd
+	.\genconfig md > tmp-config.h
+	$(srcdir)\move-if-change tmp-config.h insn-config.h
+	touch stamp-config
+
+insn-flags.h: stamp-flags
+stamp-flags : md genflags.exe $(srcdir)\move-if-change.cmd
+	.\genflags md > tmp-flags.h
+	$(srcdir)\move-if-change tmp-flags.h insn-flags.h
+	touch stamp-flags
+
+insn-codes.h: stamp-codes
+stamp-codes : md gencodes.exe $(srcdir)\move-if-change.cmd
+	.\gencodes md > tmp-codes.h
+	$(srcdir)\move-if-change tmp-codes.h insn-codes.h
+	touch stamp-codes
+
+insn-emit.obj : insn-emit.c $(CONFIG_H) $(RTL_H) expr.h real.h output.h \
+  insn-config.h insn-flags.h insn-codes.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-emit.c
+
+insn-emit.c: stamp-emit
+stamp-emit : md genemit.exe $(srcdir)\move-if-change.cmd
+	.\genemit md > tmp-emit.c
+	$(srcdir)\move-if-change tmp-emit.c insn-emit.c
+	touch stamp-emit
+
+insn-recog.obj : insn-recog.c $(CONFIG_H) $(RTL_H) insn-config.h recog.h \
+  real.h output.h flags.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-recog.c
+
+insn-recog.c: stamp-recog
+stamp-recog : md genrecog.exe $(srcdir)\move-if-change.cmd
+	.\genrecog md > tmp-recog.c
+	$(srcdir)\move-if-change tmp-recog.c insn-recog.c
+	touch stamp-recog
+
+insn-opinit.obj : insn-opinit.c $(CONFIG_H) $(RTL_H) insn-codes.h insn-flags.h \
+  insn-config.h flags.h rtl.h recog.h expr.h reload.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-opinit.c
+
+insn-opinit.c: stamp-opinit
+stamp-opinit : md genopinit.exe $(srcdir)\move-if-change.cmd
+	.\genopinit md > tmp-opinit.c
+	$(srcdir)\move-if-change tmp-opinit.c insn-opinit.c
+	touch stamp-opinit
+
+insn-extract.obj : insn-extract.c $(CONFIG_H) $(RTL_H)
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-extract.c
+
+insn-extract.c: stamp-extract
+stamp-extract : md genextract.exe $(srcdir)\move-if-change.cmd
+	.\genextract md > tmp-extract.c
+	$(srcdir)\move-if-change tmp-extract.c insn-extract.c
+	touch stamp-extract
+
+insn-peep.obj : insn-peep.c $(CONFIG_H) $(RTL_H) regs.h output.h real.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-peep.c
+
+insn-peep.c: stamp-peep
+stamp-peep : md genpeep.exe $(srcdir)\move-if-change.cmd
+	.\genpeep md > tmp-peep.c
+	$(srcdir)\move-if-change tmp-peep.c insn-peep.c
+	touch stamp-peep
+
+insn-attrtab.obj : insn-attrtab.c $(CONFIG_H) $(RTL_H) regs.h real.h output.h \
+     insn-attr.h insn-config.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-attrtab.c
+
+insn-attr.h: stamp-attr
+stamp-attr : md genattr.exe $(srcdir)\move-if-change.cmd
+	.\genattr md > tmp-attr.h
+	$(srcdir)\move-if-change tmp-attr.h insn-attr.h
+	touch stamp-attr
+
+insn-attrtab.c: stamp-attrtab
+stamp-attrtab : md genattrtab.exe $(srcdir)\move-if-change.cmd
+#!	if ! [comp $(PREMADE_ATTRTAB_MD) md <no]
+#	  echo Using $(PREMADE_ATTRTAB)
+#	  copy $(PREMADE_ATTRTAB) tmp-attrtab.c
+#!	else
+	  .\genattrtab md > tmp-attrtab.c
+#!	endif
+	$(srcdir)\move-if-change tmp-attrtab.c insn-attrtab.c
+	touch stamp-attrtab
+
+insn-output.obj : insn-output.c $(CONFIG_H) $(RTL_H) regs.h real.h conditions.h \
+    hard-reg-set.h insn-config.h insn-flags.h insn-attr.h output.h recog.h \
+    insn-codes.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c insn-output.c
+
+insn-output.c: stamp-output
+stamp-output : md genoutput.exe $(srcdir)\move-if-change.cmd
+	.\genoutput md > tmp-output.c
+	$(srcdir)\move-if-change tmp-output.c insn-output.c
+	touch stamp-output
+
+# Compile the programs that generate insn-* from the machine description.
+# They are compiled with $(HOST_CC), and associated libraries,
+# since they need to run on this machine
+# even if GCC is being compiled to run on some other machine.
+
+# $(CONFIG_H) is omitted from the deps of the gen*.obj
+# because these programs don't really depend on anything 
+# about the target machine.  They do depend on config.h itself,
+# since that describes the host machine.
+
+# Pass the md file through cpp if the target requests it.
+$(MD_FILE): $(CPP_MD)
+	-if [ -f md.pre-cpp ]; then \
+	  rm -f md ; ./cpp $(CPP_MD_FLAGS) md.pre-cpp | sed 's/^# /; /g' > md ; \
+	else true ; \
+	fi
+
+genconfig.exe : genconfig.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genconfig.exe \
+	  genconfig.obj $(HOST_RTL) $(HOST_LIBS)
+
+genconfig.obj : genconfig.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genconfig.c
+
+genflags.exe : genflags.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genflags.exe \
+	 genflags.obj $(HOST_RTL) $(HOST_LIBS)
+
+genflags.obj : genflags.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genflags.c
+
+gencodes.exe : gencodes.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o gencodes.exe \
+	 gencodes.obj $(HOST_RTL) $(HOST_LIBS)
+
+gencodes.obj : gencodes.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\gencodes.c
+
+genemit.exe : genemit.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genemit.exe \
+	 genemit.obj $(HOST_RTL) $(HOST_LIBS)
+
+genemit.obj : genemit.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genemit.c
+
+genopinit.exe : genopinit.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genopinit.exe \
+	 genopinit.obj $(HOST_RTL) $(HOST_LIBS)
+
+genopinit.obj : genopinit.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)/genopinit.c
+
+genrecog.exe : genrecog.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genrecog.exe \
+	 genrecog.obj $(HOST_RTL) $(HOST_LIBS)
+
+genrecog.obj : genrecog.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genrecog.c
+
+genextract.exe : genextract.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genextract.exe \
+	 genextract.obj $(HOST_RTL) $(HOST_LIBS)
+
+genextract.obj : genextract.c $(RTL_H) hconfig.h insn-config.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genextract.c
+
+genpeep.exe : genpeep.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genpeep.exe \
+	 genpeep.obj $(HOST_RTL) $(HOST_LIBS)
+
+genpeep.obj : genpeep.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genpeep.c
+
+genattr.exe : genattr.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genattr.exe \
+	 genattr.obj $(HOST_RTL) $(HOST_LIBS)
+
+genattr.obj : genattr.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genattr.c
+
+genattrtab.exe : genattrtab.obj $(HOST_RTL) $(HOST_PRINT) $(HOST_RTLANAL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genattrtab.exe \
+	 genattrtab.obj $(HOST_RTL) $(HOST_PRINT) $(HOST_RTLANAL) $(HOST_LIBS)
+
+genattrtab.obj : genattrtab.c $(RTL_H) hconfig.h insn-config.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genattrtab.c
+
+genoutput.exe : genoutput.obj $(HOST_RTL) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o genoutput.exe \
+	 genoutput.obj $(HOST_RTL) $(HOST_LIBS)
+
+genoutput.obj : genoutput.c $(RTL_H) hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\genoutput.c
+
+# Compile the libraries to be used by gen*.
+# If we are not cross-building, gen* use the same .obj's that cc1 will use,
+# and HOST_PREFIX_1 is `foobar', just to ensure these rules don't conflict
+# with the rules for rtl.obj, alloca.obj, etc.
+$(HOST_PREFIX_1)rtl.obj: $(srcdir)\rtl.c $(CONFIG_H) $(RTL_H)
+	rm -f $(HOST_PREFIX)rtl.c
+	sed -e 's/config[.]h/hconfig.h/' $(srcdir)\rtl.c > $(HOST_PREFIX)rtl.c
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(HOST_PREFIX)rtl.c
+
+$(HOST_PREFIX_1)print-rtl.obj: $(srcdir)\print-rtl.c $(CONFIG_H) $(RTL_H)
+	rm -f $(HOST_PREFIX)print-rtl.c
+	sed -e 's/config[.]h/hconfig.h/' $(srcdir)\print-rtl.c > $(HOST_PREFIX)print-rtl.c
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(HOST_PREFIX)print-rtl.c
+
+$(HOST_PREFIX_1)rtlanal.obj: $(srcdir)\rtlanal.c $(CONFIG_H) $(RTL_H)
+	rm -f $(HOST_PREFIX)rtlanal.c
+	sed -e 's/config[.]h/hconfig.h/' $(srcdir)\rtlanal.c > $(HOST_PREFIX)rtlanal.c
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(HOST_PREFIX)rtlanal.c
+
+$(HOST_PREFIX_1)alloca.obj: alloca.c
+	rm -f $(HOST_PREFIX)alloca.c
+	copy $(srcdir)\alloca.c $(HOST_PREFIX)alloca.c
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(HOST_PREFIX)alloca.c
+
+$(HOST_PREFIX_1)obstack.obj: obstack.c
+	rm -f $(HOST_PREFIX)obstack.c
+	sed -e 's/config[.]h/hconfig.h/' $(srcdir)\obstack.c > $(HOST_PREFIX)obstack.c
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(HOST_PREFIX)obstack.c
+
+$(HOST_PREFIX_1)malloc.obj: malloc.c
+	rm -f $(HOST_PREFIX)malloc.c
+	sed -e 's/config[.]h/hconfig.h/' $(srcdir)\malloc.c > $(HOST_PREFIX)malloc.c
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(HOST_PREFIX)malloc.c
+
+# This satisfies the dependency that we get if you cross-compile a compiler
+# that does not need to compile alloca, malloc or whatever.
+$(HOST_PREFIX_1): 
+	touch $(HOST_PREFIX_1)
+
+# Remake bytecode files.
+# BI_ALL=bi-run.obj
+BI_ALL=
+BC_ALL=bc-opname.h bc-opcode.h bc-arity.h
+BI_OBJ=bi-parser.obj bi-lexer.obj bi-reverse.obj
+
+
+bc-emit.obj : bc-emit.c $(CONFIG_H) $(RTL_H) real.h $(BYTECODE_H) \
+	 bc-arity.h bc-opcode.h bc-typecd.h bc-typecd.def bi-run.h bytetypes.h
+bc-optab.obj : bc-optab.c $(CONFIG_H) $(REAL_H) $(BYTECODE_H) \
+		bc-opcode.h bc-typecd.h bc-typecd.def
+
+
+bytecode: $(BI_ALL) $(BC_ALL)
+
+bi-arity.exe: bi-arity.obj $(BI_OBJ) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o bi-arity.exe \
+	 bi-arity.obj $(BI_OBJ) $(HOST_LIBS)
+bi-opcode.exe: bi-opcode.obj $(BI_OBJ) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o bi-opcode.exe \
+	 bi-opcode.obj $(BI_OBJ) $(HOST_LIBS)
+bi-opname.exe: bi-opname.obj $(BI_OBJ) $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o bi-opname.exe \
+	 bi-opname.obj $(BI_OBJ) $(HOST_LIBS)
+
+bi-run.obj:	$(srcdir)\bi-run.c $(srcdir)\bi-run.h $(srcdir)\bc-typecd.h \
+  bc-opname.h bc-arity.h bc-opcode.h
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c $(srcdir)\bi-run.c
+$(srcdir)\bi-parser.c $(srcdir)\bi-parser.h: $(srcdir)\bi-parser.y
+#	cd $(srcdir); $(BISON) $(BISONFLAGS) -d bi-parser.y -o bi-parser.c
+	touch $(srcdir)\bi-parser.c
+	touch $(srcdir)\bi-parser.h
+bi-parser.obj:	$(srcdir)\bi-parser.c $(srcdir)\bi-defs.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) \
+	   $(srcdir)\bi-parser.c
+bi-lexer.obj:	$(srcdir)\bi-lexer.c $(srcdir)\bi-parser.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) \
+	   $(srcdir)\bi-lexer.c
+bi-arity.obj: bi-arity.c $(srcdir)\bi-defs.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) \
+	   $(srcdir)\bi-arity.c
+bi-opcode.obj: bi-opcode.c $(srcdir)\bi-defs.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) \
+	   $(srcdir)\bi-opcode.c
+bi-opname.obj: bi-opname.c $(srcdir)\bi-defs.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) \
+	   $(srcdir)\bi-opname.c
+bi-reverse.obj: bi-reverse.c $(srcdir)\bi-defs.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) \
+	   $(srcdir)\bi-reverse.c
+
+
+bc-arity.h: stamp-bcarity
+stamp-bcarity : $(srcdir)\bytecode.def bi-arity.exe $(srcdir)\move-if-change.cmd
+	.\bi-arity < $(srcdir)\bytecode.def >tmp-bc-arity.h
+	$(srcdir)\move-if-change tmp-bc-arity.h bc-arity.h
+	touch stamp-bcarity
+
+bc-opcode.h: stamp-bcopcode
+stamp-bcopcode : $(srcdir)\bytecode.def bi-opcode.exe $(srcdir)\move-if-change.cmd
+	.\bi-opcode < $(srcdir)\bytecode.def >tmp-bcopcd.h
+	$(srcdir)\move-if-change tmp-bcopcd.h bc-opcode.h
+	touch stamp-bcopcode
+
+bc-opname.h: stamp-bcopname
+stamp-bcopname : $(srcdir)\bytecode.def bi-opname.exe $(srcdir)\move-if-change.cmd
+	.\bi-opname < $(srcdir)\bytecode.def >tmp-bcopnm.h
+	$(srcdir)\move-if-change tmp-bcopnm.h bc-opname.h
+	touch stamp-bcopname
+
+bytecode.mostlyclean:
+	-rm -f bc-arity.h bc-opcode.h bc-opname.h
+
+bytecode.distclean bytecode.clean:	bytecode.mostlyclean
+	-rm -f bi-arity.exe bi-opcode.exe bi-opname.exe bi-lexer.exe
+
+bytecode.realclean: bytecode.clean
+	-rm -f bi-parser.c bi-parser.h
+
+
+# Remake cpp and protoize.
+
+# Making the preprocessor
+cpp.exe: cccp.exe
+	-rm -f cpp.exe
+	copy cccp.exe cpp.exe
+	touch cpp.exe
+cccp.exe: cccp.obj cexp.obj version.obj $(LIBDEPS)
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o cccp.exe cccp.obj cexp.obj version.obj $(LIBS)
+cexp.obj: $(srcdir)\cexp.c $(CONFIG_H)
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) -c $(srcdir)\cexp.c
+$(srcdir)\cexp.c: $(srcdir)\cexp.y
+#!	IF "$(srcdir)" != "."
+#	  cd $(srcdir)
+#!	ENDIF
+#	$(BISON) -o cexp.c cexp.y
+	touch $(srcdir)\cexp.c
+cccp.obj: cccp.c $(CONFIG_H) pcp.h version.c config.status
+# The reason we use $(libdir)\g++-include rather than using libsubdir
+# is for compatibility with the current version of libg++.
+!	IF "$(srcdir)" == "."
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	  -DGCC_INCLUDE_DIR="$(libsubdir)\\include" \
+	  -DGPLUSPLUS_INCLUDE_DIR="$(libdir)\\g++-include" \
+	  -DLOCAL_INCLUDE_DIR="$(local_prefix)\\include" \
+	  -DCROSS_INCLUDE_DIR="$(libsubdir)\\sys-include" \
+	  -DTOOL_INCLUDE_DIR="$(tooldir)\\include" \
+	  -DTOOLDIR="$(tooldir)\\" \
+	  -c cccp.c
+!	ELSE
+	$(CC) $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	  -DGCC_INCLUDE_DIR="$(libsubdir)\\include" \
+	  -DGPLUSPLUS_INCLUDE_DIR="$(libdir)\\g++-include" \
+	  -DLOCAL_INCLUDE_DIR="$(local_prefix)\\include" \
+	  -DCROSS_INCLUDE_DIR="$(libsubdir)\\sys-include" \
+	  -DTOOL_INCLUDE_DIR="$(tooldir)\\include" \
+	  -DTOOLDIR="$(tooldir)\\" \
+	  -c $(srcdir)\cccp.c
+!	ENDIF
+cccp.c: patches-gcc257.os2
+	$(PATCH) < %s
+
+proto: config.status protoize unprotoize SYSCALLS.c.X
+
+protoize.exe: protoize.obj getopt.obj getopt1.obj getpwd.obj version.obj $(LIBDEPS)
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) \
+	  protoize.obj getopt.obj getopt1.obj getpwd.obj version.obj $(LIBS) -o $@
+protoize.obj: stamp-proto ;
+
+unprotoize.exe: unprotoize.obj getopt.obj getopt1.obj getpwd.obj version.obj $(LIBDEPS)
+	$(CC) $(ALL_CFLAGS) $(LDFLAGS) \
+	  unprotoize.obj getopt.obj getopt1.obj getpwd.obj version.obj $(LIBS) -o $@
+unprotoize.obj:	stamp-proto ;
+
+stamp-proto:	$(srcdir)\protoize.c getopt.h $(CONFIG_H)
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+          -DGCC_INCLUDE_DIR="$(libsubdir)\\include" \
+          -DGPLUSPLUS_INCLUDE_DIR="$(libdir)\\g++-include" \
+          -DCROSS_INCLUDE_DIR="$(libsubdir)\\sys-include" \
+	  -DTOOL_INCLUDE_DIR="$(tooldir)\\include" \
+	  -DLOCAL_INCLUDE_DIR="$(prefix)\\include" \
+	  -DSTD_PROTO_DIR="$(libsubdir)" \
+	  -DUNPROTOIZE $(srcdir)\protoize.c
+	mv protoize.obj unprotoize.obj
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+          -DGCC_INCLUDE_DIR="$(libsubdir)\\include" \
+          -DGPLUSPLUS_INCLUDE_DIR="$(libdir)\\g++-include" \
+          -DCROSS_INCLUDE_DIR="$(libsubdir)\\sys-include" \
+	  -DTOOL_INCLUDE_DIR="$(tooldir)\\include" \
+	  -DLOCAL_INCLUDE_DIR="$(prefix)\\include" \
+	  -DSTD_PROTO_DIR="$(libsubdir)" \
+	  $(srcdir)\protoize.c
+	touch stamp-proto
+
+getopt.obj: $(srcdir)\getopt.c getopt.h
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(srcdir)\getopt.c
+getopt1.obj: $(srcdir)\getopt1.c getopt.h
+	$(CC) -c $(ALL_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) $(srcdir)\getopt1.c
+
+# This info describes the target machine, so compile with GCC just built.
+SYSCALLS.c.X: $(srcdir)\sys-types.h $(srcdir)\sys-protos.h $(GCC_PASSES)
+	-rm -f SYSCALLS.c tmp-SYSCALLS.s
+	cat $(srcdir)\sys-types.h $(srcdir)\sys-protos.h > SYSCALLS.c
+	$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(ALL_CPPFLAGS) $(INCLUDES) \
+	  -aux-info $@ -S -o tmp-SYSCALLS.s SYSCALLS.c
+	-rm -f SYSCALLS.c tmp-SYSCALLS.s
+
+
+test-protoize-simple: .\protoize.exe .\unprotoize.exe $(GCC_PASSES)
+	-rm -f tmp-proto.[cso]
+	copy $(srcdir)\protoize.c tmp-proto.c
+	chmod u+w tmp-proto.c
+	.\protoize -N -B .\ -x getopt.h -c "-B.\ -Wall -Wwrite-strings \
+	  -g $(CFLAGS) $(INCLUDES) \
+	  -DGCC_INCLUDE_DIR=0 \
+	  -DGPLUSPLUS_INCLUDE_DIR=0 \
+	  -DCROSS_INCLUDE_DIR=0 \
+	  -DTOOL_INCLUDE_DIR=0 \
+	  -DSTD_PROTO_DIR=0" tmp-proto.c
+	@echo '**********' Expect 400 lines of differences.
+	-diff $(srcdir)\protoize.c tmp-proto.c > tmp-proto.diff
+	-wc -l tmp-proto.diff
+	.\unprotoize -N -x getopt.h -c "-B.\ -Wall -Wwrite-strings \
+	  -g $(CFLAGS) $(INCLUDES) \
+	  -DGCC_INCLUDE_DIR=0 \
+	  -DGPLUSPLUS_INCLUDE_DIR=0 \
+	  -DCROSS_INCLUDE_DIR=0 \
+	  -DTOOL_INCLUDE_DIR=0 \
+	  -DSTD_PROTO_DIR=0" tmp-proto.c
+	@echo Expect zero differences.
+	diff $(srcdir)\protoize.c tmp-proto.c | cat
+	-rm -f tmp-proto.[cso]
+
+# Build the include directory.  The stamp files are stmp-* rather than
+# stamp-* so that mostlyclean does not force the include directory to
+# be rebuilt.
+
+# Build the include directory except for float.h (which depends upon
+# enquire).
+stmp-int-hdrs: stmp-fixinc $(USER_H) gvarargs.h gstdarg.h gstddef.h \
+  xlimits.h objc-headers
+# Copy in the headers provided with gcc.
+# The sed command gets just the last file name component;
+# this is necessary because VPATH could add a dirname.
+# Using basename would be simpler, but some systems don't have it.
+	objdir=`pwd`; \
+	cd $(srcdir); \
+	for file in $(USER_H); do \
+	  realfile=`echo $$file | sed -e 's|.*/\([^/]*\)$$|\1|'`; \
+	  rm -f $$objdir/include/$$realfile; \
+	  cp $$realfile $$objdir/include; \
+	  chmod a+r $$objdir/include/$$realfile; \
+	done
+	rm -f include/varargs.h
+	cp $(srcdir)/gvarargs.h include/varargs.h
+	chmod a+r include/varargs.h
+	rm -f include/stdarg.h
+	cp $(srcdir)/gstdarg.h include/stdarg.h
+	chmod a+r include/stdarg.h
+	rm -f include/stddef.h
+	cp $(srcdir)/gstddef.h include/stddef.h
+	chmod a+r include/stddef.h
+	rm -f include/limits.h
+	cp xlimits.h include/limits.h
+	chmod a+r include/limits.h
+# Install the README
+	rm -f include/README
+	cp $(srcdir)/README-fixinc include/README
+	chmod a+r include/README
+	touch stmp-int-hdrs
+
+# Build the complete include directory.
+stmp-headers: stmp-int-hdrs gfloat.h
+	rm -f include/float.h
+	cp gfloat.h include/float.h
+	chmod a+r include/float.h
+	touch stmp-headers
+
+# Running fixincludes requires making sure that xgcc and cpp have been
+# compiled (they are used to get the value of __SIZE_TYPE__).
+# But recompiling xgcc should not force the the header files to be
+# fixed again.  If you want to do that, delete stmp-fixinc.
+fixinc.ready: xgcc cpp
+	-if [ -f fixinc.ready ] ; then \
+		true; \
+	else \
+		touch fixinc.ready; \
+	fi
+
+# Build fixed copies of system files.
+stmp-fixinc: $(srcdir)/$(FIXINCLUDES) gsyslimits.h fixinc.ready
+	rm -rf include
+	mkdir include
+	if [ x$(FIXINCLUDES) != xMakefile.in ]; \
+	then \
+	  for dir in $(SYSTEM_HEADER_DIR) $(OTHER_FIXINCLUDES_DIRS); do \
+	    if [ -d $$dir ]; \
+	    then \
+	      $(srcdir)/$(FIXINCLUDES) include $$dir $(srcdir) "`pwd`/xgcc -B`pwd`/"; \
+	    else true; fi; \
+	  done; \
+	else true; \
+	fi
+	rm -f include/syslimits.h
+	if [ -f include/limits.h ]; then \
+	  mv include/limits.h include/syslimits.h; \
+	else \
+	  cp $(srcdir)/gsyslimits.h include/syslimits.h; \
+	fi
+	chmod a+r include/syslimits.h
+	touch stmp-fixinc
+
+# copy objc header files into build directory
+objc-headers: stmp-fixinc
+	if [ -d objc ]; then true; else mkdir objc; fi
+	thisdir1=`pwd`; \
+	srcdir1=`cd $(srcdir); pwd`; \
+	cd objc; \
+	$(MAKE) -f $${srcdir1}/objc/Makefile copy-headers \
+	srcdir=$${srcdir1} tooldir=$(tooldir) AR="$(AR)" AR_FLAGS="$(AR_FLAGS)" \
+	GCC_FOR_TARGET="$${thisdir1}/xgcc -B$${thisdir1}/" \
+	GCC_CFLAGS="$(GCC_CFLAGS)" incinstalldir=$${thisdir1}/include
+	touch objc-headers
+
+# Files related to the fixproto script.
+
+deduced.h: $(GCC_PASSES) $(srcdir)\scan-types.sh stmp-int-hdrs
+	CC="$(GCC_FOR_TARGET) $(GCC_CFLAGS) $(ALL_CPPFLAGS) -I. -I$(srcdir) -Iinclude -I$(SYSTEM_HEADER_DIR)"; \
+	  export CC; \
+	  $(srcdir)\scan-types.sh "$(srcdir)" >tmp-deduced.h
+	mv tmp-deduced.h deduced.h
+
+gen-protos.exe: gen-protos.obj scan.obj $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o gen-protos.exe \
+	  gen-protos.obj scan.obj $(HOST_LIBS)
+
+gen-protos.obj: gen-protos.c scan.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\gen-protos.c
+
+scan.obj: scan.c scan.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\scan.c
+
+xsys-protos.h: $(GCC_PASSES) $(srcdir)\sys-protos.h deduced.h gen-protos Makefile
+	cat deduced.h $(srcdir)/sys-protos.h > fixtmp.c
+	$(GCC_FOR_TARGET) fixtmp.c -E \
+	  | sed -e 's/	/ /g' -e 's/ *(/ (/g' -e 's/ [ ]*/ /g' -e 's/( )/()/' \
+	  | .\gen-protos >xsys-protos.h
+	rm -rf fixtmp.c
+
+fix-header.exe: fix-header.obj scan-decls.obj scan.obj xsys-protos.h $(HOST_LIBDEPS)
+	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o fix-header.exe \
+	  fix-header.obj scan-decls.obj scan.obj $(HOST_LIBS)
+
+fix-header.obj: fix-header.c obstack.h scan.h xsys-protos.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\fix-header.c
+
+scan-decls.obj: scan-decls.c scan.h hconfig.h
+	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)\scan-decls.c
+
+# stmp-fixproto depends on this, not on fix-header directly.
+# The idea is to make sure fix-header gets built,
+# but not rerun fixproto after each stage
+# just because fix-header's mtime has changed.
+fixhdr.ready: fix-header
+	-if [ -f fixhdr.ready ] ; then \
+		true; \
+	else \
+		touch fixhdr.ready; \
+	fi
+
+# stmp-headers is to make sure fixincludes has already finished.
+# The if statement is so that we don't run fixproto a second time
+# if it has already been run on the files in `include'.
+stmp-fixproto: fixhdr.ready fixproto stmp-headers
+	@echo "Various warnings and error messages from fixproto are normal"
+	-if [ -d include ] ; then true; else mkdir include; fi
+	if [ -f include/fixed ] ; then true; \
+	else \
+	  CPP="$(GCC_FOR_TARGET) -E"; export CPP; \
+	    $(srcdir)\fixproto include include $(SYSTEM_HEADER_DIR); \
+	  touch include\fixed; \
+	fi
+	touch stmp-fixproto
+
+# Remake the info files.
+
+doc: info
+info: $(srcdir)\cpp.info $(srcdir)\gcc.info
+
+$(srcdir)\cpp.info: cpp.texi
+	cd $(srcdir); $(MAKEINFO) cpp.texi
+
+#$(srcdir)\gplus.info: gplus.texi
+#	$(MAKEINFO) `echo $(srcdir)\gplus.texi | sed 's,^\.\\,,'`
+
+$(srcdir)\gcc.info: gcc.texi extend.texi install.texi invoke.texi \
+		md.texi rtl.texi tm.texi 
+	cd $(srcdir); $(MAKEINFO) gcc.texi
+
+dvi: $(srcdir)\gcc.dvi $(srcdir)\cpp.dvi
+
+# This works with GNU Make's default rule.
+$(srcdir)\gcc.dvi: gcc.texi extend.texi install.texi invoke.texi \
+		md.texi rtl.texi tm.texi 
+	$(TEXI2DVI) $<
+
+# This works with GNU Make's default rule.
+$(srcdir)\cpp.dvi: cpp.texi
+	$(TEXI2DVI) $<
+
+$(srcdir)\INSTALL: install1.texi install.texi
+!	IF "$(srcdir)" == "."
+	$(MAKEINFO) -D INSTALLONLY --no-header --no-split install1.texi
+!	ELSE
+	$(MAKEINFO) -D INSTALLONLY --no-header --no-split $(srcdir)\install1.texi
+!	ENDIF
+
+# Deletion of files made during compilation.
+# There are four levels of this:
+#   `mostlyclean', `clean', `distclean' and `realclean'.
+# `mostlyclean' is useful while working on a particular type of machine.
+# It deletes most, but not all, of the files made by compilation.
+# It does not delete gcc.lib or its parts, so it won't have to be recompiled.
+# `clean' deletes everything made by running `make all'.
+# `distclean' also deletes the files made by config.
+# `realclean' also deletes everything that could be regenerated automatically.
+
+
+mostlyclean: bytecode.mostlyclean
+	-rm -f $(STAGESTUFF)
+# Clean the objc subdir if we created one.
+	if [ -d objc ]; then \
+	  srcdir1=`cd $(srcdir); pwd`; \
+	  cd objc; $(MAKE) -f $$srcdir1\objc\Makefile mostlyclean; \
+	else true; fi
+	-rm -f objc.lib
+# Delete the temporary source copies for cross compilation.
+	-rm -f $(HOST_PREFIX_1)rtl.c $(HOST_PREFIX_1)rtlanal.c
+	-rm -f $(HOST_PREFIX_1)alloca.c $(HOST_PREFIX_1)malloc.c
+	-rm -f $(HOST_PREFIX_1)obstack.c 
+# Delete the temp files made in the course of building gcc.lib.
+	-rm -f tmpgcc?.bak tmpcopy xlimits.h
+	for name in $(LIB1FUNCS); do rm -f $${name}.c; done
+# Delete other temporary files.
+	-rm -f tmp-float.h tmp-gcc.xtar.Z
+	-rm -f tmp-foo1 tmp-foo2 tmp-proto.* tmp-unproto.1 tmp-SYSCALLS.s
+# Delete the stamp files.
+	-rm -f stamp-* tmp-*
+# Delete debugging dump files.
+	-rm -f *.greg *.lreg *.combine *.flow *.cse *.jump *.rtl *.tree *.loop
+	-rm -f *.dbr *.jump2 *.sched *.cse2 *.sched2 *.stack
+# Delete some files made during installation.
+	-rm -f specs float.h enquire.exe SYSCALLS.c.X SYSCALLS.c
+	-rm -f collect collect2 ld mips-tfile mips-tdump alloca.s
+# Delete files generated for fixproto
+	-rm -rf patch-header.exe xsys-protos.h deduced.h tmp-deduced.h \
+	  gen-protos.exe fixproto.list fixtmp.* fixhdr.ready
+# Delete unwanted output files from TeX.
+	-rm -f *.toc *.log *.vr *.fn *.cp *.tp *.ky *.pg
+# Delete sorted indices we don't actually use.
+	-rm -f gcc.vrs gcc.kys gcc.tps gcc.pgs gcc.fns
+# Delete core dumps.
+	-rm -f core config\core
+
+# Delete all files made by compilation
+# that don't exist in the distribution.
+clean: mostlyclean bytecode.clean
+# It may not be quite desirable to delete unprotoize.c here,
+# but the spec for `make clean' requires it.
+# Using unprotoize.c is not quite right in the first place, 
+# but what better way is there?
+	-rm -f gcc.lib gcc1.lib gcc2.lib libgcc2.ready libgcc1.null
+	-rm -f *.dvi
+	-if [ -f md.pre-cpp ]; then \
+	  rm -f md ; \
+	fi
+# Delete the include directory.
+	-rm -rf stmp-* fixinc.ready include objc-headers
+
+# Delete all files that users would normally create
+# while building and installing GCC.
+distclean: clean bytecode.distclean
+	-rm -f tm.h aux-output.c config.h config.status tconfig.h hconfig.h
+	-rm -f md md.pre-cpp
+	-rm -f Makefile *.oaux
+	-rm -fr stage1 stage2 stage3 stage4
+	-rm -f cp-parse.output
+	-rm -f objc-parse.output
+	-rm -f c-parse.output
+
+# Delete anything likely to be found in the source directory
+# that shouldn't be in the distribution.
+extraclean: distclean
+	-rm -rf =* .\"#"* *~* config\=* config\"#"* config\*~*
+	-rm -f patch* *.orig *.rej config\patch* config\*.orig config\*.rej
+	-rm -f config\*\=* config\*\"#"* config\*\*~*
+	-rm -f config\*\*.orig config\*\*.rej
+	-rm -f objc\=* objc\"#"* objc\*~*
+	-rm -f objc\*.orig objc\*.rej
+	-rm -f *.dvi *.oaux *.d *.[zZ] *.gz
+	-rm -f *.tar *.xtar *diff *.diff.* *.tar.* *.xtar.* *diffs
+	-rm -f *lose config\*lose config\*\*lose
+	-rm -f *.s *.s[0-9] *.i install1.texi config\ChangeLog
+	-rm -f djefoo
+
+# Get rid of every file that's generated from some other file.
+# Most of these files ARE PRESENT in the GCC distribution.
+realclean: distclean bytecode.realclean
+	-rm -f c-parse.y objc-parse.y
+	-rm -f cp-parse.c cp-parse.h cp-parse.output
+	-rm -f objc-parse.c objc-parse.output
+	-rm -f c-parse.c c-parse.h c-parse.output
+	-rm -f cexp.c cexp.output TAGS
+	-rm -f cpp.info* cpp.??s cpp.*aux
+	-rm -f gcc.info* gcc.??s gcc.*aux
+	-rm -f gplus.info* gplus.??s gplus.*aux
+
+# Entry points `install' and `uninstall'.
+# Also temporarily `install-fixincludes' could replace `install-headers'.
+# Also use `install-collect2' to install collect2 when the config files don't.
+
+# The semicolon is to prevent the install.sh -> install default rule
+# from doing anything.
+install: $(INSTALL_TARGET) ;
+
+# Copy the files of native compiler into directories where they will be run.
+install-normal: install-common $(INSTALL_HEADERS) $(INSTALL_LIBGCC) \
+    install-man install-info
+
+# Copy the files of cross compiler into directories where they will be run.
+install-cross: install-common install-common-headers \
+   install-man install-cross-tools install-libgcc
+
+# Do nothing while making gcc with a cross-compiler. The person who
+# makes gcc for the target machine has to know how to put a complete
+# gcc together by hand.
+install-build: force
+	@echo You have to install gcc on your target machine by hand.
+
+# Install the tools, libraries and header files for the target machine
+# where cross-compilation will look for them.
+# Use tooldir to find them.
+install-cross-tools: install-dir
+# The first if makes this a no-op except for a cross compiler.
+# The /. after the dirname causes test to follow symlinks.
+# Before making a link or an indirection script, 
+# we verify the desired file does not already exist.
+# If a symlink does exist, then making a symlink would certainly fail, 
+# leading us to overwrite the real file through the symlink.
+	-if [ -f gcc-cross ] ; \
+	then \
+	  if [ -d $(tooldir)/. ] ; \
+	  then \
+	    for file in as ld ar nm ranlib; do \
+	      if [ -f $(libsubdir)/$$file ] ; \
+	      then true; \
+	      else  \
+		rm -rf $(libsubdir)/$$file; \
+		$(SYMLINK) $(tooldir)/bin/$$file $(libsubdir)/$$file \
+		|| (echo "#!/bin/sh"; echo $(tooldir)/bin/$$file "$$@") > $(libsubdir)/$$file; \
+	      fi; \
+	    done; \
+	    for file in $(tooldir)/lib/*; do \
+	      if [ -f $$file ] ; \
+	      then \
+		if [ -f $(libsubdir)/`basename $$file` ] ; \
+		then true; \
+		else  \
+		  rm -rf $(libsubdir)/`basename $$file`; \
+		  $(SYMLINK) $$file $(libsubdir)/`basename $$file` \
+		  || $(INSTALL_DATA) $$file $(libsubdir)/`basename $$file`; \
+		fi; \
+	      else true; \
+	      fi; \
+	    done; \
+	    if [ -d $(tooldir)/include/. ] ; then \
+	      rm -rf $(libsubdir)/sys-include; \
+	      $(SYMLINK) $(tooldir)/include $(libsubdir)/sys-include \
+	      || (if [ -d $(libsubdir)/sys-include ] ; then true ; else mkdir $(libsubdir)/sys-include ; fi; \
+		  (cd $(tooldir)/include; tar cf - .) | (cd $(libsubdir)/sys-include; tar xpf -)); \
+	    else true; fi; \
+	  else true; \
+	  fi; \
+	else true; \
+	fi;
+
+# Run this on the target machine
+# to finish installation of cross compiler.
+install-cross-rest: install-float-h-cross
+
+# Install float.h for cross compiler.
+# Run this on the target machine!
+install-float-h-cross: install-dir
+#	if [ -f enquire ] ; then true; else false; fi
+# Note: don't use -.  We should fail right away if enquire was not made.
+	./enquire -f > $(tmpdir)/float.h
+	-rm -f $(libsubdir)/include/float.h
+	$(INSTALL_DATA) $(tmpdir)/float.h $(libsubdir)/include/float.h
+	-rm -f $(tmpdir)/float.h
+	chmod a-x $(libsubdir)/include/float.h
+
+# Create the installation directory.
+install-dir:
+	-if [ -d $(libdir) ] ; then true ; else mkdir $(libdir) ; fi
+	-if [ -d $(libdir)\gcc-lib ] ; then true ; else mkdir $(libdir)\gcc-lib ; fi
+# This dir isn't currently searched by cpp.
+#	-if [ -d $(libdir)\gcc-lib\include ] ; then true ; else mkdir $(libdir)\gcc-lib\include ; fi
+	-if [ -d $(libdir)\gcc-lib\$(target) ] ; then true ; else mkdir $(libdir)\gcc-lib\$(target) ; fi
+	-if [ -d $(libdir)\gcc-lib\$(target)\$(version) ] ; then true ; else mkdir $(libdir)\gcc-lib\$(target)\$(version) ; fi
+	-if [ -d $(libdir)\gcc-lib\$(target)\$(version)\include ] ; then true ; else mkdir $(libdir)\gcc-lib\$(target)\$(version)\include ; fi
+	-if [ -d $(bindir) ] ; then true ; else mkdir $(bindir) ; fi
+	-if [ -d $(includedir) ] ; then true ; else mkdir $(includedir) ; fi
+	-if [ -d $(tooldir) ] ; then true ; else mkdir $(tooldir) ; fi
+	-if [ -d $(assertdir) ] ; then true ; else mkdir $(assertdir) ; fi
+	-if [ -d $(infodir) ] ; then true ; else mkdir $(infodir) ; fi
+# We don't use mkdir -p to create the parents of mandir,
+# because some systems don't support it.
+# Instead, we use this technique to create the immediate parent of mandir.
+	-parent=`echo $(mandir)|sed -e 's@/[^/]*$$@@'`; \
+	if [ -d $$parent ] ; then true ; else mkdir $$parent ; fi
+	-if [ -d $(mandir) ] ; then true ; else mkdir $(mandir) ; fi
+
+# Install the compiler executables built during cross compilation.
+install-common: native install-dir xgcc.exe $(EXTRA_PARTS)
+	for file in $(COMPILERS); do \
+	  if [ -f $$file ] ; then \
+	    rm -f $(libsubdir)/$$file; \
+	    $(INSTALL_PROGRAM) $$file $(libsubdir)/$$file; \
+	  else true; \
+	  fi; \
+	done
+	for file in $(EXTRA_PASSES) $(EXTRA_PARTS) $(EXTRA_PROGRAMS) $(USE_COLLECT2) ..; do \
+	  if [ x"$$file" != x.. ]; then \
+	    rm -f $(libsubdir)/$$file; \
+	    $(INSTALL_PROGRAM) $$file $(libsubdir)/$$file; \
+	  else true; fi; \
+	done
+# Don't mess with specs if it doesn't exist yet.
+	-if [ -f specs ] ; then \
+	  rm -f $(libsubdir)/specs; \
+	  $(INSTALL_DATA) specs $(libsubdir)/specs; \
+	fi
+# Install the driver program as gcc-$(target)
+# and also as either gcc (if native) or $(tooldir)/bin/gcc.
+	-if [ -f gcc-cross ] ; then \
+	  $(INSTALL_PROGRAM) gcc-cross $(bindir)/gcc-$(target); \
+	  if [ -d $(tooldir)/bin/. ] ; then \
+	    rm -f $(tooldir)/bin/gcc; \
+	    $(INSTALL_PROGRAM) gcc-cross $(tooldir)/bin/gcc; \
+	  else true; fi; \
+	  if [ -f cc1plus ] ; then \
+	    rm -f $(bindir)/$(target)-g++; \
+	    $(INSTALL_PROGRAM) g++-cross $(bindir)/$(target)-g++; \
+	    chmod a+x $(bindir)/$(target)-g++; \
+	    rm -f $(bindir)/$(target)-c++; \
+	    ln $(bindir)/$(target)-g++ $(bindir)/$(target)-c++; \
+	  fi ; \
+	else \
+	  rm -f $(bindir)/gcc; \
+	  $(INSTALL_PROGRAM) xgcc $(bindir)/gcc; \
+	  rm -f $(bindir)/gcc-$(target)-1; \
+	  ln $(bindir)/gcc $(bindir)/gcc-$(target)-1; \
+	  mv $(bindir)/gcc-$(target)-1 $(bindir)/gcc-$(target); \
+	  if [ -f gnat1 ] ; then \
+	    rm -f $(bindir)/gnatbind; \
+	    $(INSTALL_PROGRAM) gnatbind $(bindir)/gnatbind; \
+	    chmod a+x $(bindir)/gnatbind; \
+	  fi; \
+	  if [ -f cc1plus ] ; then \
+	    rm -f $(bindir)/g++; \
+	    $(INSTALL_PROGRAM) g++ $(bindir)/g++; \
+	    chmod a+x $(bindir)/g++; \
+	    rm -f $(bindir)/c++; \
+	    ln $(bindir)/g++ $(bindir)/c++; \
+	  fi ; \
+	fi
+# Install protoize if it was compiled.
+	-if [ -f protoize ]; \
+	then \
+	    rm -f $(bindir)\protoize; \
+	    $(INSTALL_PROGRAM) protoize $(bindir)\protoize; \
+	    rm -f $(bindir)\unprotoize; \
+	    $(INSTALL_PROGRAM) unprotoize $(bindir)\unprotoize; \
+	    rm -f $(libsubdir)\SYSCALLS.c.X; \
+	    $(INSTALL_DATA) SYSCALLS.c.X $(libsubdir)\SYSCALLS.c.X; \
+	    chmod a-x $(libsubdir)\SYSCALLS.c.X; \
+	fi
+	-rm -f $(libsubdir)\cpp
+	$(INSTALL_PROGRAM) cpp $(libsubdir)\cpp
+
+# Install the info files.
+install-info: doc install-dir
+	-rm -f $(infodir)\cpp.info* $(infodir)\gcc.info*
+	cd $(srcdir); for f in cpp.info* gcc.info*; \
+	do $(INSTALL_DATA) $$f $(infodir)/$$f; done
+	-chmod a-x $(infodir)/cpp.info* $(infodir)/gcc.info*
+
+# Install the man pages.
+install-man: install-dir $(srcdir)\gcc.1 $(srcdir)\cccp.1 $(srcdir)\g++.1
+	-rm -f $(mandir)\gcc$(manext)
+	-$(INSTALL_DATA) $(srcdir)\gcc.1 $(mandir)\gcc$(manext)
+	-chmod a-x $(mandir)\gcc$(manext)
+	-rm -f $(mandir)\cccp$(manext)
+	-$(INSTALL_DATA) $(srcdir)\cccp.1 $(mandir)\cccp$(manext)
+	-chmod a-x $(mandir)\cccp$(manext)
+	-$(INSTALL_DATA) $(srcdir)\g++.1 $(mandir)\g++$(manext)
+	-chmod a-x $(mandir)\g++$(manext)
+
+# Install the library.
+install-libgcc: gcc.lib install-dir
+	-if [ -f gcc.lib ] ; then \
+	  rm -f $(libsubdir)\gcc.lib; \
+	  $(INSTALL_DATA) gcc.lib $(libsubdir)\gcc.lib; \
+#	  if $(RANLIB_TEST) ; then \
+#	    (cd $(libsubdir); $(RANLIB) gcc.lib); else true; fi; \
+	  chmod a-x $(libsubdir)\gcc.lib; \
+	else true; fi
+
+# Install the objc run time library.
+install-libobjc: objc.lib install-dir
+	-if [ -f objc.lib ] ; then \
+	  rm -f $(libsubdir)\objc.lib; \
+	  $(INSTALL_DATA) objc.lib $(libsubdir)\objc.lib; \
+#	  if $(RANLIB_TEST) ; then \
+#	    (cd $(libsubdir); $(RANLIB) objc.lib); else true; fi; \
+	  chmod a-x $(libsubdir)\objc.lib; \
+	else true; fi
+
+# Install all the header files built in the include subdirectory.
+install-headers: install-include-dir $(INSTALL_HEADERS_DIR) install-assert-h
+# Fix symlinks to absolute paths in the installed include directory to
+# point to the installed directory, not the build directory.
+	-files=`cd $(libsubdir)/include; find . -type l -print 2>/dev/null`; \
+	if [ $$? -eq 0 ]; then \
+	  dir=`cd include; pwd`; \
+	  for i in $$files; do \
+	    dest=`ls -ld $(libsubdir)/include/$$i | sed -n 's/.*-> //p'`; \
+	    if expr "$$dest" : "$$dir.*" > /dev/null; then \
+	      rm -f $(libsubdir)/include/$$i; \
+	      ln -s `echo $$i | sed "s|/[^/]*|/..|g" | sed 's|/..$$||'``echo "$$dest" | sed "s|$$dir||"` $(libsubdir)/include/$$i; \
+	    fi; \
+	  done; \
+	fi
+
+# Create or recreate the gcc private include file directory.
+install-include-dir: install-dir
+	-rm -rf $(libsubdir)\include
+	mkdir $(libsubdir)\include
+	-chmod a+rx $(libsubdir)\include
+
+# Install the include directory using tar.
+install-headers-tar: stmp-headers $(STMP_FIXPROTO) install-include-dir
+	cd include; \
+	 (tar cf - .; exit 0) | (cd $(libsubdir)/include; tar $(TAROUTOPTS) - )
+# /bin/sh on some systems returns the status of the first tar,
+# and that can lose with GNU tar which always writes a full block.
+# So use `exit 0' to ignore its exit status.
+
+# Install the include directory using cpio.
+install-headers-cpio: stmp-headers $(STMP_FIXPROTO) install-include-dir
+	cd include; find . -print | cpio -pdum $(libsubdir)/include
+
+# Put assert.h where it won't override GNU libc's assert.h.
+# It goes in a dir that is searched after GNU libc's headers;
+# thus, the following conditionals are no longer needed.
+# But it's not worth deleting them now.
+## Don't replace the assert.h already there if it is not from GCC.
+## This code would be simpler if it tested for -f ... && ! grep ...
+## but supposedly the ! operator is missing in sh on some systems.
+install-assert-h: assert.h install-dir
+	if [ -f $(assertdir)/assert.h ]; \
+	then \
+	  if grep "__eprintf" $(assertdir)/assert.h >/dev/null; \
+	    then \
+	    rm -f $(assertdir)/assert.h; \
+	    $(INSTALL_DATA) $(srcdir)/assert.h $(assertdir)/assert.h; \
+	    chmod a-x $(assertdir)/assert.h; \
+	  else true; \
+	  fi; \
+	else \
+	  rm -f $(assertdir)/assert.h; \
+	  $(INSTALL_DATA) $(srcdir)/assert.h $(assertdir)/assert.h; \
+	  chmod a-x $(assertdir)/assert.h; \
+	fi
+
+# Use this target to install the program `collect2' under the name `ld'.
+install-collect2: collect2 install-dir
+	$(INSTALL_PROGRAM) collect2 $(libsubdir)\ld
+# Install the driver program as $(libsubdir)\gcc for collect2.
+	$(INSTALL_PROGRAM) xgcc $(libsubdir)\gcc
+
+# Cancel installation by deleting the installed files.
+uninstall:
+	-rm -rf $(libsubdir)
+	-rm -rf $(bindir)\gcc
+	-rm -rf $(bindir)\protoize
+	-rm -rf $(bindir)\unprotoize
+	-rm -rf $(mandir)\gcc$(manext)
+	-rm -rf $(mandir)\cccp$(manext)
+	-rm -rf $(mandir)\protoize$(manext)
+	-rm -rf $(mandir)\unprotoize$(manext)
+
+# These exist for maintenance purposes.
+
+# Update the tags table.
+TAGS: force
+	cd $(srcdir);							\
+	mkdir temp;							\
+	mv -f c-parse.[ch] cp-parse.[ch] objc-parse.c cexp.c =*.[chy] temp; \
+	etags *.y *.h *.c;						\
+	mv temp\* .;							\
+	rmdir temp
+
+# Create the distribution tar file.
+#dist: gcc-$(version).tar.gz
+dist: gcc.xtar.gz
+
+gcc.xtar.gz: gcc.xtar
+	gzip < gcc.xtar > tmp-gcc.xtar.gz
+	mv tmp-gcc.xtar.gz gcc.xtar.gz
+
+#gcc-$(version).tar.gz: gcc-$(version).tar
+#	gzip < gcc-$(version).tar > gcc-$(version).tar.gz
+
+#gcc-$(version).tar:
+gcc.xtar: distdir
+# Make the distribution.
+	tar chf gcc.xtar gcc-$(version)
+
+distdir: doc $(srcdir)\INSTALL c-parse.y objc-parse.y cp-parse.y \
+  c-parse.c cp-parse.c objc-parse.c cexp.c
+	@if grep -s "for version $(mainversion)" gcc.texi > /dev/null; \
+	then true; \
+	else echo "You must update the version number in \`gcc.texi'"; sleep 10;\
+	fi
+# Update the version number in README
+	awk '$$1 " " $$2 " " $$3 == "This directory contains" \
+		{ $$6 = version; print $$0 } \
+	     $$1 " " $$2 " " $$3 != "This directory contains"' \
+	  version=$(version) README > tmp.README
+	mv tmp.README README
+	-rm -rf gcc-$(version) tmp	
+# Put all the files in a temporary subdirectory
+# which has the name that we want to have in the tar file.
+	mkdir tmp
+	mkdir tmp\config
+	mkdir tmp\objc
+	for file in *[0-9a-zA-Z+]; do \
+	  ln $$file tmp > \dev\null 2>&1 || cp $$file tmp; \
+	done
+	cd config; \
+	for file in *[0-9a-zA-Z+]; do \
+	  ln $$file ..\tmp\config >\dev\null 2>&1 || cp $$file ..\tmp\config; \
+	done
+	cd objc; \
+	for file in *[0-9a-zA-Z+]; do \
+	  ln $$file ..\tmp\objc >\dev\null 2>&1 || cp $$file ..\tmp\objc; \
+	done
+	ln .gdbinit tmp
+	mv tmp gcc-$(version)
+# Get rid of everything we don't want in the distribution.
+	cd gcc-$(version); make -f Makefile.in extraclean
+# Make the distribution.
+	tar chf gcc.xtar gcc-$(version)
+# Get rid of the temporary directory.
+	rm -rf gcc-$(version)
+
+# make diff oldversion=M.N
+# creates a diff file between an older distribution and this one.
+# The -P option assumes this is GNU diff.
+diff:
+	diff -rc2P -x c-parse.y -x c-parse.c -x c-parse.h -x objc-parse.y \
+	  -x cp-parse.c -x cp-parse.h -x cexp.c -x bi-parser.c \
+	  -x objc-parse.c -x TAGS -x "gcc.??" -x "gcc.??s" -x gcc.aux \
+	  -x "cpp.??s" -x "cpp.??" -x cpp.aux -x "cpp.info*" -x "gcc.info*" \
+	  gcc-$(oldversion) gcc-$(version) > diffs
+
+# do make -f ..\gcc\Makefile maketest DIR=..\gcc
+# in the intended test directory to make it a suitable test directory.
+# THIS IS OBSOLETE; use the -srcdir operand in configure instead. 
+maketest:
+	ln -s $(DIR)\*.[chy] .
+	ln -s $(DIR)\configure .
+	ln -s $(DIR)\*.def .
+	-rm -f =*
+	ln -s $(DIR)\.gdbinit .
+	ln -s $(DIR)\$(FIXINCLUDES) .
+	-ln -s $(DIR)\bison.simple .
+	ln -s $(DIR)\config .
+	ln -s $(DIR)\move-if-change.cmd .
+# The then and else were swapped to avoid a problem on Ultrix.
+	if [ ! -f Makefile ] ; then ln -s $(DIR)\Makefile .; else false; fi
+	-rm tm.h aux-output.c config.h md
+	make clean
+# You must then run config to set up for compilation.
+
+bootstrap: force
+# Only build the C compiler for stage1, because that is the only one that
+# we can guarantee will build with the native compiler, and also it is the
+# only thing useful for building stage2.
+# [However, we are providing fully bootstrapped OS/2 executables, so it's
+# OK to build both the C and Ada compilers for stage1.]
+	$(MAKE) LANGUAGES="$(LANGUAGES)"
+	$(MAKE) stage1
+# This used to define ALLOCA as empty, but that would lead to bad results
+# for a subsequent `make install' since that would not have ALLOCA empty.
+# To prevent `make install' from compiling alloca.obj and then relinking cc1
+# because alloca.obj is newer, we permit these recursive makes to compile
+# alloca.obj.  Then cc1 is newer, so it won't have to be relinked.
+#	$(MAKE) CC="stage1\xgcc" CFLAGS="-Bstage1\ $(BOOT_CFLAGS)" libdir=$(libdir) LANGUAGES="$(LANGUAGES)"
+	$(MAKE) CC="stage1\xgcc" CFLAGS="-Bstage1\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage1\gnatbind LANGUAGES="$(LANGUAGES)"
+	$(MAKE) stage2
+	$(MAKE) CC="stage2\xgcc" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage2\gnatbind LANGUAGES="$(LANGUAGES)"
+#	$(MAKE) CC="stage2\xgcc" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" libdir=$(libdir) LANGUAGES="$(LANGUAGES)"
+
+bootstrap2: force
+#	$(MAKE) CC="stage1\xgcc" CFLAGS="-Bstage1\ $(BOOT_CFLAGS)" libdir=$(libdir) LANGUAGES="$(LANGUAGES)"
+	$(MAKE) CC="stage1\xgcc" CFLAGS="-Bstage1\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage1\gnatbind LANGUAGES="$(LANGUAGES)"
+	$(MAKE) stage2
+	$(MAKE) CC="stage2\xgcc" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage2\gnatbind LANGUAGES="$(LANGUAGES)"
+#	$(MAKE) CC="stage2\xgcc" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" libdir=$(libdir) LANGUAGES="$(LANGUAGES)"
+
+bootstrap3: force
+#	$(MAKE) CC="stage2\xgcc" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" libdir=$(libdir) LANGUAGES="$(LANGUAGES)"
+	$(MAKE) CC="stage2\xgcc" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage2\gnatbind LANGUAGES="$(LANGUAGES)"
+
+bootstrap4: force
+	$(MAKE) CC="stage3\xgcc" CFLAGS="-Bstage3\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage3\gnatbind LANGUAGES="$(LANGUAGES)"
+
+bootstrapgnat: force
+	$(MAKE) gnat1.exe gnatbind.exe
+	$(MAKE) gnatstage1
+	$(MAKE) gnat1.exe gnatbind.exe CC="$(CC)" CFLAGS="-Bstage1\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage1\gnatbind
+	$(MAKE) gnatstage2
+	$(MAKE) gnat1.exe gnatbind.exe CC="$(CC)" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage2\gnatbind
+	comp gnat*.exe stage2 <no
+
+bootstrapgnat2: force
+	$(MAKE) gnat1.exe gnatbind.exe CC="$(CC)" CFLAGS="-Bstage1\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage1\gnatbind
+	$(MAKE) gnatstage2
+	$(MAKE) gnat1.exe gnatbind.exe CC="$(CC)" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage2\gnatbind
+	comp gnat*.exe stage2 <no
+
+bootstrapgnat3: force
+	$(MAKE) gnat1.exe gnatbind.exe CC="$(CC)" CFLAGS="-Bstage2\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage2\gnatbind
+	comp gnat*.exe stage2 <no
+
+bootstrapgnat4: force
+	$(MAKE) gnat1.exe gnatbind.exe CC="$(CC)" CFLAGS="-Bstage3\ $(BOOT_CFLAGS)" XCFLAGS="" GNATBIND=stage3\gnatbind
+	comp gnat*.exe stage3 <no
+
+# Compare the object files in the current directory with those in the
+# stage2 directory.
+
+# ./ avoids bug in some versions of tail.
+compare: force
+	for file in *.obj; do \
+	  tail +16c ./$$file > tmp-foo1; \
+	  tail +16c stage2\$$file > tmp-foo2 2>\dev\null \
+	    && (cmp tmp-foo1 tmp-foo2 || echo $$file differs); \
+	done
+	-rm -f tmp-foo*
+
+# Similar, but compare with stage3 directory
+compare3: force
+	for file in *.obj; do \
+	  tail +16c $$file > tmp-foo1; \
+	  tail +16c stage3\$$file > tmp-foo2 2>\dev\null \
+	    && (cmp tmp-foo1 tmp-foo2 || echo $$file differs); \
+	done
+	-rm -f tmp-foo*
+
+# Copy the object files from a particular stage into a subdirectory.
+stage1: force
+# The following three lines may not be desirable.
+	-for %%f in (tmpgcc1.bak tmpgcc2.bak libgcc2.ready $(LIBGCC2) *.lnk) do \
+	   rm -f %%f
+	-rm -fr stage1
+	-mkdir stage1
+	-if exist bind_gnat*.c move bind_gnat*.c stage1
+	-if exist *.ali move *.ali stage1
+	-if exist *.obj move *.obj stage1
+	-if exist *.exe move *.exe stage1
+	-if exist insn-* move insn-* stage1
+	-if exist stamp* move stamp* stage1
+	-for %%f in (specs $(FLOAT_H)) do if exist %%f move %%f stage1
+	-rm -f stage1\gcc.lib
+	-copy gcc.lib stage1
+#	-if $(RANLIB_TEST) ; then $(RANLIB) stage1\gcc.lib; else true; fi
+
+stage2: force
+# The following three lines may not be desirable.
+	-for %%f in (tmpgcc1.bak tmpgcc2.bak libgcc2.ready $(LIBGCC2) *.lnk) do \
+	   rm -f %%f
+	-rm -fr stage2
+	-mkdir stage2
+	-if exist bind_gnat*.c move bind_gnat*.c stage2
+	-if exist *.ali move *.ali stage2
+	-if exist *.obj move *.obj stage2
+	-if exist *.exe move *.exe stage2
+	-if exist insn-* move insn-* stage2
+	-if exist stamp* move stamp* stage2
+	-for %%f in (specs $(FLOAT_H)) do if exist %%f move %%f stage2
+	-rm -f stage2\gcc.lib
+	-copy gcc.lib stage2
+#	-if $(RANLIB_TEST) ; then $(RANLIB) stage2\gcc.lib; else true; fi
+
+stage3: force
+# The following three lines may not be desirable.
+	-for %%f in (tmpgcc1.bak tmpgcc2.bak libgcc2.ready $(LIBGCC2) *.lnk) do \
+	   rm -f %%f
+	-rm -fr stage3
+	-mkdir stage3
+	-if exist bind_gnat*.c move bind_gnat*.c stage3
+	-if exist *.ali move *.ali stage3
+	-if exist *.obj move *.obj stage3
+	-if exist *.exe move *.exe stage3
+	-if exist insn-* move insn-* stage3
+	-if exist stamp* move stamp* stage3
+	-for %%f in (specs $(FLOAT_H)) do if exist %%f move %%f stage3
+	-rm -f stage3\gcc.lib
+	-copy gcc.lib stage3
+#	-if $(RANLIB_TEST) ; then $(RANLIB) stage3\gcc.lib; else true; fi
+
+stage4: force
+# The following three lines may not be desirable.
+	-for %%f in (tmpgcc1.bak tmpgcc2.bak libgcc2.ready $(LIBGCC2) *.lnk) do \
+	   rm -f %%f
+	-rm -fr stage4
+	-mkdir stage4
+	-if exist bind_gnat*.c move bind_gnat*.c stage4
+	-if exist *.ali move *.ali stage4
+	-if exist *.obj move *.obj stage4
+	-if exist *.exe move *.exe stage4
+	-if exist insn-* move insn-* stage4
+	-if exist stamp* move stamp* stage4
+	-for %%f in (specs $(FLOAT_H)) do if exist %%f move %%f stage4
+	-rm -f stage4\gcc.lib
+	-copy gcc.lib stage4
+#	-if $(RANLIB_TEST) ; then $(RANLIB) stage4\gcc.lib; else true; fi
+
+gnatstage1: force
+# The following two lines may not be desirable.
+	-rm -f *.lnk
+	-rm -fr stage1
+	-mkdir stage1
+	-if exist bind_gnat*.c move bind_gnat*.c stage1
+	-if exist *.ali move *.ali stage1
+	-for %%f in ($(GNAT_ADA_OBJS1))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNAT_ADA_OBJS2))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNAT_ADA_OBJS3))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNAT_ADA_OBJS4))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNAT_ADA_OBJS5))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNAT_ADA_OBJS6))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNAT1_ADA_OBJS1)) do if exist %%f move %%f stage1
+	-for %%f in ($(GNATBIND_OBJS1))  do if exist %%f move %%f stage1
+	-for %%f in ($(GNATBIND_OBJS2))  do if exist %%f move %%f stage1
+	-if exist gnat*.exe move gnat*.exe stage1
+
+gnatstage2: force
+# The following two lines may not be desirable.
+	-rm -f *.lnk
+	-rm -fr stage2
+	-mkdir stage2
+	-if exist bind_gnat*.c move bind_gnat*.c stage2
+	-if exist *.ali move *.ali stage2
+	-for %%f in ($(GNAT_ADA_OBJS1))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNAT_ADA_OBJS2))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNAT_ADA_OBJS3))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNAT_ADA_OBJS4))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNAT_ADA_OBJS5))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNAT_ADA_OBJS6))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNAT1_ADA_OBJS1)) do if exist %%f move %%f stage2
+	-for %%f in ($(GNATBIND_OBJS1))  do if exist %%f move %%f stage2
+	-for %%f in ($(GNATBIND_OBJS2))  do if exist %%f move %%f stage2
+	-if exist gnat*.exe move gnat*.exe stage2
+
+gnatstage3: force
+# The following two lines may not be desirable.
+	-rm -f *.lnk
+	-rm -fr stage3
+	-mkdir stage3
+	-if exist bind_gnat*.c move bind_gnat*.c stage3
+	-if exist *.ali move *.ali stage3
+	-for %%f in ($(GNAT_ADA_OBJS1))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNAT_ADA_OBJS2))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNAT_ADA_OBJS3))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNAT_ADA_OBJS4))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNAT_ADA_OBJS5))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNAT_ADA_OBJS6))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNAT1_ADA_OBJS1)) do if exist %%f move %%f stage3
+	-for %%f in ($(GNATBIND_OBJS1))  do if exist %%f move %%f stage3
+	-for %%f in ($(GNATBIND_OBJS2))  do if exist %%f move %%f stage3
+	-if exist gnat*.exe move gnat*.exe stage3
+
+gnatstage4: force
+# The following two lines may not be desirable.
+	-rm -f *.lnk
+	-rm -fr stage4
+	-mkdir stage4
+	-if exist bind_gnat*.c move bind_gnat*.c stage4
+	-if exist *.ali move *.ali stage4
+	-for %%f in ($(GNAT_ADA_OBJS1))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNAT_ADA_OBJS2))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNAT_ADA_OBJS3))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNAT_ADA_OBJS4))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNAT_ADA_OBJS5))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNAT_ADA_OBJS6))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNAT1_ADA_OBJS1)) do if exist %%f move %%f stage4
+	-for %%f in ($(GNATBIND_OBJS1))  do if exist %%f move %%f stage4
+	-for %%f in ($(GNATBIND_OBJS2))  do if exist %%f move %%f stage4
+	-if exist gnat*.exe move gnat*.exe stage4
+
+# Copy just the executable files from a particular stage into a subdirectory,
+# and delete the object files.  Use this if you're just verifying a version
+# that is pretty sure to work, and you are short of disk space.
+risky-stage1: force
+	-if [ -d stage1 ] ; then true ; else mkdir stage1 ; fi
+	-mv cc1.exe cpp.exe cccp.exe gcc.exe stage1
+	-rm -f stage1\gcc.lib
+	-copy gcc.lib stage1 # && $(RANLIB) stage1\gcc.lib
+	-make clean
+
+risky-stage2: force
+	-if [ -d stage2 ] ; then true ; else mkdir stage2 ; fi
+	-mv cc1.exe cpp.exe cccp.exe gcc.exe stage2
+	-rm -f stage2\gcc.lib
+	-copy gcc.lib stage2 # && $(RANLIB) stage2\gcc.lib
+	-make clean
+
+risky-stage3: force
+	-if [ -d stage3 ] ; then true ; else mkdir stage3 ; fi
+	-mv cc1.exe cpp.exe cccp.exe gcc.exe stage3
+	-rm -f stage3\gcc.lib
+	-copy gcc.lib stage3 # && $(RANLIB) stage3\gcc.lib
+	-make clean
+
+risky-stage4: force
+	-if [ -d stage4 ] ; then true ; else mkdir stage4 ; fi
+	-mv cc1.exe cpp.exe cccp.exe gcc.exe stage4
+	-rm -f stage4\gcc.lib
+	-copy gcc.lib stage4 # && $(RANLIB) stage4\gcc.lib
+	-make clean
+
+#In GNU Make, ignore whether `stage*' exists.
+.PHONY: stage1 stage2 stage3 stage4 clean realclean TAGS bootstrap
+.PHONY: risky-stage1 risky-stage2 risky-stage3 risky-stage4
+
+force:

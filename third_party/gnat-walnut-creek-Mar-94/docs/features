@@ -1,0 +1,273 @@
+GNAT IMPLEMENTED FEATURES LIST
+Current as of 2/1/94
+
+Here are the lists of implemented and not implemented features. A more precise
+description of the GNAT system is provided in the file 'gnat-intro', which is
+part of the GNAT distribution.
+=======================================================================
+Features added since GNAT version 1.67
+
+Library search paths (see gnat-intro for more details)
+
+Ada 83 features:
+================
+Initialization of private types.
+Static evaluation of floating point types.
+Static evaluation of modular types.
+Number declarations for universal real values.
+New attributes supported:
+  Digits
+  Epsilon
+  Machine_Emax
+  Machine_Emin
+  Machine_Mantissa
+  Machine_Overflows
+  Machine_Radix
+  Machine_Rounds
+  Mantissa
+  Safe_Emax
+  Safe_Large
+  Safe_Small
+
+Text_IO section 14.3.8 (Float_IO) now supported for both Get and Put.
+  (support only for Float not Long_Float) and no bounds checking on result.
+Text_IO section 14.3.9 (Enumeration_IO) now supported
+  (with the exception of character literals)
+
+Ada 9X features:
+================
+Wide_Character and Wide_String types (using a temporary form of ESC sequence
+ that may be changed later)
+Latin-1 characters in identifiers now work (including proper handling
+ by the assembler)
+Under control of the -gnatiw flag, wide characters are now supported in
+ identifiers
+Tagged Extensions with new discriminants.
+
+New attributes supported:
+  Denorm
+  Emax
+  Large
+  Model_Emax
+  Model_Emin
+  Model_Mantissa
+  Model_Epsilon
+  Model_Small
+  Safe_First
+  Safe_Last
+  Signed_Zeroes
+  Unchecked_Access
+
+Generic formal packages.
+Generic formal derived types.
+
+=======================================================================
+Features added since GNAT version 1.61
+
+Ada 83 features:
+================
+Io_Exceptions/Ada.IO_Exceptions
+Text_IO/Ada.Text_IO (with some restrictions -- see below)
+Derived integer/modular types with constraints
+Some constraint checking (turned off with -gnatp)
+Floating point declarations without constraints
+
+Ada 9X features
+===============
+Equality on composite types.
+Abstract tagged types and abstract subprograms
+Checks on use of 'Access attribute
+Subtypes of Modular types
+View conversions for tagged types
+
+=======================================================================
+Features added since GNAT version 1.53
+
+Ada 83 features:
+================
+image attribute for integer, boolean and character
+generic formal subprograms
+exception renaming
+
+Ada 9X features:
+================
+library package renaming
+image attribute for float
+class-wide objects and allocators
+Ada9x version of package Ada.Tags
+
+=======================================================================
+Features currently supported
+----------------------------
+
+The parser is a full Ada9X parser, which implements the Ada 9X language
+as defined by version 4.0 of the Draft International Standard. Semantic
+analysis and code generation are in constant evolution.
+
+Chapter 2
+   pragma List, Page
+
+Chapter 3
+   Object declarations
+   Number declarations
+
+   Subtype declarations
+
+   Type declarations
+     Derived types and classes
+     Enumeration types
+        attributes (first, last, range, pos, val, image)
+     Class-Wide types
+     Character types
+        attributes (first, last, range, pos, val, image)
+     Boolean types
+     Integer types
+        attributes (first, last, range, pos, val, image)
+     Modular types.
+       subtypes
+     Floating point (only operations on the predefined types)
+       Ada 83 attributes:
+         digits, machine_emax, machine_emin, machine_mantissa,
+         machine_overflows, machine_radix, machine_rounds, mantissa,
+         safe_emax, safe_large, safe_small
+       Ada 9X attributes:
+         emax, large, model_emax, model_emin, model_mantissa, model_epsilon,
+         model_small, safe_first, safe_last, signed_zeroes
+
+     Array types
+       attributes first, last, range, length
+     Record types
+       Discriminants and Discriminant constraints
+       Variant Parts
+     Tagged Types and extensions
+     Dispatching
+     Access types
+     Access to subprograms
+     Incomplete types
+
+Chapter 4
+     Indexed Components
+     Slices
+     Selected Components
+     Aggregates (record and array)
+     Exponentiation
+     Expressions (all forms)
+        static concatenation
+     type conversions  (except array conversions)
+     membership tests, conversion with class-wide types
+
+Chaper 5
+     statements (all forms)
+
+Chapter 6
+     subprogram declaration and bodies
+     subprogram calls 
+       named and positional associations
+       default parameters
+     overloading of subprograms and operators
+     functions returning unconstrained arrays
+  
+Chapter 7
+     package declaration and bodies
+     private types 
+ 
+Chapter 8
+    use clauses
+    object, subprogram and package (including library package) renaming 
+    exception renaming 
+
+Chapter 10
+    library units
+    with clauses
+    stubs and subunits
+    pragma Elaborate and Elaborate_All
+    child units
+
+Chapter 11
+    exceptions
+       declarations
+       handlers
+       raise statement
+    limited constraint checking on integer/enumeration types under
+      the following catagories:
+        Index Checks
+        Access Checks
+        Range Checks
+          Initial values in object declarations.
+          Assignment
+          parameter passing of IN parameters
+          type conversions
+
+Chapter 12
+    Generic units
+    In and In-out generic parameters.
+    Generic formal integer types.
+    Generic formal array types.
+    Generic formal access types.
+    Generic formal subprograms
+    Generic formal derived types
+    Generic formal packages
+
+Chapter 13
+    package System is more complete
+       Address attribute
+    pragma Import
+    pragma Interface, Interface_Name
+    Unchecked deallocation
+    record representation clauses only on record whose fields are all
+      elementary types.
+    Unchecked conversion 
+
+Chapter 14
+    package IO_Exceptions/Ada.IO_Exceptions
+    package Text_IO/Ada.Text_IO
+      sections 14.3.1, 14.3.2, 14.3.3, 14.3.4, 14.3.5, 14.3.6
+      section 14.3.7 (Integer_IO) for type Integer, (and Long_Integer if
+        its size is the same as Integer on the particular machine) and
+        NOT Long_Long_Integer
+      section 14.3.8 (Float_IO) for type Float, but NOT Long_Float and
+        NOT Long_Long_Float
+      section 14.3.9
+    
+=======================================================================
+Features not supported 
+----------------------
+
+Chapter 3
+    Derived types
+      from private types
+
+    private type extensions
+
+    Floating point declaration with constraint
+      many floating point attributes
+    Fixed point declaration
+    Fixed point attributes
+
+Chapter 4
+    Attributes other than First, Last, Pos, Val, Address
+    dynamic concatenation
+    aggregates for tagged types.
+ 
+Chapter 6
+    full conformance rules
+
+Chapter 9
+    Tasks and protected types (some semantic processing, no runtime)
+    package Calendar
+
+Chapter 11
+    No constraint checking on floating point types or modular types.
+    Range checks which are not listed in the supported features section above.
+
+Chapter 12
+    Instantiations of decimal types
+    Instantiations of modular types
+ 
+Chapter 14
+    Text_IO
+      section 14.3.7 (Integer_IO) for Long_Long_Integer
+      section 14.3.8. (Float_IO) for Long_Float and Long_Long_Float.
+         Also no bounds checking on result.
+      section 14.3.8 (Fixed_IO) not supported yet
+      Ada 9X Modular_IO and Decimal_IO

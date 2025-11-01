@@ -1,0 +1,242 @@
+
+			 GNAT Project
+		    GNU-NYU Ada Translator.
+
+		   GNAT Report 0001-921101
+
+		      November 1, 1992
+
+1. Introduction.
+----------------
+
+This is the first summary of activities of the project since its official
+start in July 1992. The goal of the project is the construction of a portable
+Ada9X compiler, based on the following three components: 
+
+a) The very successful GCC back-end. 
+
+b) The Ada/Ed front-end and tasking library.
+
+c) The Ada9X extensions developed by the Implementation Analysis Team
+(i.e. the NYUADA project) itself) as part of the Ada9X project.  
+
+We will demonstrate some of the running portions of the system at the 
+Triada92 conference this month in Orlando. To sum up: the parser is complete,
+the semantic analyzer handles basic declarations, subprograms and packages,
+the tree transformer can process basic declarations and statement forms, all
+of which makes it possible to execute very simple programs. We are on
+schedule to demonstrate most of the Ada9X functionality at the Ada/Europe
+conference in June 1993, and to demonstrate a fully bootstrapped system in
+December 1993, which is the end date of the project. 
+
+We have focused much of our work on the design and implementation of 
+convenient abstract interfaces between phases of the compiler. This is
+one of the obvious benefits of the use of Ada, but we were struck by the way
+in which the language forced us in this direction, and led us to complete
+and polished interfaces first. A small testimonial to the extent to which
+the language can influence good design.
+
+II. System overview.
+--------------------
+
+The GNAT system includes the following modules:
+
+a) A scanner and parser, written in Ada 83. The parser produces an abstract
+syntax tree with sufficient information to reproduce exactly the source
+program (including token placement).
+
+b) A semantic analyzer, which annotates the AST with type information,
+performs name and overload resolution, and a large number of legality
+checks. The output of the semantic analyzer is the annotated AST. This
+phase is written in Ada 83 as well.
+
+c) A tree transformer that traverses the AST and constructs a semantically
+equivalent tree, which is input to the GCC back end. This phase is written
+in C. Communication between semantics and transformation is by means of a
+file (at least conceptually).
+
+d) An enhanced GCC back end, which emits all required constraint checks
+and recognizes all instructions that may raise hardware exceptions. 
+
+e) A library manager. To maximize compatibility with the current library
+model of GCC, no separate library file is created, but all necessary library
+information is stored directly in .o files, and recreated when needed by
+the library manager. We retain the basic principle that the compilation of
+one source file produces one object file. This is not a conventional model
+for Ada systems, but it will simplify the construction of mixed-language
+systems, and will look very familiar to the Unix community.  The library
+manager is written in Ada.
+
+f) An Ada-specific binder that assembles subunits, performs late inlining
+and generic instantiations, and removes unnecessary access-before-elaboration
+checks. This is written in Ada.
+
+g) A run-time system, whose main components are: tasking, I/O, and exception
+handling. Most of this is written in Ada.
+
+The following sections detail the design and current status of each of these.
+
+III. The Scanner/Parser.
+------------------------
+
+The scanner/parser is complete. We have no performance figures yet, but
+it appears to be (when compiling itself) more than an order of magnitude
+faster than the previous Ada/Ed parser. The current parser derives from 
+an Ada 83 syntax checker written by R.B.K.D in assembly language, whose
+awesome performance was of the order of 1,000,000 lines/min on a 16 Mz 386.
+Even without any more precise figures, we are confident that this will not 
+be the bottleneck of the system!
+
+The parser uses recursive descent and has an elaborate error recovery
+mechanism, which includes heuristics to make use of program indentation
+(on the reasonable assumption that most programmers use indentation to
+reflect significant aspects of the nesting structure of their program). 
+The parser produces almost no cascaded errors on all the ACVC B-tests,
+and seems to recover as well as the previous LALR parser of Ada/Ed.
+The parser includes an Ada83 switch. Note however that we have no plans
+of producing a complete Ada 83 system: our goal is Ada 9X, and we are
+NOT starting with an Ada 83 subset.  
+
+IV. The Abstract Syntax Tree.
+-----------------------------
+
+The Scanner/Parser produces an AST and a names table. The low-level details
+of the data-structure are hidden by means of a procedural interface, which
+includes a retrieval procedure for each non-terminal in the language. All
+these retrieval procedures are intended to be inlined, but currently they
+include copious tracing and debugging information. In the interest of
+efficiency, we have chosen to use very simple data structures to describe the
+AST (for example, we make no use of discriminated records) and the code
+includes a significant amount of internal consistency checks (essentially,
+a small but strategically placed collection of discriminant checks). Some
+future version of GNAT, written in Ada 9X, might display an agressive
+use of tagged types and type extensions.
+
+There is no separate symbol table. Each defining identifier (i.e. the
+defining occurrence of a program entity) is annotated with semantic
+information, such as its type. Each use occurrence is made to point to the
+corresponding defining occurrence, after name resolution. The AST thus
+resembles a DIANA representation. Although we have not examined the question
+in full detail, it seems that our AST structure will support an ASIS package
+with very little effort.
+
+Two packages provide interfaces to the AST: Syntax_Info describes the
+tree as it is produced by the parser, and Entity_Info describes the
+semantic annotations. Both of these interfaces are completely procedural:
+no indication of the actual layout of AST nodes is visible to any client of 
+front-end. To support the code of the tree transformer, which is written in
+C, there are C translations of these packages. The header files for these
+are produced automatically (by means of a SPITBOL program) to insure that
+they remain consistent with the Ada versions.
+
+V. The Semantic Analyzer.
+-------------------------
+
+The semantic analyzer performs several traversals of the AST, to produce
+semantic annotations, apply legality checks, and expand constructs whose
+direct translation into the GCC tree form would be awkward (e.g. aggregates). 
+The first (and largest) pass of the analyzer performs name, type and
+overload resolution, and collects most semantic attributes. This phase is
+being written following the general organization of the Ada/Ed front-end
+(the SETL version, which includes already such Ada9X features as tagged
+types and extensions, and generic formal packages).  We have chosen the
+following package structure for this phase: there is one package for each
+chapter of the Ada Reference manual, and one driver package. All chapter
+packages are subunits of the driver. 
+
+package Sem1 is 				-- Driver 
+    procedure Analyze (T: Node_ID);		-- top-level procedure.
+    package Sem2 is ...				-- pragma handling.
+    package Sem3 is ...				-- declarations and types.
+    ...
+end Sem1;
+package body Sem1 is
+    ...
+    package body Sem2 is separate.
+    package body Sem4 is separate.
+    ...
+end Sem1 ;
+    
+Use clauses in each proper body simplify the invocation of procedures
+that are used everywhere (for example, all packages use Sem4 and Sem8, but
+no one needs easy access to the contents of Sem11). 
+
+As of 11/1, enough of Sem1, Sem3, Sem5, Sem6, Sem7, and Sem8 is written
+to handle scalar declarations and types, control structures, subprograms
+and calls, packages, and simple name resolution. The design of overload
+resolution data structures and algorithms is complete but not implemented
+yet. 
+
+VI. The Tree transformer.
+-------------------------
+
+The tree transformer performs the critical task of mapping the semantics
+the AST into the corresponding GCC tree, mimicking the actions of other
+GCC front-ends. This is done by traversing the AST and invoking tree
+constructors provided in GCC to  build tree fragments that are eventually
+assembled into the tree of one complete compilation unit. The traversal of
+the AST uses the procedural interfaces described above. The description of
+the GCC tree constructors can be found in the GCC documentation, and we will
+not say anything about it here, except to indicate that Ada-specific nodes
+have been added, to describe constraint checks on expressions and values.
+We expect to make a few additional extensions to the GCC tree, but we intend
+to keep them to a minimum. For example, the handling of in-out parameters
+is done currently by special casing single parameters and by constructing
+a record that is passed by reference in the case of multiple in-out parameters.
+This can be done without any modifications to the GCC tree structure.
+
+On the other hand, semantic details that may be of use to other GCC
+languages will be implemented directly in the code generator. This is the
+case of exceptions for example, given that they will be used by C++ as well
+as Ada.
+
+We explored (for the space of a week) the option of writing the transformer
+in Ada, with extensive use of the pragma INTERFACE to invoke the GCC
+tree constructors. In spite of the appeal of writing more of the system in
+Ada, we decided that this would lead to a system that would be exceedingly
+difficult to design cleanly, that would be hard to debug, and that would
+lead to messy heterogeneous structures.
+As of 11/1, the tree transformer can generate the GCC trees corresponding 
+to subprograms, simple control structures, and arithmetic expressions. 
+
+VIII. The code generator.
+-------------------------
+
+The GCC back end is of course the largest portion of the system. It includes
+a multi-pass retargetable code generator, and has been ported to more than
+25 machines so far. It generates excellent code, comparable (and at times
+superior) to that of the best commercial compilers. The architectural
+details of each target are encapsulated in a machine description file that
+specifies precisely the semantics of all machine operations, in terms of a
+common register transfer language. In order to support Ada, the machine
+description formalism must be extended to specify more precisely the 
+relationship between instructions and exceptions. The code generator must
+respect Ada semantics and inhibit code motion where prohibited. Richard Kenner,
+the author of several GCC ports, and Richard Stallman, the creator of GCC,
+are designing these extensions. 
+
+IX. The library manager.
+------------------------
+
+Design of the library manager is in its very early stages. We have decided
+that the information to be stored in object files is only that found in the
+AST, i.e. no GCC-generated information is ever preserved. This means that
+the GCC trees that correspond to package specifications appearing in a context
+clause are reconstructed rather than just retrieved. This corresponds to
+the standard handling of header files in C, and does not seem to be onerous
+(but once we have measurements we may change our minds!). Similarly, stack
+layout is recomputed as needed. This adds to the cost of compiling proper
+bodies of subunits, but given that the compilation of proper bodies requires
+reconstructing the visibility environment of the stub, all the declarations
+that are visible at the location of the stub must be reprocessed anyway. The
+advantage is that the library manager has deal only with one data structure,
+namely the AST.
+
+VII.  The rest.
+---------------
+
+The design of the  binder and run-time system will be described in future
+reports. As portions of the system become more stable we will make public
+those interfaces that seem mature enough for external consumption.
+
+

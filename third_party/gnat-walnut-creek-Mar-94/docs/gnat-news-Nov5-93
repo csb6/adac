@@ -1,0 +1,81 @@
+             GNAT (GNU NYU Ada Translator) News Briefs Nov 5, 1993
+
+  Index 
+  
+  1. New distribution available (GNAT 1.59)
+  2. GNAT Run-Time Library (RTL)
+  3. GNU Gas problem
+  4. GNAT 1.53 link problem
+  5. Non-FTP access to GNAT.
+  ---------------
+
+  1. New Distribution Available (GNAT 1.59)
+  
+    We have changed the format of our distribution. We now have a 
+    binary distribution for Sun Sparc in gzip format containing all the
+    binaries necessary to compile C and Ada programs as well as the source
+    of the gcc driver program which needs to be tailored to the specific
+    directory in which the binaries will reside. No real knowledge of
+    GNU GCC needs to be necessary to run GNAT on the Sun Sparc with this
+    distribution. In addition there is a separate tar file containing
+    the sources for GNAT and the necessary diffs from the official
+    GNU GCC 2.5.2 distribution (GNAT 1.59 is built on top of GCC 2.5.2).
+    These sources can be used for building GNAT on the Sun Sparc as well
+    as cross-compilers for other machines. The sources are also available
+    for general perusal.
+  
+    The IBM OS/2 distribution of GNAT is in a standard OS/2 distribution
+    format (zip). It contains the sources and binaries of GNAT for OS/2.
+    In addition the sources of GCC 2.5.2 and GAS 1.3.8 are available in an
+    OS/2 standard format. This last zip file is not necessary for running
+    GNAT on IBM OS/2.
+  
+    See README in the pub/gnat directory of cs.nyu.edu (128.122.140.24)
+    for more details on the new distribution.
+  
+    New features for this release include:
+  
+    o  support for Ada 9X class-wide objects
+    o  support for Ada 9X image attribute applies to float
+    o  support for Ada 9X library package renaming
+    o  type "Tag" moved from package System to new Ada 9X package Ada.Tags.
+  
+    o  image attributes for Integer
+    o  exception renaming
+    o  generic formal subprograms
+  
+  2. GNAT Run-Time Library (RTL) files
+  
+    You need to have some standard run-time files around in your working
+    directory, such as the source of the spec of package System, and the
+    object file for System. The distribution contains a directory called
+    "rtl" containing the specs and bodies of necessary files. See the
+    gnat-intro document for information on compiling and moving these
+    files to your current working directory.
+
+    It might be necessary to link with these files for certain programs
+    like those that use for example 'Address, 'Tag, the image attribute,
+    dynamic exponentiation, etc.  This will be more automated in the
+    future when there will be a real Run-Time Library.
+   
+  3. GNU Gas problem
+
+    The current version of gas for the SPARC has a bug.  If building GNAT
+    fails with messages such as "/usr/tmp/xxx.s Error: Illegal operands",
+    your gcc is using gas (versus as) and you need to not use it or fix it
+    with the diff supplied gnat-1.59 source distribution.
+
+  4. GNAT 1.53 link problem
+
+    Several (but not all) people had trouble linking GNAT 1.53 with the
+    linker complaining about an undefined symbol "_Get_Name_Table_Info".
+    It is a bit mysterious why this caused problems only to some people
+    and not others. In any case this should go away in GNAT 1.59. If not
+    a more thorough investigation by us will be undertaken.
+
+  5. Non-FTP access to GNAT.
+
+    For those that do not have FTP access (only email) we are arranging for
+    the GNAT distribution to be available on the AdaIC BBS. Further
+    information will be posted in the next "GNAT New Briefs" as soon as
+    I find out the exact details.

@@ -1,0 +1,60 @@
+
+The GNAT project is delighted to report that the GNAT compiler was 
+successfully boostrapped today, June 9,at 12:23 pm. The standard 
+verification procedure was used:
+
+a) The GNAT sources were compiled with the Alsys compiler, to produce 
+   executable G1. 
+
+b) G1, the interface program Gigi, and Gcc, were used to compile the 
+   GNAT sources and produce executable G2.
+
+c) When applied to the GNAT sources, G2 reproduced itself byte for byte.
+
+Thanks to the portability of Gcc, within minutes of the replication on the 
+SUN/SPARC the same replication was achieved on the DEC/Alpha.
+
+Although this is an important milestone for the project, we should 
+emphasize that GNAT is written in a subset of Ada83, and for now only 
+compiles a (sizeable) subset of Ada9X.  We are fully aware of what remains
+to be done.
+
+The performance of the bootstrapped GNAT is gratifying. Timing figures are 
+very preliminary: currently inlining is not performed. We expect the final 
+version to gain an additional factor of 2 in speed over the current one.
+Given these caveats, the following figures should be of interest:
+
+a) The GNAT sources (82,000 lines of text, 26000 semicolons) are fully 
+   parsed in 35 seconds on a SPARC/IPX, and in 6.8 seconds on the Alpha.
+
+b) Full semantic analysis of all sources takes 112 seconds on the SPARC. 
+   (including generation of intermediate file).
+
+c) Semantics, code generation, assembly and linking takes 389 seconds on
+   the SPARC.
+
+The above figures were obtained running GNAT with no debuuging checks and
+no constraint checks.
+
+The sources and binaries for the GNAT system will be available by anonymous
+ftp on July 4th. We choose that date to mark the fact we have become 
+self-sufficient, and independent of other compiler technology! We will 
+make available sources and Makefiles for all components of the system, 
+as well as binaries for a few machines. 
+
+The bootstrapped system will be demonstrated next week at the Ada-Europe
+conference, and in three weeks at the Washington Ada Symposium. 
+
+The GNAT project:
+-----------------
+Bernard Banner
+Cyrille Comar
+Robert Dewar
+Sam Figueroa
+Franco Gasperoni
+Richard Kenner
+Bruno Leclerc
+Brett Porter
+Ed Schonberg
+Gail Schenker
+

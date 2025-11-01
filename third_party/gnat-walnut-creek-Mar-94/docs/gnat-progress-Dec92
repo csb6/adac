@@ -1,0 +1,720 @@
+
+                         GNAT Project
+                    GNU-NYU Ada Translator.
+ 
+                    GNAT Report 0002-921221
+
+                      December 21, 1992
+
+The short and the long of it.
+=============================
+
+The GNAT system can now run programs through the front-end,
+semantic analyzer, tree transformer, GCC, and onto execution, An
+example follows, showing that basic control structures, arithmetic
+expressions, subprograms and the pragma interface all work. However
+gratifying this may be, we have no illusions about what a minuscule
+part of the work ahead this is! 
+
+I. Briefly...
+=============
+
+procedure PI (PRECISION: FLOAT) is
+  -- the simplest and worst algorithm for computing pi:
+  -- pi = 4(1 - 1/3 + 1/5 ...)
+
+  procedure PRINT (J:FLOAT);
+  pragma INTERFACE (C, PRINT);
+
+  ONE  : constant FLOAT := 0.1e1;
+  TWO  : constant FLOAT := ONE + ONE;
+  THREE: constant FLOAT := TWO + ONE;
+  FOUR : constant FLOAT := TWO + TWO;
+
+  VALUE: FLOAT := TWO/THREE;
+  DENOM: FLOAT := FOUR + ONE;
+  SIGN : FLOAT := ONE;
+  TERM : FLOAT;
+
+begin
+  while (ONE/DENOM >= PRECISION) loop
+    TERM  := ONE/DENOM;
+    VALUE := VALUE + SIGN * TERM;
+    SIGN  := - SIGN;
+    DENOM := DENOM + TWO;
+  end loop;
+
+  PRINT (FOUR * VALUE);
+end PI;
+
+----------------------------------
+The output (it IS a lousy algorithm, and the I/O is from C):
+
+pi = 3.141392653591791
+----------------------------------
+
+
+II. In detail...
+================
+
+The syntax tree produced by the front-end is conventional, and it includes
+a few encodings to economize on storage. For example, parameter modes are
+represented as flags attached to the name of the formal, parenthesized
+expressions are also indicated by a flag in the expression rather than by
+a separate node, etc. Nodes carry their source location (as a byte offset
+from the beginning of the file) which is sufficient to reconstruct the
+source, except for comments. The subsequent semantic pass does not modify
+the tree, except for the addition of nodes for implicit entities. We are
+confident that all the information needed to implement an ASIS interface
+is present. The AST for the program PI follows.  
+
+ 
+
+NYU GNAT Compiler Version 1.13
+(C)NYU, 1992, All Rights Reserved
+
+Compiling: pi.ada
+
+Tree created for compiled program
+---------------------------------
+
+Node list #1 Id = -616 (Parent = Empty)
+|
+Node #2 Id = 618 Compilation_Unit
+ Context_Items = Node list #3
+ Private_Present = False
+ Unit = Node #4
+ 
+   Node list #3 Id = -617 (Parent = Node #2)
+   (Empty list)
+
+   Node #4 Id = 629 Subprogram_Body (Parent = Node #2)
+    Sloc = 0 (Line number 1)
+    Subprogram_Specification = Node #5
+    Declarations = Node list #12
+    Handled_Statement_Sequence = Node #76
+    Bad_Is_Detected = False
+    
+      Node #5 Id = 628 Procedure_Specification (Parent = Node #4)
+       Sloc = 0 (Line number 1)
+       Defining_Unit_Name = Node #6
+       Parameter_Specifications = Node list #7
+       
+         Node #6 Id = 620/621 Defining_Identifier (Parent = Node #5)
+          Sloc = 10 (Line number 1)
+          Chars = PI
+          
+         Node list #7 Id = -623 (Parent = Node #5)
+         |
+         Node #8 Id = 624 Parameter_Specification
+          Defining_Identifiers = Node list #9
+          Parameter_Type = Node #11
+          Expression = Empty
+          In_Present = False
+          Out_Present = False
+          
+            Node list #9 Id = -625 (Parent = Node #8)
+            |
+            Node #10 Id = 622/626 Defining_Identifier
+             Sloc = 14 (Line number 1)
+             Chars = PRECISION
+             
+            Node #11 Id = 627 Identifier (Parent = Node #8)
+             Sloc = 25 (Line number 1)
+             Chars = FLOAT
+             Parens = False
+             
+      Node list #12 Id = -630 (Parent = Node #4)
+      |
+      Node #13 Id = 639 Procedure_Specification
+      |Sloc = 125 (Line number 5)
+      |Defining_Unit_Name = Node #14
+      |Parameter_Specifications = Node list #15
+      |
+      |  Node #14 Id = 631/632 Defining_Identifier (Parent = Node #13)
+      |   Sloc = 135 (Line number 5)
+      |   Chars = PRINT
+      |   
+      |  Node list #15 Id = -634 (Parent = Node #13)
+      |  |
+      |  Node #16 Id = 635 Parameter_Specification
+      |   Defining_Identifiers = Node list #17
+      |   Parameter_Type = Node #19
+      |   Expression = Empty
+      |   In_Present = False
+      |   Out_Present = False
+      |   
+      |     Node list #17 Id = -636 (Parent = Node #16)
+      |     |
+      |     Node #18 Id = 633/637 Defining_Identifier
+      |      Sloc = 142 (Line number 5)
+      |      Chars = J
+      |      
+      |     Node #19 Id = 638 Identifier (Parent = Node #16)
+      |      Sloc = 144 (Line number 5)
+      |      Chars = FLOAT
+      |      Parens = False
+      |      
+      Node #20 Id = 640 Pragma
+      |Sloc = 154 (Line number 6)
+      |Identifier = Node #21
+      |Pragma_Argument_Associations = Node list #22
+      |
+      |  Node #21 Id = 641 Identifier (Parent = Node #20)
+      |   Sloc = 161 (Line number 6)
+      |   Chars = INTERFACE
+      |   Parens = False
+      |   
+      |  Node list #22 Id = -642 (Parent = Node #20)
+      |  |
+      |  Node #23 Id = 644 Pragma_Argument_Association
+      |  |Identifier = Empty
+      |  |Expression = Node #24
+      |  |
+      |  |  Node #24 Id = 643 Identifier (Parent = Node #23)
+      |  |   Sloc = 172 (Line number 6)
+      |  |   Chars = C
+      |  |   Parens = False
+      |  |   
+      |  Node #25 Id = 646 Pragma_Argument_Association
+      |   Identifier = Empty
+      |   Expression = Node #26
+      |   
+      |     Node #26 Id = 645 Identifier (Parent = Node #25)
+      |      Sloc = 175 (Line number 6)
+      |      Chars = PRINT
+      |      Parens = False
+      |      
+      Node #27 Id = 651 Full_Constant_Declaration
+      |Sloc = 193 (Line number 8)
+      |Defining_Identifiers = Node list #28
+      |Object_Definition = Node #30
+      |Expression = Node #31
+      |Aliased_Present = False
+      |
+      |  Node list #28 Id = -648 (Parent = Node #27)
+      |  |
+      |  Node #29 Id = 647/649 Defining_Identifier
+      |   Sloc = 186 (Line number 8)
+      |   Chars = ONE
+      |   
+      |  Node #30 Id = 650 Identifier (Parent = Node #27)
+      |   Sloc = 202 (Line number 8)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #31 Id = 652 Real_Literal (Parent = Node #27)
+      |   Sloc = 211 (Line number 8)
+      |   Numerator = 1
+      |   Denominator = 1
+      |   Parens = False
+      |   Decimal = True
+      |   
+      Node #32 Id = 657 Full_Constant_Declaration
+      |Sloc = 227 (Line number 9)
+      |Defining_Identifiers = Node list #33
+      |Object_Definition = Node #35
+      |Expression = Node #36
+      |Aliased_Present = False
+      |
+      |  Node list #33 Id = -654 (Parent = Node #32)
+      |  |
+      |  Node #34 Id = 653/655 Defining_Identifier
+      |   Sloc = 220 (Line number 9)
+      |   Chars = TWO
+      |   
+      |  Node #35 Id = 656 Identifier (Parent = Node #32)
+      |   Sloc = 236 (Line number 9)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #36 Id = 659 Op_Add (Parent = Node #32)
+      |   Sloc = 249 (Line number 9)
+      |   Left_Opnd = Node #37
+      |   Right_Opnd = Node #38
+      |   Parens = False
+      |   
+      |     Node #37 Id = 658 Identifier (Parent = Node #36)
+      |      Sloc = 245 (Line number 9)
+      |      Chars = ONE
+      |      Parens = False
+      |      
+      |     Node #38 Id = 660 Identifier (Parent = Node #36)
+      |      Sloc = 251 (Line number 9)
+      |      Chars = ONE
+      |      Parens = False
+      |      
+      Node #39 Id = 665 Full_Constant_Declaration
+      |Sloc = 265 (Line number 10)
+      |Defining_Identifiers = Node list #40
+      |Object_Definition = Node #42
+      |Expression = Node #43
+      |Aliased_Present = False
+      |
+      |  Node list #40 Id = -662 (Parent = Node #39)
+      |  |
+      |  Node #41 Id = 661/663 Defining_Identifier
+      |   Sloc = 258 (Line number 10)
+      |   Chars = THREE
+      |   
+      |  Node #42 Id = 664 Identifier (Parent = Node #39)
+      |   Sloc = 274 (Line number 10)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #43 Id = 667 Op_Add (Parent = Node #39)
+      |   Sloc = 287 (Line number 10)
+      |   Left_Opnd = Node #44
+      |   Right_Opnd = Node #45
+      |   Parens = False
+      |   
+      |     Node #44 Id = 666 Identifier (Parent = Node #43)
+      |      Sloc = 283 (Line number 10)
+      |      Chars = TWO
+      |      Parens = False
+      |      
+      |     Node #45 Id = 668 Identifier (Parent = Node #43)
+      |      Sloc = 289 (Line number 10)
+      |      Chars = ONE
+      |      Parens = False
+      |      
+      Node #46 Id = 673 Full_Constant_Declaration
+      |Sloc = 303 (Line number 11)
+      |Defining_Identifiers = Node list #47
+      |Object_Definition = Node #49
+      |Expression = Node #50
+      |Aliased_Present = False
+      |
+      |  Node list #47 Id = -670 (Parent = Node #46)
+      |  |
+      |  Node #48 Id = 669/671 Defining_Identifier
+      |   Sloc = 296 (Line number 11)
+      |   Chars = FOUR
+      |   
+      |  Node #49 Id = 672 Identifier (Parent = Node #46)
+      |   Sloc = 312 (Line number 11)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #50 Id = 675 Op_Add (Parent = Node #46)
+      |   Sloc = 325 (Line number 11)
+      |   Left_Opnd = Node #51
+      |   Right_Opnd = Node #52
+      |   Parens = False
+      |   
+      |     Node #51 Id = 674 Identifier (Parent = Node #50)
+      |      Sloc = 321 (Line number 11)
+      |      Chars = TWO
+      |      Parens = False
+      |      
+      |     Node #52 Id = 676 Identifier (Parent = Node #50)
+      |      Sloc = 327 (Line number 11)
+      |      Chars = TWO
+      |      Parens = False
+      |      
+      Node #53 Id = 681 Variable_Declaration
+      |Defining_Identifiers = Node list #54
+      |Object_Definition = Node #56
+      |Expression = Node #57
+      |Aliased_Present = False
+      |
+      |  Node list #54 Id = -678 (Parent = Node #53)
+      |  |
+      |  Node #55 Id = 677/679 Defining_Identifier
+      |   Sloc = 335 (Line number 13)
+      |   Chars = VALUE
+      |   
+      |  Node #56 Id = 680 Identifier (Parent = Node #53)
+      |   Sloc = 342 (Line number 13)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #57 Id = 683 Op_Divide (Parent = Node #53)
+      |   Sloc = 354 (Line number 13)
+      |   Left_Opnd = Node #58
+      |   Right_Opnd = Node #59
+      |   Parens = False
+      |   
+      |     Node #58 Id = 682 Identifier (Parent = Node #57)
+      |      Sloc = 351 (Line number 13)
+      |      Chars = TWO
+      |      Parens = False
+      |      
+      |     Node #59 Id = 684 Identifier (Parent = Node #57)
+      |      Sloc = 355 (Line number 13)
+      |      Chars = THREE
+      |      Parens = False
+      |      
+      Node #60 Id = 689 Variable_Declaration
+      |Defining_Identifiers = Node list #61
+      |Object_Definition = Node #63
+      |Expression = Node #64
+      |Aliased_Present = False
+      |
+      |  Node list #61 Id = -686 (Parent = Node #60)
+      |  |
+      |  Node #62 Id = 685/687 Defining_Identifier
+      |   Sloc = 364 (Line number 14)
+      |   Chars = DENOM
+      |   
+      |  Node #63 Id = 688 Identifier (Parent = Node #60)
+      |   Sloc = 371 (Line number 14)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #64 Id = 691 Op_Add (Parent = Node #60)
+      |   Sloc = 385 (Line number 14)
+      |   Left_Opnd = Node #65
+      |   Right_Opnd = Node #66
+      |   Parens = False
+      |   
+      |     Node #65 Id = 690 Identifier (Parent = Node #64)
+      |      Sloc = 380 (Line number 14)
+      |      Chars = FOUR
+      |      Parens = False
+      |      
+      |     Node #66 Id = 692 Identifier (Parent = Node #64)
+      |      Sloc = 387 (Line number 14)
+      |      Chars = ONE
+      |      Parens = False
+      |      
+      Node #67 Id = 697 Variable_Declaration
+      |Defining_Identifiers = Node list #68
+      |Object_Definition = Node #70
+      |Expression = Node #71
+      |Aliased_Present = False
+      |
+      |  Node list #68 Id = -694 (Parent = Node #67)
+      |  |
+      |  Node #69 Id = 693/695 Defining_Identifier
+      |   Sloc = 394 (Line number 15)
+      |   Chars = SIGN
+      |   
+      |  Node #70 Id = 696 Identifier (Parent = Node #67)
+      |   Sloc = 401 (Line number 15)
+      |   Chars = FLOAT
+      |   Parens = False
+      |   
+      |  Node #71 Id = 698 Identifier (Parent = Node #67)
+      |   Sloc = 410 (Line number 15)
+      |   Chars = ONE
+      |   Parens = False
+      |   
+      Node #72 Id = 703 Variable_Declaration
+       Defining_Identifiers = Node list #73
+       Object_Definition = Node #75
+       Expression = Empty
+       Aliased_Present = False
+       
+         Node list #73 Id = -700 (Parent = Node #72)
+         |
+         Node #74 Id = 699/701 Defining_Identifier
+          Sloc = 417 (Line number 16)
+          Chars = TERM
+          
+         Node #75 Id = 702 Identifier (Parent = Node #72)
+          Sloc = 424 (Line number 16)
+          Chars = FLOAT
+          Parens = False
+          
+      Node #76 Id = 704 Handled_Sequence_Of_Statements (Parent = Node #4)
+       Statements = Node list #77
+       Exception_Handlers = Empty
+       
+         Node list #77 Id = -705 (Parent = Node #76)
+         |
+         Node #78 Id = 712 Loop_Statement
+         |Sloc = 471 (Line number 19)
+         |Identifier = Empty
+         |Iteration_Scheme = Node #79
+         |Statements = Node list #85
+         |
+         |  Node #79 Id = 706 Iteration_Scheme (Parent = Node #78)
+         |   Sloc = 440 (Line number 19)
+         |   Condition = Node #80
+         |   Loop_Parameter_Specification = Empty
+         |   
+         |     Node #80 Id = 711 Op_Ge (Parent = Node #79)
+         |      Sloc = 457 (Line number 19)
+         |      Left_Opnd = Node #81
+         |      Right_Opnd = Node #84
+         |      Parens = True
+         |      
+         |        Node #81 Id = 708 Op_Divide (Parent = Node #80)
+         |         Sloc = 450 (Line number 19)
+         |         Left_Opnd = Node #82
+         |         Right_Opnd = Node #83
+         |         Parens = False
+         |         
+         |           Node #82 Id = 707 Identifier (Parent = Node #81)
+         |            Sloc = 447 (Line number 19)
+         |            Chars = ONE
+         |            Parens = False
+         |            
+         |           Node #83 Id = 709 Identifier (Parent = Node #81)
+         |            Sloc = 451 (Line number 19)
+         |            Chars = DENOM
+         |            Parens = False
+         |            
+         |        Node #84 Id = 710 Identifier (Parent = Node #80)
+         |         Sloc = 460 (Line number 19)
+         |         Chars = PRECISION
+         |         Parens = False
+         |         
+         |  Node list #85 Id = -714 (Parent = Node #78)
+         |  |
+         |  Node #86 Id = 715 Assignment_Statement
+         |  |Sloc = 486 (Line number 20)
+         |  |Name = Node #87
+         |  |Expression = Node #88
+         |  |
+         |  |  Node #87 Id = 713 Identifier (Parent = Node #86)
+         |  |   Sloc = 480 (Line number 20)
+         |  |   Chars = TERM
+         |  |   Parens = False
+         |  |   
+         |  |  Node #88 Id = 717 Op_Divide (Parent = Node #86)
+         |  |   Sloc = 492 (Line number 20)
+         |  |   Left_Opnd = Node #89
+         |  |   Right_Opnd = Node #90
+         |  |   Parens = False
+         |  |   
+         |  |     Node #89 Id = 716 Identifier (Parent = Node #88)
+         |  |      Sloc = 489 (Line number 20)
+         |  |      Chars = ONE
+         |  |      Parens = False
+         |  |      
+         |  |     Node #90 Id = 718 Identifier (Parent = Node #88)
+         |  |      Sloc = 493 (Line number 20)
+         |  |      Chars = DENOM
+         |  |      Parens = False
+         |  |      
+         |  Node #91 Id = 720 Assignment_Statement
+         |  |Sloc = 510 (Line number 21)
+         |  |Name = Node #92
+         |  |Expression = Node #93
+         |  |
+         |  |  Node #92 Id = 719 Identifier (Parent = Node #91)
+         |  |   Sloc = 504 (Line number 21)
+         |  |   Chars = VALUE
+         |  |   Parens = False
+         |  |   
+         |  |  Node #93 Id = 722 Op_Add (Parent = Node #91)
+         |  |   Sloc = 519 (Line number 21)
+         |  |   Left_Opnd = Node #94
+         |  |   Right_Opnd = Node #95
+         |  |   Parens = False
+         |  |   
+         |  |     Node #94 Id = 721 Identifier (Parent = Node #93)
+         |  |      Sloc = 513 (Line number 21)
+         |  |      Chars = VALUE
+         |  |      Parens = False
+         |  |      
+         |  |     Node #95 Id = 724 Op_Multiply (Parent = Node #93)
+         |  |      Sloc = 526 (Line number 21)
+         |  |      Left_Opnd = Node #96
+         |  |      Right_Opnd = Node #97
+         |  |      Parens = False
+         |  |      
+         |  |        Node #96 Id = 723 Identifier (Parent = Node #95)
+         |  |         Sloc = 521 (Line number 21)
+         |  |         Chars = SIGN
+         |  |         Parens = False
+         |  |         
+         |  |        Node #97 Id = 725 Identifier (Parent = Node #95)
+         |  |         Sloc = 528 (Line number 21)
+         |  |         Chars = TERM
+         |  |         Parens = False
+         |  |         
+         |  Node #98 Id = 727 Assignment_Statement
+         |  |Sloc = 544 (Line number 22)
+         |  |Name = Node #99
+         |  |Expression = Node #100
+         |  |
+         |  |  Node #99 Id = 726 Identifier (Parent = Node #98)
+         |  |   Sloc = 538 (Line number 22)
+         |  |   Chars = SIGN
+         |  |   Parens = False
+         |  |   
+         |  |  Node #100 Id = 728 Op_Minus (Parent = Node #98)
+         |  |   Sloc = 547 (Line number 22)
+         |  |   Right_Opnd = Node #101
+         |  |   Parens = False
+         |  |   
+         |  |     Node #101 Id = 729 Identifier (Parent = Node #100)
+         |  |      Sloc = 549 (Line number 22)
+         |  |      Chars = SIGN
+         |  |      Parens = False
+         |  |      
+         |  Node #102 Id = 731 Assignment_Statement
+         |   Sloc = 565 (Line number 23)
+         |   Name = Node #103
+         |   Expression = Node #104
+         |   
+         |     Node #103 Id = 730 Identifier (Parent = Node #102)
+         |      Sloc = 559 (Line number 23)
+         |      Chars = DENOM
+         |      Parens = False
+         |      
+         |     Node #104 Id = 733 Op_Add (Parent = Node #102)
+         |      Sloc = 574 (Line number 23)
+         |      Left_Opnd = Node #105
+         |      Right_Opnd = Node #106
+         |      Parens = False
+         |      
+         |        Node #105 Id = 732 Identifier (Parent = Node #104)
+         |         Sloc = 568 (Line number 23)
+         |         Chars = DENOM
+         |         Parens = False
+         |         
+         |        Node #106 Id = 734 Identifier (Parent = Node #104)
+         |         Sloc = 576 (Line number 23)
+         |         Chars = TWO
+         |         Parens = False
+         |         
+         Node #107 Id = 740 Procedure_Call_Statement
+          Name = Node #108
+          Parameter_Associations = Node list #109
+          
+            Node #108 Id = 735 Identifier (Parent = Node #107)
+             Sloc = 596 (Line number 26)
+             Chars = PRINT
+             Parens = False
+             
+            Node list #109 Id = -739 (Parent = Node #107)
+            |
+            Node #110 Id = 737 Op_Multiply
+             Sloc = 608 (Line number 26)
+             Left_Opnd = Node #111
+             Right_Opnd = Node #112
+             Parens = False
+             
+               Node #111 Id = 736 Identifier (Parent = Node #110)
+                Sloc = 603 (Line number 26)
+                Chars = FOUR
+                Parens = False
+                
+               Node #112 Id = 738 Identifier (Parent = Node #110)
+                Sloc = 610 (Line number 26)
+                Chars = VALUE
+                Parens = False
+                
+
+ 27 lines: No errors detected
+
+
+Semantics and Translation.
+==========================
+
+The semantic analysis phase performs name resolution, type checking and
+overload resolution, and annotates the tree with type information and
+links between derived and defining occurrences of identifiers. The decorated
+tree is then processed by the GNAT-to-GNU converter. This processing traverses
+the AST and invokes tree-building routines to construct tree fragments that
+are immediately compiled by GCC. The result of the compilation (optimization
+enabled) follows. We do not yet generate constraint checks.
+
+
+The generated assembler for the SPARC.
+======================================
+gcc2_compiled.:
+.data
+        .align 8
+LC0:
+        .double 0r1
+.text
+        .align 4
+        .global _PI
+        .proc 1
+_PI:
+        !#PROLOGUE# 0
+        save %sp,-176,%sp
+        !#PROLOGUE# 1
+        st %i0,[%fp+68]
+        st %i1,[%fp+72]
+        sethi %hi(LC0),%o0
+        ld [%o0+%lo(LC0)],%o2
+        ld [%o0+%lo(LC0+4)],%o3
+        std %o2,[%fp-24]
+        ldd [%fp-24],%f0
+        ldd [%fp-24],%f2
+        faddd %f0,%f2,%f0
+        std %f0,[%fp-32]
+        ldd [%fp-32],%f0
+        ldd [%fp-24],%f2
+        faddd %f0,%f2,%f0
+        std %f0,[%fp-40]
+        ldd [%fp-32],%f0
+        ldd [%fp-32],%f2
+        faddd %f0,%f2,%f0
+        std %f0,[%fp-48]
+        ldd [%fp-32],%f0
+        ldd [%fp-40],%f2
+        fdivd %f0,%f2,%f0
+        std %f0,[%fp-56]
+        ldd [%fp-48],%f0
+        ldd [%fp-24],%f2
+        faddd %f0,%f2,%f0
+        std %f0,[%fp-64]
+        ldd [%fp-24],%o0
+        std %o0,[%fp-72]
+L2:
+        ldd [%fp-24],%f0
+        ldd [%fp-64],%f2
+        fdivd %f0,%f2,%f0
+        ld [%fp+68],%f2
+        ld [%fp+72],%f3
+        fcmped %f0,%f2
+        nop
+        fbul L3
+        nop
+        ldd [%fp-24],%f0
+        ldd [%fp-64],%f2
+        fdivd %f0,%f2,%f0
+        std %f0,[%fp-80]
+        ldd [%fp-72],%f0
+        ldd [%fp-80],%f2
+        fmuld %f0,%f2,%f0
+        ldd [%fp-56],%f2
+        faddd %f2,%f0,%f0
+        std %f0,[%fp-56]
+        ldd [%fp-72],%f0
+        fnegs %f0,%f2
+        fmovs %f1,%f3
+        std %f2,[%fp-72]
+        ldd [%fp-64],%f0
+        ldd [%fp-32],%f2
+        faddd %f0,%f2,%f0
+        std %f0,[%fp-64]
+        b,a L2
+L3:
+        ldd [%fp-48],%f0
+        ldd [%fp-56],%f2
+        fmuld %f0,%f2,%f0
+        std %f0,[%fp-8]
+        ldd [%fp-8],%o0
+        call _PRINT,0
+        nop
+L1:
+        ret
+        restore
+
+The C driver program.
+=====================
+
+For now, the compiled Ada program is invoked from a C routine, which is
+also used to transmit scalar parameters to the program.
+
+#include <stdio.h>
+main ()
+{
+  PI(0.0001);
+}
+
+PRINT (double x)
+{
+  printf ("pi = %.15f \n", x);
+}
+
+
+

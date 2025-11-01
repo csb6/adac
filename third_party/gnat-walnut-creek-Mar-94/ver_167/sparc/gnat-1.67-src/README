@@ -1,0 +1,11 @@
+This distribution contains the sources for gnat in the subdirectory src.
+In src, the directions for building gnat are contained in the files
+README.SPARC and README.OS2
+
+Running gnat is documented in the file gnat-info.  Debugging options are
+described in debug.doc.
+
+The examples directory contains simple examples.
+
+The files in the rtl directory are needed to link applications.  Information
+about this is in gnat-intro.

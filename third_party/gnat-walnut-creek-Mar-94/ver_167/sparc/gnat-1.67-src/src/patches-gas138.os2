@@ -1,0 +1,547 @@
+*** Makefile.old	Thu Oct 18 16:26:42 1990
+--- Makefile	Tue Sep 28 01:47:36 1993
+***************
+*** 20,32 ****
+  # This makefile may be used to make the VAX, 68020, 80386, 
+  # SPARC, ns32k, or i860 assembler(s).
+  
+! BINDIR = /usr/local/bin
+! #CC=gcc
+  
+  # If you are on a BSD system, un-comment the next two lines, and comment out
+  # the lines for SystemV and HPUX below
+! G0 = -g  -I. #-O -Wall
+! LDFLAGS = $(CFLAGS)
+  #
+  # To compile gas on a System Five machine, comment out the two lines above
+  # and un-comment out the next three lines
+--- 20,40 ----
+  # This makefile may be used to make the VAX, 68020, 80386, 
+  # SPARC, ns32k, or i860 assembler(s).
+  
+! .c.obj:
+! 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $<
+  
++ BINDIR = /gcc/bin
++ CC=gcc
++ # CC=icc
++ O_SWITCH=-o 
++ # O_SWITCH=-Fe
++ 
+  # If you are on a BSD system, un-comment the next two lines, and comment out
+  # the lines for SystemV and HPUX below
+! G0 = -g -I. #-O -Wall
+! # G0 = -DUSG -Ti -I.
+! LDFLAGS = -static #$(CFLAGS)
+! # LDFLAGS = -Ti
+  #
+  # To compile gas on a System Five machine, comment out the two lines above
+  # and un-comment out the next three lines
+***************
+*** 108,124 ****
+  # (This option is automatically enabled when building the sparc assembler.
+  #
+  
+! O1 =  -DNO_VARARGS
+! O2 = # -DNON_BROKEN_WORDS
+  O3 = # -Dm68851
+  O4 = # -DEXEC_VERSION=1
+! O5 = # -DSIGTY=void
+  O6 = # -DNS32532
+  O6 = # -DNS32381
+  O7 = # -DDOT_LABEL_PREFIX
+  O8 = # -DSEQUENT_COMPATABILITY
+  O9 = # -DREGISTER_PREFIX=\'%\'
+! O10= # -DOTHER_ALIGN
+  
+  G1 = # -DUSE_SYSTEM_HDR
+  G2 = # -DUSE_HP_HDR
+--- 116,132 ----
+  # (This option is automatically enabled when building the sparc assembler.
+  #
+  
+! O1 = # -DNO_VARARGS
+! O2 = -DNON_BROKEN_WORDS
+  O3 = # -Dm68851
+  O4 = # -DEXEC_VERSION=1
+! O5 = -DSIGTY=void
+  O6 = # -DNS32532
+  O6 = # -DNS32381
+  O7 = # -DDOT_LABEL_PREFIX
+  O8 = # -DSEQUENT_COMPATABILITY
+  O9 = # -DREGISTER_PREFIX=\'%\'
+! O10= -DOTHER_ALIGN
+  
+  G1 = # -DUSE_SYSTEM_HDR
+  G2 = # -DUSE_HP_HDR
+***************
+*** 131,137 ****
+  #
+  # To make the 68020 assembler compile as the default, un-comment the next
+  # line, and comment out all the other lines that start with DEFAULT_GAS
+! DEFAULT_GAS=a68
+  #
+  # To make the VAX assembler compile as the default, un-comment the next
+  # line and commment out all the other lines that start with DEFAULT_GAS
+--- 139,145 ----
+  #
+  # To make the 68020 assembler compile as the default, un-comment the next
+  # line, and comment out all the other lines that start with DEFAULT_GAS
+! #DEFAULT_GAS=a68
+  #
+  # To make the VAX assembler compile as the default, un-comment the next
+  # line and commment out all the other lines that start with DEFAULT_GAS
+***************
+*** 139,145 ****
+  #
+  # To make the 80386 assembler compile as the default, un-comment the next
+  # line and commment out all the other lines that start with DEFAULT_GAS
+! #DEFAULT_GAS=a386
+  #
+  # To make the ns32k assembler compile as the default, un-comment the next
+  # line and commment out all the other lines that start with DEFAULT_GAS
+--- 147,153 ----
+  #
+  # To make the 80386 assembler compile as the default, un-comment the next
+  # line and commment out all the other lines that start with DEFAULT_GAS
+! DEFAULT_GAS=a386.exe
+  #
+  # To make the ns32k assembler compile as the default, un-comment the next
+  # line and commment out all the other lines that start with DEFAULT_GAS
+***************
+*** 156,260 ****
+  # Global Sources -------------------------------------------------------------
+  
+  a =\
+! as.o		xrealloc.o	xmalloc.o	hash.o		hex-value.o   \
+! atof-generic.o	append.o	messages.o	expr.o		app.o         \
+! frags.o		input-file.o	input-scrub.o	output-file.o	              \
+! subsegs.o	symbols.o					version.o     \
+! flonum-const.o	flonum-copy.o	flonum-mult.o	strstr.o	bignum-copy.o \
+! obstack.o
+! #gdb.o		gdb-file.o	gdb-symbols.o	gdb-blocks.o	gdb-lines.o
+  
+! a:	$(DEFAULT_GAS)
+! 	@rm -f a
+! 	@ln $(DEFAULT_GAS) a
+  
+  # I860 GAS ------------------------------------------------------------------
+! u = i860.o  atof-ieee.o  write-i860.o  read-i860.o
+  
+  U = i860.c  i860.h i860-opcode.h
+  
+! i860.o:	i860.c i860.h i860-opcode.h as.h frags.h struc-symbol.h
+! i860.o:	flonum.h expr.h hash.h md.h write.h read.h symbols.h
+  	$(CC) -c $(CFLAGS) -DI860 i860.c
+  
+! atof-ieee.o:	flonum.h
+  
+! write-i860.o:	write.c i860.h
+  	$(CC) -c -DI860 $(CFLAGS) write.c
+! 	mv write.o write-i860.o
+  
+! read-i860.o: read.c i860.h
+  	$(CC) -c -DI860 $(CFLAGS) read.c
+! 	mv read.o read-i860.o
+  
+  a860: $a $u
+  	$(CC) -o a860 $(LDFLAGS) $a $u $(LOADLIBES)
+  
+  # SPARC GAS ------------------------------------------------------------------
+! v = sparc.o  atof-ieee.o  write-sparc.o  read-sparc.o
+  
+  V = sparc.c  sparc.h  sparc-opcode.h
+  
+! atof-ieee.o:	flonum.h
+! sparc.o:	sparc.c sparc.h sparc-opcode.h as.h frags.h struc-symbol.h
+! sparc.o:	flonum.h expr.h hash.h md.h write.h read.h symbols.h
+  	$(CC) -c $(CFLAGS) -DSPARC sparc.c
+  
+! write-sparc.o:	write.c
+  	$(CC) -c -DSPARC $(CFLAGS) write.c
+! 	mv write.o write-sparc.o
+  
+! read-sparc.o: read.c
+  	$(CC) -c -DSPARC $(CFLAGS) read.c
+! 	mv read.o read-sparc.o
+  
+  asparc: $a $v
+  	$(CC) -o asparc $(LDFLAGS) $a $v $(LOADLIBES)
+  
+  # NS32K GAS ------------------------------------------------------------------
+! w = ns32k.o  atof-ieee.o  write-ns32k.o  read-ns32k.o
+  
+  W = ns32k.c ns32k-opcode.h
+  
+! atof-ieee.o:	flonum.h
+! ns32k.o:	as.h frags.h struc-symbol.h flonum.h expr.h md.h hash.h
+! ns32k.o:	write.h symbols.h ns32k-opcode.h ns32k.c
+  	$(CC) $(CFLAGS) $(OPTIONS) -c ns32k.c
+  
+! write-ns32k.o:	write.c
+  	$(CC) -c -DNS32K $(CFLAGS) write.c
+! 	mv write.o write-ns32k.o
+  
+! read-ns32k.o:
+  	$(CC) -c -DNS32K $(CFLAGS) read.c
+! 	mv read.o read-ns32k.o
+  
+  a32k: $a $w
+  	$(CC) -o a32k $(LDFLAGS) $a $w $(LOADLIBES)
+  
+  # 80386 GAS ------------------------------------------------------------------
+! x = i386.o  atof-ieee.o  write.o  read.o
+  
+  X = i386.c  i386.h  i386-opcode.h
+  
+! i386.o:		i386.c as.h read.h flonum.h frags.h struc-symbol.h expr.h
+! i386.o:		symbols.h hash.h md.h i386.h i386-opcode.h
+  	$(CC) $(CFLAGS) $(OPTIONS) -c i386.c
+  
+! atof-ieee.o:	flonum.h
+  
+! a386: $a $x
+! 	$(CC) -o a386 $(LDFLAGS) $a $x $(LOADLIBES)
+  
+  # 68020 GAS ------------------------------------------------------------------
+! y = m68k.o  atof-ieee.o write.o read.o
+  
+  Y = m68k.c atof-ieee.c m68k-opcode.h m-hpux.h m-sun3.h m-generic.h
+  
+! atof-ieee.o:	flonum.h
+  
+! m68k.o:		m68k.c a.out.gnu.h as.h expr.h flonum.h frags.h hash.h
+! m68k.o:		m68k-opcode.h m68k.h md.h obstack.h struc-symbol.h
+  	$(CC) $(CFLAGS) $(OPTIONS) -c m68k.c
+  
+  a68: $a $y
+--- 164,265 ----
+  # Global Sources -------------------------------------------------------------
+  
+  a =\
+! as.obj	xrealloc.obj	xmalloc.obj	hash.obj	hex-value.obj   \
+! atof-generic.obj	append.obj	messages.obj	expr.obj	\
+! app.obj	frags.obj	input-file.obj	input-scrub.obj	output-file.obj	\
+! subsegs.obj	symbols.obj	version.obj     flonum-const.obj \
+! flonum-copy.obj	flonum-mult.obj	strstr.obj	bignum-copy.obj	obstack.obj \
+! #gdb.obj	gdb-file.obj	gdb-symbols.obj	gdb-blocks.obj	gdb-lines.obj
+  
+! a :	$(DEFAULT_GAS)
+  
+  # I860 GAS ------------------------------------------------------------------
+! u = i860.obj  atof-ieee.obj  write-i860.obj  read-i860.obj
+  
+  U = i860.c  i860.h i860-opcode.h
+  
+! i860.obj:	i860.c i860.h i860-opcode.h as.h frags.h struc-symbol.h
+! i860.obj:	flonum.h expr.h hash.h md.h write.h read.h symbols.h
+  	$(CC) -c $(CFLAGS) -DI860 i860.c
+  
+! atof-ieee.obj:	flonum.h
+  
+! write-i860.obj:	write.c i860.h
+  	$(CC) -c -DI860 $(CFLAGS) write.c
+! 	mv write.obj write-i860.obj
+  
+! read-i860.obj: read.c i860.h
+  	$(CC) -c -DI860 $(CFLAGS) read.c
+! 	mv read.obj read-i860.obj
+  
+  a860: $a $u
+  	$(CC) -o a860 $(LDFLAGS) $a $u $(LOADLIBES)
+  
+  # SPARC GAS ------------------------------------------------------------------
+! v = sparc.obj  atof-ieee.obj  write-sparc.obj  read-sparc.obj
+  
+  V = sparc.c  sparc.h  sparc-opcode.h
+  
+! atof-ieee.obj:	flonum.h
+! sparc.obj:	sparc.c sparc.h sparc-opcode.h as.h frags.h struc-symbol.h
+! sparc.obj:	flonum.h expr.h hash.h md.h write.h read.h symbols.h
+  	$(CC) -c $(CFLAGS) -DSPARC sparc.c
+  
+! write-sparc.obj:	write.c
+  	$(CC) -c -DSPARC $(CFLAGS) write.c
+! 	mv write.obj write-sparc.obj
+  
+! read-sparc.obj: read.c
+  	$(CC) -c -DSPARC $(CFLAGS) read.c
+! 	mv read.obj read-sparc.obj
+  
+  asparc: $a $v
+  	$(CC) -o asparc $(LDFLAGS) $a $v $(LOADLIBES)
+  
+  # NS32K GAS ------------------------------------------------------------------
+! w = ns32k.obj  atof-ieee.obj  write-ns32k.obj  read-ns32k.obj
+  
+  W = ns32k.c ns32k-opcode.h
+  
+! atof-ieee.obj:	flonum.h
+! ns32k.obj:	as.h frags.h struc-symbol.h flonum.h expr.h md.h hash.h
+! ns32k.obj:	write.h symbols.h ns32k-opcode.h ns32k.c
+  	$(CC) $(CFLAGS) $(OPTIONS) -c ns32k.c
+  
+! write-ns32k.obj:	write.c
+  	$(CC) -c -DNS32K $(CFLAGS) write.c
+! 	mv write.obj write-ns32k.obj
+  
+! read-ns32k.obj:
+  	$(CC) -c -DNS32K $(CFLAGS) read.c
+! 	mv read.obj read-ns32k.obj
+  
+  a32k: $a $w
+  	$(CC) -o a32k $(LDFLAGS) $a $w $(LOADLIBES)
+  
+  # 80386 GAS ------------------------------------------------------------------
+! x = i386.obj  atof-ieee.obj  write.obj  read.obj
+  
+  X = i386.c  i386.h  i386-opcode.h
+  
+! i386.obj:		i386.c as.h read.h flonum.h frags.h struc-symbol.h expr.h
+! i386.obj:		symbols.h hash.h md.h i386.h i386-opcode.h
+  	$(CC) $(CFLAGS) $(OPTIONS) -c i386.c
+  
+! atof-ieee.obj:	flonum.h
+  
+! a386.exe: $a $x
+! 	$(CC) $(O_SWITCH)a386.exe $(LDFLAGS) $a $x $(LOADLIBES)
+  
+  # 68020 GAS ------------------------------------------------------------------
+! y = m68k.obj  atof-ieee.obj write.obj read.obj
+  
+  Y = m68k.c atof-ieee.c m68k-opcode.h m-hpux.h m-sun3.h m-generic.h
+  
+! atof-ieee.obj:	flonum.h
+  
+! m68k.obj:		m68k.c a.out.gnu.h as.h expr.h flonum.h frags.h hash.h
+! m68k.obj:		m68k-opcode.h m68k.h md.h obstack.h struc-symbol.h
+  	$(CC) $(CFLAGS) $(OPTIONS) -c m68k.c
+  
+  a68: $a $y
+***************
+*** 261,274 ****
+  	$(CC) -o a68 $(LDFLAGS) $a $y $(LOADLIBES)
+  
+  # VAX GAS --------------------------------------------------------------------
+! z = vax.o  atof-vax.o  write.o  read.o
+  
+  Z = vax.c atof-vax.c vax-opcode.h vax-inst.h \
+      make-gas.com objrecdef.h vms.c vms-dbg.c README-vms-dbg
+  
+! vax.o:		vax.c a.out.gnu.h as.h expr.h flonum.h frags.h md.h obstack.h
+! vax.o:		read.h struc-symbol.h symbols.h vax-inst.h vax-opcode.h
+! atof-vax.o:	as.h flonum.h read.h
+  
+  avax:	$a $z
+  	$(CC) -o avax $(LDFLAGS) $a $z $(LOADLIBES)
+--- 266,279 ----
+  	$(CC) -o a68 $(LDFLAGS) $a $y $(LOADLIBES)
+  
+  # VAX GAS --------------------------------------------------------------------
+! z = vax.obj  atof-vax.obj  write.obj  read.obj
+  
+  Z = vax.c atof-vax.c vax-opcode.h vax-inst.h \
+      make-gas.com objrecdef.h vms.c vms-dbg.c README-vms-dbg
+  
+! vax.obj:		vax.c a.out.gnu.h as.h expr.h flonum.h frags.h md.h obstack.h
+! vax.obj:		read.h struc-symbol.h symbols.h vax-inst.h vax-opcode.h
+! atof-vax.obj:	as.h flonum.h read.h
+  
+  avax:	$a $z
+  	$(CC) -o avax $(LDFLAGS) $a $z $(LOADLIBES)
+***************
+*** 275,293 ****
+  
+  # global files ---------------------------------------------------------------
+  
+! as.o: as.c
+  	$(CC) $(CFLAGS) $(OPTIONS) -c as.c
+  
+! messages.o: messages.c
+  	$(CC) $(CFLAGS) $(OPTIONS) -c messages.c
+  
+! hash.o:	hash.c
+  	$(CC) $(CFLAGS) -Derror=as_fatal -c hash.c
+  
+! xmalloc.o:	xmalloc.c
+  	$(CC) $(CFLAGS) -Derror=as_fatal -c xmalloc.c
+  
+! xrealloc.o:	xrealloc.c
+  	$(CC) $(CFLAGS) -Derror=as_fatal -c xrealloc.c
+  
+  A =\
+--- 280,298 ----
+  
+  # global files ---------------------------------------------------------------
+  
+! as.obj: as.c
+  	$(CC) $(CFLAGS) $(OPTIONS) -c as.c
+  
+! messages.obj: messages.c
+  	$(CC) $(CFLAGS) $(OPTIONS) -c messages.c
+  
+! hash.obj:	hash.c
+  	$(CC) $(CFLAGS) -Derror=as_fatal -c hash.c
+  
+! xmalloc.obj:	xmalloc.c
+  	$(CC) $(CFLAGS) -Derror=as_fatal -c xmalloc.c
+  
+! xrealloc.obj:	xrealloc.c
+  	$(CC) $(CFLAGS) -Derror=as_fatal -c xrealloc.c
+  
+  A =\
+***************
+*** 316,356 ****
+  	-rm .fname
+  
+  clean:
+! 	rm -f a avax a68 a386 a32k asparc $a $v $w $x $y $z a core gmon.out bugs a.out
+  
+  install:	a
+  	cp a $(BINDIR)/gas
+  
+  
+! # General .o-->.h dependencies
+  
+! app.o:		as.h
+! as.o:		a.out.gnu.h as.h read.h struc-symbol.h write.h
+! atof-generic.o:	flonum.h
+! bignum-copy.o:	bignum.h
+! expr.o:		a.out.gnu.h as.h expr.h flonum.h obstack.h read.h struc-symbol.h
+! expr.o:		 symbols.h
+! flonum-const.o:	flonum.h
+! flonum-copy.o:	flonum.h
+! flonum-mult.o:	flonum.h
+! flonum-normal.o:flonum.h
+! flonum-print.o:	flonum.h
+! frags.o:	a.out.gnu.h as.h frags.h obstack.h struc-symbol.h subsegs.h
+! #gdb.o:		as.h
+! #gdb-blocks.o:	as.h
+! #gdb-lines.o:	as.h frags.h obstack.h
+! #gdb-symbols.o:	a.out.gnu.h as.h struc-symbol.h
+! hash.o:		hash.h
+! input-file.o:	input-file.h
+! input-scrub.o:	as.h input-file.h read.h
+! messages.o:	as.h
+! obstack.o:	obstack.h
+! read.o:		a.out.gnu.h as.h expr.h flonum.h frags.h hash.h md.h obstack.h
+! read.o:		read.h struc-symbol.h symbols.h
+! subsegs.o:	a.out.gnu.h as.h frags.h obstack.h struc-symbol.h subsegs.h write.h
+! symbols.o:	a.out.gnu.h as.h frags.h hash.h obstack.h struc-symbol.h symbols.h
+! write.o:	a.out.gnu.h as.h md.h obstack.h struc-symbol.h subsegs.h
+! write.o:	symbols.h write.h
+  
+  flonum.h:					bignum.h
+  
+--- 321,361 ----
+  	-rm .fname
+  
+  clean:
+! 	rm -f a avax a68 a386.exe a32k asparc $a $v $w $x $y $z a core gmon.out bugs a.out
+  
+  install:	a
+  	cp a $(BINDIR)/gas
+  
+  
+! # General .obj-->.h dependencies
+  
+! app.obj:		as.h
+! as.obj:		a.out.gnu.h as.h read.h struc-symbol.h write.h
+! atof-generic.obj:	flonum.h
+! bignum-copy.obj:	bignum.h
+! expr.obj:		a.out.gnu.h as.h expr.h flonum.h obstack.h read.h struc-symbol.h
+! expr.obj:		 symbols.h
+! flonum-const.obj:	flonum.h
+! flonum-copy.obj:	flonum.h
+! flonum-mult.obj:	flonum.h
+! flonum-normal.obj:flonum.h
+! flonum-print.obj:	flonum.h
+! frags.obj:	a.out.gnu.h as.h frags.h obstack.h struc-symbol.h subsegs.h
+! #gdb.obj:		as.h
+! #gdb-blocks.obj:	as.h
+! #gdb-lines.obj:	as.h frags.h obstack.h
+! #gdb-symbols.obj:	a.out.gnu.h as.h struc-symbol.h
+! hash.obj:		hash.h
+! input-file.obj:	input-file.h
+! input-scrub.obj:	as.h input-file.h read.h
+! messages.obj:	as.h
+! obstack.obj:	obstack.h
+! read.obj:		a.out.gnu.h as.h expr.h flonum.h frags.h hash.h md.h obstack.h
+! read.obj:		read.h struc-symbol.h symbols.h
+! subsegs.obj:	a.out.gnu.h as.h frags.h obstack.h struc-symbol.h subsegs.h write.h
+! symbols.obj:	a.out.gnu.h as.h frags.h hash.h obstack.h struc-symbol.h symbols.h
+! write.obj:	a.out.gnu.h as.h md.h obstack.h struc-symbol.h subsegs.h
+! write.obj:	symbols.h write.h
+  
+  flonum.h:					bignum.h
+  
+*** as.c.old	Thu Oct 11 12:26:17 1990
+--- as.c	Tue Sep 21 23:36:46 1993
+***************
+*** 68,74 ****
+  	char	**work_argv;	/* variable copy of argv */
+  	char	*arg;		/* an arg to program */
+  	char	a;		/* an arg flag (after -) */
+! 	static const int sig[] = { SIGHUP, SIGINT, SIGPIPE, SIGTERM, 0};
+  
+  	extern int bad_error;	/* Did we hit a bad error ? */
+  
+--- 68,87 ----
+  	char	**work_argv;	/* variable copy of argv */
+  	char	*arg;		/* an arg to program */
+  	char	a;		/* an arg flag (after -) */
+! 	static const int sig[] = {
+! #ifdef SIGHUP
+! 	  SIGHUP,
+! #endif
+! #ifdef SIGINT
+! 	  SIGINT,
+! #endif
+! #ifdef SIGPIPE
+! 	  SIGPIPE,
+! #endif
+! #ifdef SIGTERM
+! 	  SIGTERM,
+! #endif
+! 	  0};
+  
+  	extern int bad_error;	/* Did we hit a bad error ? */
+  
+*** i386-opcode.h.old	Tue Jan 23 14:26:34 1990
+--- i386-opcode.h	Thu Sep 23 01:16:56 1993
+***************
+*** 48,54 ****
+  {"push", 1, 0x50, _, ShortForm, WordReg,0,0 },
+  {"push", 1, 0xff, 0x6,  Modrm, WordReg|WordMem, 0, 0 },
+  {"push", 1, 0x6a, _, NoModrm, Imm8S, 0, 0},
+! {"push", 1, 0x68, _, NoModrm, Imm32, 0, 0},
+  {"push", 1, 0x06, _,  Seg2ShortForm, SReg2,0,0 },
+  {"push", 1, 0x0fa0, _, Seg3ShortForm, SReg3,0,0 },
+  /* push all */
+--- 48,54 ----
+  {"push", 1, 0x50, _, ShortForm, WordReg,0,0 },
+  {"push", 1, 0xff, 0x6,  Modrm, WordReg|WordMem, 0, 0 },
+  {"push", 1, 0x6a, _, NoModrm, Imm8S, 0, 0},
+! {"push", 1, 0x68, _, NoModrm, Imm16|Imm32, 0, 0},
+  {"push", 1, 0x06, _,  Seg2ShortForm, SReg2,0,0 },
+  {"push", 1, 0x0fa0, _, Seg3ShortForm, SReg3,0,0 },
+  /* push all */
+*** output-file.c.old	Fri Jan  4 13:12:56 1991
+--- output-file.c	Fri Mar  5 21:23:54 1993
+***************
+*** 38,44 ****
+  {
+    if(name[0]=='-' && name[1]=='\0')
+      stdoutput=stdout;
+!   else if ( ! (stdoutput = fopen( name, "w" )) )
+      {
+        as_perror ("FATAL: Can't create %s", name);
+        exit(42);
+--- 38,44 ----
+  {
+    if(name[0]=='-' && name[1]=='\0')
+      stdoutput=stdout;
+!   else if ( ! (stdoutput = fopen( name, "wb" )) )
+      {
+        as_perror ("FATAL: Can't create %s", name);
+        exit(42);

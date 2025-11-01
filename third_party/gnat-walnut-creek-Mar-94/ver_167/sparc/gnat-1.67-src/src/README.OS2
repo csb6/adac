@@ -1,0 +1,65 @@
+HOW TO BUILD GNAT FOR OS/2 2.x
+
+Please follow these instructions carefully.
+
+0) Install the latest executables of GNAT for OS/2 available via anonymous ftp
+   from cs.nyu.edu, directory pub/gnat.  Install the sources for gcc 2.5.4
+   (also available at the ftp site mentioned above) at the root level of the
+   HPFS partition on which you installed the executables of GNAT for OS/2.
+   You will also need the IBM Developer's Toolkit.
+
+1) Make the root directory of the drive on which you installed the executables
+   of GNAT for OS/2 the current directory.
+
+2) Unzip the file GNAT-1.61-OS2-SRC.ZIP (available at the ftp site mentioned
+   above) with the command
+      UNZIP drive:path\GNAT-1.61-OS2-SRC.ZIP
+   where "drive" and "path" is the drive and path in which the file
+   GNAT-1.61-OS2-SRC.ZIP resides.  This will create a directory called
+   gnat-1.61, which will contain all the source code for GNAT.  (If you are
+   reading this file, you have presumable already done this step.)
+
+3) Copy the sources for GNAT to the directory in which the sources for gcc 2.5.4
+   reside with the command
+      COPY \GNAT-1.61\SRC \GCC-2.5.4
+
+4) Make \GCC-2.5.4 your current directory.
+
+5) Rename the file MAKEFILE.OS2 to MAKEFILE.  Apply the patches listed in the
+   file PATCHES-GCC254.OS2.
+
+6) To bootstrap the compiler, type NMAKE BOOTSTRAPGNAT.  You need plenty of
+   virtual memory to do this: a total of at least 32 MB of combined physical
+   memory and swap file space - more if you have any disk caches or other open
+   windows or programs running.  It takes about 2.5 hours to bootstrap on a
+   66 MHz 486DX2-based computer.  The intermediate files and binaries created
+   occupy about 19 MB of disk space.
+
+   If you are running OS/2 2.1, the files GNAT1.EXE and GNATBIND.EXE in \GCC\BIN
+   should be identical to the ones in \GCC-2.5.4.  If you are running a
+   different version of OS/2 2.x, you should still be able to bootstrap GNAT,
+   but GNAT1.EXE and/or GNATBIND.EXE may be different from the ones in \GCC\BIN.
+   In this case, you may want to copy the GNAT1.EXE and/or GNATBIND.EXE you just
+   built to \GCC\BIN.
+
+7) To build just the binder, type NMAKE GNATBIND.EXE.  You may want to copy
+   GNATBIND.EXE to \GCC\BIN.
+
+8) If you want to get rid of all files which can be rebuilt from the sources,
+   type NMAKE STAGE1 or NMAKE STAGE2, and delete both STAGE1 and STAGE2.
+
+9) Other make targets of interest include BOOTSTRAP, which will attempt to
+   build the compilers for the languages specified by the macro LANGUAGES.
+   The only languages which are known to work are C and Ada.
+
+10) To build the assembler, install the sources for gas 1.38.1 (available at the
+    the ftp site mentioned above) at the root level of the HPFS partition on
+    which you installed the executables of GNAT for OS/2.  Make the directory
+    \GAS-1.38 your current directory.  Apply the patches listed in the file
+    \GNAT-1.61\SRC\PATCHES-GAS138.OS2.  Type NMAKE.  This will create an
+    executable called A386.EXE, which should then be renamed to AS.EXE, and
+    copied to \GCC\BIN if you like.
+
+
+NOTE: GNAT is free software.  See the file \GNAT-1.61\COPYING for copying
+      permission.

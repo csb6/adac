@@ -1,0 +1,24 @@
+This directory contains the sources necessary to build and run GNAT as
+a set of additions to and diffs from gcc release whose version number
+is named in the file GCC-BASE.  Building GNAT from these sources requires
+an executable GNAT and the GCC-BASE version of gcc.
+
+It is presumed that you have built gcc-GCC-BASE.  You will be building
+and installing two executables: gnat1 and gnatbind.  The file gnat1 should
+be placed in the GNAT_BASE directory along with cc1 and the other executables
+called from gcc.  The file gnatbind should be placed in a directory on user's
+PATH (e.g. where gcc is placed).
+
+To build gnat1 and gnatbind: copy the files from this directory into the
+directory containing the GCC-BASE sources and use patch to apply any pathces
+that are in this directory (e.g. Makefile.in.diff); rerun configure;
+(unless you have spitbol) do
+   "touch treeprs.ads a-[es]info.h, and nmake.ad[bs]";
+run "make CC=gcc gnat1" or "make CC=gcc gnatboot" (if you want to go through
+an entire bootstrap -- can be followed by "make gnatcompare" to check its
+success) to make gnat1; run "make gnatbind" to make gnatbind.
+
+Warning: older versions of gas for the SPARC had a bug.  If building fails
+with messages such as "/usr/tmp/xxx.s Error: Illegal operands", your gcc is
+using this older gas, and you need to pick up gas-2.2.
+

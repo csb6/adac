@@ -1,0 +1,250 @@
+GNAT CHAT #1 23 Apr 1993
+------------------------
+
+GNAT CHAT is an abstract of discussion items sent to gnat-world@cs.nyu.edu.
+Since this is a rather giant mailing list, rather than let a free for all
+interaction occur on it, we will abstract comments we receive, and then mail
+them out from time to time. As you see above, they are numbered, so that you
+can make sure you haven't missed one. If you don't want to receive GNAT CHAT
+notes, but only the main technical reports and progress reports that we send
+out, let us know. I am currently adding the headers, whose format is presumably
+clear. I won't object if poeple want to add such headers to their messages to
+save me a bit of time, but I won't insist on it! (I = Robert Dewar, for the
+moment moderator for GNAT-CHAT). Messages to gnat-chat can either be sent to
+gnat-chat@cs.nyu.edu, or as noted above, to gnat-world@cs.nyu (the latter
+address makes it convenient for those who just like to press the reply key!)
+
+------------------------------------------------------------------------------
+
+Reference: GC-1.1
+Date: 23 Apr 1993
+Author: Richard Stallman
+Subject: Syntax checking only mode
+References: GNOTE1, April 12
+
+ [referring to the point that the checks for one compilation unit per file
+ and the matching of compilation unit names and file names are omitted in
+ syntax check only mode]
+
+ >It is unclean for an option for "syntax checking only" to have also
+ >the effect of allowing syntax that is normally forbidden!
+ >That should be a separate option.
+
+ Robert Dewar replies:
+
+   That's reasonable. The multiple compilation units per file is
+   a special check that probably should be controlled by a separate
+   switch. The naming convention is actually a semantic check for us,
+   so it falls out free for it not to be performed in syntax only mode
+   and would be extra work to check during the syntax phase (after all the
+   division between syntax and semantics is a little arbitrary, and in
+   syntax only mode, there are after all a lot of checks that get omitted!)
+
+------------------------------------------------------------------------------
+
+Reference: GC-1.2
+Date: 23 Apr 1993
+Author: Richard Stallman
+Subject: Names of files
+References: GNOTE1, April 12
+
+ [referring to the suggested convention in GNOTE1 for distiguishing spec and
+ body names, i.e. to add different suffixes to the names with the default being
+ a dash after the end of the spec name]
+
+ >It seems more natural to me to use a different extension for spec
+ >files, rather than a dash.
+
+ >  The corresponding object file has the same file name with the extension .o
+ >  (which is why the spec and body of a file have to have different file names,
+ >  not just different extensions).
+
+ >This is not a necessary consequence. If a spec file is named foo.spc,
+ >its .o file does not *have* to be named foo.o. It could be named
+ >foo-.o or foo.so.
+
+ > ABC.DEF.GHI (child spec)	 abc-def.ghi-.ada
+
+ >Wouldn't this be abd-def-ghi-.ada according to the current rules?
+
+ Robert Dewar replies:
+
+   Current typical Ada usage is divided between the two conventions. For
+   example, Dec's standard convention is to add a trailing underscore. We
+   changed this to a trailing minus, because otherwise the new Ada 9X feature
+   allowing trailing underscores causes confusion (flames to dev/null please!)
+
+   It is also our intention to allow user specification of arbitrary suffixes,
+   allowing for example following the Verdix convention which adds a separate
+   suffix to specs and bodies.
+
+   However, the convention that Richard mentions is also very common. For
+   example, in the Alsys world, a common usage is .ada for a spec, and .adb
+   for a body.
+
+   Our general philosophy in GNAT should be to satisfy as wide a variety of
+   styles as possible, so it indeed seems a good idea to allow this possibility
+   and we will implement this. Actually we discussed this earlier, and the
+   only reason we didn't do it was because we were a little nervous about
+   introducing object files not called .o, or object files whose name didn't
+   match the source name.
+
+   Clearly some tools might be discombobulated by violating either of these
+   two standard conventions for object file names, but if it's only one of
+   the possible options, I don't see any objection.
+
+   The abc-def.ghi-.ada is a typo, it should indeed be abc-def-ghi-.ada
+
+------------------------------------------------------------------------------
+
+Reference: GC-1.3
+Date: 23 Apr 1993
+Author: Richard Stallman
+Subject: "Subversion" of consistency checking rules
+
+[in response to the discussion of situations in which the consistency
+ checking rules stop you doing things which would actually work. In
+ particular adding an entity to a package is often safe]
+
+ >This case is so common that I added a feature to GNU Make just for its
+ >sake. This is the -o FILE option, which says, "pretend file FILE is
+ >very old (i.e., older than everything that depends on it)". I use
+ >this frequently when working on GCC.
+
+ >The time stamps in Ada .o files will make -o useless. To me, this seems
+ >like a shame. I understand some Ada users are determined to have no way
+ >to do what -o is intended for; but I think we should provide a way for
+ >users who share my attitude.
+
+ >Perhaps the binder should also have an -o FILE option to disable
+ >checking of the timestamps that refer to FILE. Use of this option could
+ >be considered "deliberate subversion of the defenses"; also, to get an
+ >executable that certainly had the right compilation order, you need only
+ >rerun the binder and not specify -o.
+
+ Robert Dewar replies:
+
+   First, the -o option in the binder seems perfectly reasonable. Perhaps in
+   contrast with some other Ada thinking in the past, we have no objections
+   to options that extend or modify Ada behavior, as long as there is a mode
+   in which things work "properly" then that's good enough. [if we abbreviate
+   this option to "p" then you can think of it as meaning either "proper" or
+   "pedantic" depending on your point of view!]
+
+   An aside here. There has long been a feeling in the Ada community that it
+   is somehow improper to have switches of this kind. This feeling comes
+   partly from the "Declaration of Conformance" that vendors have to sign
+   to get a validation certificate which says that they have not implemented
+   extensions. What the DOC means is that you have to have a "proper" mode in
+   which Ada works as specified without extensions, and that the validation
+   must run in this mode (remember that the validation status report includes
+   the options used to run the validation suite). It does NOT mean that you
+   can't have switches, that modify normal behavior, and indeed many vendors
+   have implemented such switches as "all-checks-off" which clearly is outside
+   normal Ada semantics. The 9X reference manual, as well as the 9X validation
+   policy, will try to avoid conveying the incorrect impression that such
+   "extensions" are somehow immoral or illegal. The no supersets policy of Ada
+   is not meant to outlaw such switches, but rather to ensure the existence of
+   a mode in which maximum portability is guaranteed. In this respect Ada is
+   in practice not so different from say COBOL with its FIPS flag which has a
+   similar intention. The difference is that the FIPS flag in COBOL is part of
+   the validation procedure, and is not mentioned in the standard itself.
+
+   As an example of another such switch, consider the switch in GNAT which
+   specifies the character set to be used for identifiers. The 9X RM requires
+   that the standard mode allow only Latin-1 letters in identifiers, however,
+   it quite explicitly suggests that other modes might be appropriate,
+   depending on local character set usage. The explicit permission here is
+   not necessary, since, as described above, even Ada 83 has always had
+   general permission for this sort of thing. The statement is however added
+   to the 9X reference manual to emphasize that this switch in particular
+   is appropriate. In GNAT, we have a switch with the current settings:
+
+       1  Latin-1
+       2  Latin-2
+       3  Latin-3
+       4  Latin-4
+       5  IBM PC
+       6  Allow all possible upper half ASCII characters
+       7  Allow no upper half ASCII characters (like Ada-83)
+
+   The default is Latin-1, except on PC's where the default is IBM PC. Of
+   course if anyone ever tried to validate GNAT (we have no current intention
+   of doing so, and it's not part of our project), then of course they would
+   have to specify Latin-1 as part of the validation switch choice.
+
+   Going back to the original item of discussion, there certainly are cases
+   in which it works fine to ignore the consistency checking. Adding an entity
+   to a package often, but not always is harmless. Adding an entity to the
+   end of a package is always harmless (at least we haven't run into any
+   violations of this so far). The -o option of the binder is a reasonable
+   way of just doing away with a check on an "I-assume-all-risks" basis.
+
+   As Richard points out there are however, probably many Ada programmers
+   who would feel uncomfortable using such an option. After all one of the
+   major attractions of Ada over other languages is precisely that it ensures
+   safety in such situations. Consequently, while we have no objections to
+   the -o switch (in fact I'm writing the binder right now, and I already
+   put this switch in earlier this morning!) we are also exploring other
+   less drastic options in this area.
+
+   A relatively simple approach is to implement a tool that does the
+   following:
+
+     Input:
+	Old version of some spec
+	New version of some spec
+	ADL information from compilation of new spec
+
+     Output:
+	Possibly modified version of ADL information for spec
+
+   The idea is to compare the two source files and determine if the changes
+   to the new spec are harmless. A very obvious case is a change in comments
+   (it's *so* annoying to have to recompile the world because you fix a typo
+   in a comment in an important spec!) A more ambitious case is adding an
+   entity at the end of a package. One can go further. Examples of possible
+   harmless changes are:
+
+	o  Adding a default expression for a subprogram parameter where none
+	    was present before
+
+	o  Adding an entity in the middle of a package which is not referenced
+	    later on in the same package
+
+	o  Adding a with clause to a package that was not present before
+
+	o  Adding a pragma Inline to an existing subprogram
+
+	o  Reformatting which does not change the actual program
+
+	o  Uniform name change for a local variable
+
+        (and, to paraphrase Tom Lehrer, "these are the only ones of which the
+         news has come to GNAT, there may be many others but we don't know
+         where they're at")
+
+   If the new source is found to be compatible with the old source, then the
+   modified ADL file contains the time stamps of BOTH the new and old source
+   files, with the implication that anyone compiled with either of these
+   versions is consistent with the new object module. This will take a very
+   minor change in GNAT itself to accomodate the multiple time stamps.
+
+   Obviously implementing a comprehensive tool of this type is a huge
+   undertaking, but a simple tool that just took care of some of the most
+   common cases would be very useful and would take care of many of the common
+   cases of the existing "-o" usage without sacrificing safety. Can this
+   behavior be reconciled with the 83 or 9X RM chapter 10? We are not quite
+   sure and it really doesn't matter that much, since of course it's only an
+   option!
+
+   Going on to more ambitious thinking, Cyrille Comar, a new member of the
+   GNAT group, has been investigating the general issues of specification of
+   minimal required interfaces in the GNAT context. The general idea is that
+   when you with a spec, you don't use all of it, and you really only need to
+   be recompiled if the part of the spec you use is modified. This is the
+   kind of approach used by the smart recompilation approaches of Dec and
+   Rational (is that a Dec trademark? if so, please consider it labeled as
+   such!) Although we don't anticipate actually implementing such an approach
+   in the immediate future, we want to be sure that nothing in our approach
+   precludes it. We'll be distributing a GNAT note on this subject later on!

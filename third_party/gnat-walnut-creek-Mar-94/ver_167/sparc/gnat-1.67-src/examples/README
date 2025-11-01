@@ -1,0 +1,23 @@
+This is the Gnat Examples Directory. Our goal is to provide the gnat user some
+pieces of code that are easy to understand, easy to modify and to play with,
+and which demonstrate either :
+    - some classic Ada features
+    - some new Ada 9x features
+    - some good pedagogical programming exercises
+If you are insterested in sharing your own programs with the Gnat community,
+please tune them with the latest Gnat version and send it with appropriate
+documentation (and bug reports) to comar@cs.nyu.edu
+
+1- simple_io
+
+  provides (extremely) basic Input-Output facilities with a text_io-like
+  syntax. A "Hello World" program is used as main unit.
+
+2- text_io_example
+  trivial demonstration of a use of text_io.
+
+3- instruments
+
+  A very simple simulation of car dashboard instruments. Demonstrates
+  simple type extension, dispatching and child unit. 2 main programs are
+  provided, demo1 and demo2. 

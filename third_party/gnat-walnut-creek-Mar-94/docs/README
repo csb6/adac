@@ -1,0 +1,30 @@
+
+                                GNAT Project
+                         GNU-NYU Ada Translator
+
+                           GNAT index of documents
+
+The following is a list of files under the pub/gnat/docs directory
+that are available from anonymous ftp to cs.nyu.edu (128.122.140.24).
+
+README                -- this file
+gnat-bootstrap        -- bootstrap announcement
+gnat-progress-Dec92   -- early sample of some generated code produced by GNAT
+gnat-progress-Nov92   -- GNAT overview and introduction
+gnatchat.1            -- User feedback and responses to gnote1.doc
+gnatchat.2            -- User feedback and responses to gnote1.doc
+gnatchat.3            -- User feedback and responses to gnote1.doc
+gnote1.doc            -- Design document on the GNAT Library
+ieee-binding.ads      -- Proposal for a binding to IEEE Standard F-P Arithmetic
+
+The sizes in bytes of the files are:
+
+   588     Jul  9 16:08 README
+   2209    Jun 14 18:26 gnat-bootstrap
+   22870   May 11 15:56 gnat-progress-Dec92
+   12071   Nov 10  1992 gnat-progress-Nov92
+   12437   Apr 29 16:02 gnatchat.1
+   43468   Apr 29 16:03 gnatchat.2
+   22655   Apr 30 13:08 gnatchat.3
+   57602   Apr 29 15:31 gnote1.doc
+   54727   Feb 16  1992 ieee-binding.ads

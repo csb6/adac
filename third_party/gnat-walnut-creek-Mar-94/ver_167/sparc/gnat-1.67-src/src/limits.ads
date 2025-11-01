@@ -1,0 +1,36 @@
+------------------------------------------------------------------------------
+--                                                                          --
+--                         GNAT COMPILER COMPONENTS                         --
+--                                                                          --
+--                               L I M I T S                                --
+--                                                                          --
+--                                 S p e c                                  --
+--                                                                          --
+--                            $Revision: 1.7 $                              --
+--                                                                          --
+--             Copyright (c) 1992,1993, NYU, All Rights Reserved            --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
+-- terms  of the GNU  General  Public  License  as  published  by the  Free --
+-- Software  Foundation;  either version 2,  or (at your option)  any later --
+-- version.  GNAT is distributed  in the hope  that it will be useful,  but --
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANT- --
+-- ABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public --
+-- License  for  more details.  You should have received  a copy of the GNU --
+-- General Public License along with GNAT;  see file COPYING. If not, write --
+-- to the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. --
+--                                                                          --
+------------------------------------------------------------------------------
+
+package Limits is
+
+--  This package defines various capacity limits and other limits in the system
+
+   Max_Line_Length : constant := 512;
+   --  Maximum source line length
+
+   Max_Name_Length : constant := 1024;
+   --  Maximum length of unit name (including all dots, and " (spec)") and
+   --  of file names in the library, must be at least Max_Line_Length.
+
+end Limits;

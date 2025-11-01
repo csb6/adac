@@ -1,0 +1,82 @@
+------------------------------------------------------------------------------
+--                                                                          --
+--                         GNAT COMPILER COMPONENTS                         --
+--                                                                          --
+--                              T R E E P R S                               --
+--                                                                          --
+--                             T e m p l a t e                              --
+--                                                                          --
+--                            $Revision: 1.4 $                              --
+--                                                                          --
+--             Copyright (c) 1992,1993, NYU, All Rights Reserved            --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
+-- terms  of the GNU  General  Public  License  as  published  by the  Free --
+-- Software  Foundation;  either version 2,  or (at your option)  any later --
+-- version.  GNAT is distributed  in the hope  that it will be useful,  but --
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANT- --
+-- ABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public --
+-- License  for  more details.  You should have received  a copy of the GNU --
+-- General Public License along with GNAT;  see file COPYING. If not, write --
+-- to the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. --
+--                                                                          --
+------------------------------------------------------------------------------
+
+--  This file is a template used as input to the utility program xtreeprs.spt
+--  which reads this template, and the spec of Sinfo (sinfo.ads) and generates
+--  the spec for the Treeprs package (file treeprs.ads)
+
+--  This package contains the declaration of the string used by the Tree_Print
+--  package. It must be updated whenever the arrangements of the field names
+--  in package Sinfo is changed. The utility program XTREEPRS is used to
+--  do this update correctly using the template treeprs.adt as input.
+
+with Sinfo; use Sinfo;
+with Types; use Types;
+
+package Treeprs is
+
+   --------------------------------
+   -- String Data for Node Print --
+   --------------------------------
+
+   --  String data for print out. The Pchars array is a long string with the
+   --  the entry for each node type consisting of a single blank, followed by
+   --  a series of entries, one for each Op or Flag field used for the node.
+   --  Each entry has a single character which identifies the field, followed
+   --  by the synonym name. The starting location for a given node type is
+   --  found from the corresponding entry in the Pchars_Pos_Array.
+
+   --  The following characters identify the field. These are characters
+   --  which  could never occur in a field name, so they also mark the
+   --  end of the previous name.
+
+   subtype Fchar is Char range '#' .. '9';
+
+   F_Field1     : constant Fchar := '#'; -- Char'Val (16#23#)
+   F_Field2     : constant Fchar := '$'; -- Char'Val (16#24#)
+   F_Field3     : constant Fchar := '%'; -- Char'Val (16#25#)
+   F_Field4     : constant Fchar := '&'; -- Char'Val (16#26#)
+   F_Field5     : constant Fchar := '''; -- Char'Val (16#27#)
+   F_Field6     : constant Fchar := '('; -- Char'Val (16#28#)
+   F_Field7     : constant Fchar := ')'; -- Char'Val (16#29#)
+   F_Flag1      : constant Fchar := '*'; -- Char'Val (16#2A#)
+   F_Flag2      : constant Fchar := '+'; -- Char'Val (16#2B#)
+   F_Flag3      : constant Fchar := ','; -- Char'Val (16#2C#)
+   F_Flag4      : constant Fchar := '-'; -- Char'Val (16#2D#)
+   F_Flag5      : constant Fchar := '.'; -- Char'Val (16#2E#)
+   F_Flag6      : constant Fchar := '/'; -- Char'Val (16#2F#)
+   F_Flag7      : constant Fchar := '0'; -- Char'Val (16#30#)
+   F_Flag8      : constant Fchar := '1'; -- Char'Val (16#31#)
+   F_Flag9      : constant Fchar := '2'; -- Char'Val (16#32#)
+   F_Flag10     : constant Fchar := '3'; -- Char'Val (16#33#)
+   F_Flag11     : constant Fchar := '4'; -- Char'Val (16#34#)
+   F_Flag12     : constant Fchar := '5'; -- Char'Val (16#35#)
+   F_Flag13     : constant Fchar := '6'; -- Char'Val (16#36#)
+   F_Flag14     : constant Fchar := '7'; -- Char'Val (16#37#)
+   F_Flag15     : constant Fchar := '8'; -- Char'Val (16#38#)
+   F_Flag16     : constant Fchar := '9'; -- Char'Val (16#39#)
+
+!!TEMPLATE INSERTION POINT
+
+end Treeprs;

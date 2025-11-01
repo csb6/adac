@@ -1,0 +1,342 @@
+*** gcc.old	Fri Nov 26 15:57:21 1993
+--- gcc.c	Wed Dec  1 18:06:58 1993
+***************
+*** 455,460 ****
+--- 455,461 ----
+          %{traditional-cpp:-traditional}\
+  	%{g*} %{W*} %{w} %{pedantic*} %{H} %{d*} %C %{D*} %{U*} %{i*}\
+          %i %{!M:%{!MM:%{!E:%{!pipe:%g.i}}}}%{E:%W{o*}}%{M:%W{o*}}%{MM:%W{o*}} |\n",
++ #ifdef OS2
+     "%{!M:%{!MM:%{!E:cc1 %{!pipe:%g.i} %1 \
+  		   %{!Q:-quiet} -dumpbase %b.c %{d*} %{m*} %{a}\
+  		   %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} \
+***************
+*** 462,470 ****
+--- 463,483 ----
+  		   %{aux-info*}\
+  		   %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+  		   %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
++               %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y -o %g.o \
++ 		      %{!pipe:%g.s} %A\n o2obj \
++ 		      %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }}}}"},
++ #else
++    "%{!M:%{!MM:%{!E:cc1 %{!pipe:%g.i} %1 \
++ 		   %{!Q:-quiet} -dumpbase %b.c %{d*} %{m*} %{a}\
++ 		   %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} \
++ 		   %{traditional} %{v:-version} %{pg:-p} %{p} %{f*}\
++ 		   %{aux-info*}\
++ 		   %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
++ 		   %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
+                %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+  		      %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o}\
+                        %{!pipe:%g.s} %A\n }}}}"},
++ #endif
+    {"-",
+     "%{E:cpp -lang-c %{nostdinc*} %{C} %{v} %{A*} %{I*} %{P} %I\
+  	%{C:%{!E:%eGNU C does not support -C without using -E}}\
+***************
+*** 489,494 ****
+--- 502,508 ----
+          %{traditional-cpp:-traditional}\
+  	%{g*} %{W*} %{w} %{pedantic*} %{H} %{d*} %C %{D*} %{U*} %{i*}\
+          %i %{!M:%{!MM:%{!E:%{!pipe:%g.i}}}}%{E:%W{o*}}%{M:%W{o*}}%{MM:%W{o*}} |\n",
++ #ifdef OS2
+     "%{!M:%{!MM:%{!E:cc1obj %{!pipe:%g.i} %1 \
+  		   %{!Q:-quiet} -dumpbase %b.m %{d*} %{m*} %{a}\
+  		   %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} \
+***************
+*** 497,505 ****
+--- 511,532 ----
+  		   %{aux-info*}\
+  		   %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+  		   %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
++               %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y -o %g.o \
++ 		      %{!pipe:%g.s} %A\n o2obj \
++ 		      %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }}}}"},
++ #else
++    "%{!M:%{!MM:%{!E:cc1obj %{!pipe:%g.i} %1 \
++ 		   %{!Q:-quiet} -dumpbase %b.m %{d*} %{m*} %{a}\
++ 		   %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} \
++ 		   %{traditional} %{v:-version} %{pg:-p} %{p} %{f*} \
++     		   -lang-objc %{gen-decls} \
++ 		   %{aux-info*}\
++ 		   %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
++ 		   %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
+                %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+  		      %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o}\
+                        %{!pipe:%g.s} %A\n }}}}"},
++ #endif
+    {".h", "@c-header"},
+    {"@c-header",
+     "%{!E:%eCompilation of header file requested} \
+***************
+*** 526,531 ****
+--- 553,559 ----
+          %{traditional-cpp:-traditional} %{trigraphs}\
+  	%{g*} %{W*} %{w} %{pedantic*} %{H} %{d*} %C %{D*} %{U*} %{i*}\
+          %i %{!M:%{!MM:%{!E:%{!pipe:%g.i}}}}%{E:%W{o*}}%{M:%W{o*}}%{MM:%W{o*}} |\n",
++ #ifdef OS2
+     "%{!M:%{!MM:%{!E:cc1plus %{!pipe:%g.i} %1 %2\
+  		   %{!Q:-quiet} -dumpbase %b.cc %{d*} %{m*} %{a}\
+  		   %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} %{traditional}\
+***************
+*** 533,543 ****
+--- 561,584 ----
+  		   %{aux-info*}\
+  		   %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+  		   %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
++               %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y -o %g.o \
++ 		      %{!pipe:%g.s} %A\n o2obj \
++ 		      %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }}}}"},
++ #else
++    "%{!M:%{!MM:%{!E:cc1plus %{!pipe:%g.i} %1 %2\
++ 		   %{!Q:-quiet} -dumpbase %b.cc %{d*} %{m*} %{a}\
++ 		   %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} %{traditional}\
++ 		   %{v:-version} %{pg:-p} %{p} %{f*} %{+e*}\
++ 		   %{aux-info*}\
++ 		   %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
++ 		   %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
+                %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+  		      %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o}\
+                        %{!pipe:%g.s} %A\n }}}}"},
++ #endif
+    {".i", "@cpp-output"},
+    {"@cpp-output",
++ #ifdef OS2
+     "cc1 %i %1 %{!Q:-quiet} %{d*} %{m*} %{a}\
+  	%{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} %{traditional}\
+  	%{v:-version} %{pg:-p} %{p} %{f*}\
+***************
+*** 545,553 ****
+--- 586,606 ----
+  	%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+  	%{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
+      %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
++ 	    -o %g.o %{!pipe:%g.s} %A\n o2obj \
++ 	    %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }"},
++ #else
++    "cc1 %i %1 %{!Q:-quiet} %{d*} %{m*} %{a}\
++ 	%{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} %{traditional}\
++ 	%{v:-version} %{pg:-p} %{p} %{f*}\
++ 	%{aux-info*}\
++ 	%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
++ 	%{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
++     %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+              %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o} %{!pipe:%g.s} %A\n }"},
++ #endif
+    {".ii", "@c++-cpp-output"},
+    {"@c++-cpp-output",
++ #ifdef OS2
+     "cc1plus %i %1 %2 %{!Q:-quiet} %{d*} %{m*} %{a}\
+  	    %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} %{traditional}\
+  	    %{v:-version} %{pg:-p} %{p} %{f*} %{+e*}\
+***************
+*** 554,566 ****
+--- 607,636 ----
+  	    %{aux-info*}\
+  	    %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+  	    %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
++        %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y -o %g.o \
++ 	       %{!pipe:%g.s} %A\n o2obj \
++ 	       %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }"},
++ #else
++    "cc1plus %i %1 %2 %{!Q:-quiet} %{d*} %{m*} %{a}\
++ 	    %{g*} %{O*} %{W*} %{w} %{pedantic*} %{ansi} %{traditional}\
++ 	    %{v:-version} %{pg:-p} %{p} %{f*} %{+e*}\
++ 	    %{aux-info*}\
++ 	    %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
++ 	    %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} |\n\
+         %{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+  	       %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o}\
+  	       %{!pipe:%g.s} %A\n }"},
++ #endif
+    {".s", "@assembler"},
+    {"@assembler",
++ #ifdef OS2
+     "%{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
++ 	    -o %g.o %i %A\n o2obj \
++ 	    %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }"},
++ #else
++    "%{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+              %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o} %i %A\n }"},
++ #endif
+    {".S", "@assembler-with-cpp"},
+    {"@assembler-with-cpp",
+     "cpp -lang-asm %{nostdinc*} %{C} %{v} %{A*} %{I*} %{P} %I\
+***************
+*** 571,579 ****
+--- 641,655 ----
+          %{traditional-cpp:-traditional}\
+  	%{g*} %{W*} %{w} %{pedantic*} %{H} %{d*} %C %{D*} %{U*} %{i*}\
+          %i %{!M:%{!MM:%{!E:%{!pipe:%g.s}}}}%{E:%W{o*}}%{M:%W{o*}}%{MM:%W{o*}} |\n",
++ #ifdef OS2
++    "%{!M:%{!MM:%{!E:%{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y -o %g.o \
++ 		    %{!pipe:%g.s} %A\n o2obj \
++ 		    %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n }}}}"},
++ #else
+     "%{!M:%{!MM:%{!E:%{!S:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+                      %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o}\
+  		    %{!pipe:%g.s} %A\n }}}}"},
++ #endif
+    {".ads", "@ada"},
+    {".adb", "@ada"},
+    {".ada", "@ada"},
+***************
+*** 583,591 ****
+--- 659,675 ----
+         %{g*} %{O*} %{p} %{pg:-p} %{f*} %{d*}\
+         %{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+         %i %{S:%W{o*}%{!o*:-o %b.s}}%{!S:-o %{|!pipe:%g.s}} | \n",
++ #ifdef OS2
++    "%{!S:%{!gnatc:%{!gnats:as %{R} %{j} %{J} %{h} %{d2} %a %Y -o %g.o \
++         %{!pipe:%g.s} %A\n o2obj \
++         %{c:%W{o*}%{!o*:-o %w%b.obj}}%{!c:-o %g%w.obj} %g.o\n}}} "},
++   {".o",
++    "o2obj %{c:%d%w%g.o}%{!c:%d%w%g.o}"},
++ #else
+     "%{!S:%{!gnatc:%{!gnats:as %{R} %{j} %{J} %{h} %{d2} %a %Y\
+          %{c:%W{o*}%{!o*:-o %w%b.o}}%{!c:-o %d%w%u.o}\
+          %{!pipe:%g.s} %A\n}}} "},
++ #endif
+    /* Mark end of table */
+    {0, 0}
+  };
+***************
+*** 600,605 ****
+--- 684,698 ----
+  /* -u* was put back because both BSD and SysV seem to support it.  */
+  /* %{static:} simply prevents an error message if the target machine
+     doesn't handle -static.  */
++ #ifdef OS2
++ static char *link_command_spec = "\
++ %{!fsyntax-only: \
++  %{!c:%{!M:%{!MM:%{!E:%{!S:link386 %l %X /st:786432/pm:vio/noi/a:16/e/bas:65536 \
++ 			%{A:} %{d:} %{e*:} %{g:/de} %{m:} %{N:} %{n:} \
++ 			%{r:} %{s:} %{T*:} %{t:/i} %{u*:} %{x:} %{z:}\
++ 			%o , %{o*:%*}%{!o*:%b} %{!A:%{!nostartfiles:%{!nostdlib:%S}}} %{static:}, NUL, \
++ 			%{L*:%*} %{!nostdlib:libc.lib%s %{!A:%E}} os2;\n }}}}}}";
++ #else
+  /* We want %{T*} after %{L*} and %D so that it can be used to specify linker
+     scripts which exist in user specified directories, or in standard
+     directories.  */
+***************
+*** 630,635 ****
+--- 723,729 ----
+  			%{L*} %D %{T*} %o %{!nostdlib:-lgcc %L -lgcc %{!A:%E}}\n }}}}}}";
+  #endif
+  #endif
++ #endif
+  
+  /* A vector of options to give to the linker.
+     These options are accumulated by -Xlinker and -Wl,
+***************
+*** 872,878 ****
+  read_specs (filename)
+       char *filename;
+  {
+!   int desc;
+    struct stat statbuf;
+    char *buffer;
+    register char *p;
+--- 966,972 ----
+  read_specs (filename)
+       char *filename;
+  {
+!   int desc, bytes_read;
+    struct stat statbuf;
+    char *buffer;
+    register char *p;
+***************
+*** 889,896 ****
+  
+    /* Read contents of file into BUFFER.  */
+    buffer = xmalloc ((unsigned) statbuf.st_size + 1);
+!   read (desc, buffer, (unsigned) statbuf.st_size);
+!   buffer[statbuf.st_size] = 0;
+    close (desc);
+  
+    /* Scan BUFFER for specs, putting them in the vector.  */
+--- 983,990 ----
+  
+    /* Read contents of file into BUFFER.  */
+    buffer = xmalloc ((unsigned) statbuf.st_size + 1);
+!   bytes_read = read (desc, buffer, (unsigned) statbuf.st_size);
+!   buffer[bytes_read] = 0;
+    close (desc);
+  
+    /* Scan BUFFER for specs, putting them in the vector.  */
+***************
+*** 1403,1415 ****
+--- 1497,1522 ----
+  
+    /* If all else fails, use the current directory! */  
+    if (base == (char *)0)
++ #ifdef OS2
++     base = ".\\";
++ #else
+      base = "./";
++ #endif
+  
+    len = strlen (base);
+    temp_filename = xmalloc (len + sizeof("/ccXXXXXX") + 1);
+    strcpy (temp_filename, base);
++ #ifdef OS2
++   /* Although it may be desirable to always use '\' to separate the components
++      of a path under OS/2, using '\' here and here only is sufficient to allow
++      one to compile and link (load) with one command - the OS/2 linker does
++      not accept '/' to separate the components of a path.  */
++   if (len > 0 && temp_filename[len-1] != '/' && temp_filename[len-1] != '\\')
++     temp_filename[len++] = '\\';
++ #else
+    if (len > 0 && temp_filename[len-1] != '/')
+      temp_filename[len++] = '/';
++ #endif
+    strcpy (temp_filename + len, "ccXXXXXX");
+  
+    mktemp (temp_filename);
+***************
+*** 3689,3695 ****
+--- 3796,3806 ----
+    char *p;
+  
+    p = argv[0] + strlen (argv[0]);
++ #ifdef OS2
++   while (p != argv[0] && p[-1] != '/' && p[-1] != '\\') --p;
++ #else
+    while (p != argv[0] && p[-1] != '/') --p;
++ #endif
+    programname = p;
+  
+    if (signal (SIGINT, SIG_IGN) != SIG_IGN)
+*** cccp.old	Fri Nov  5 17:28:28 1993
+--- cccp.c	Wed Dec  1 18:16:51 1993
+***************
+*** 1091,1097 ****
+--- 1091,1101 ----
+  #endif
+  
+    p = argv[0] + strlen (argv[0]);
++ #ifdef OS2
++   while (p != argv[0] && p[-1] != '/' && p[-1] != '\\') --p;
++ #else
+    while (p != argv[0] && p[-1] != '/') --p;
++ #endif
+    progname = p;
+  
+  #ifdef VMS
+*** toplev.old	Sat Oct 30 04:21:39 1993
+--- toplev.c	Wed Dec  1 18:23:01 1993
+***************
+*** 2931,2937 ****
+--- 2931,2941 ----
+    save_argv = argv;
+  
+    p = argv[0] + strlen (argv[0]);
++ #ifdef OS2
++   while (p != argv[0] && p[-1] != '/' && p[-1] != '\\') --p;
++ #else
+    while (p != argv[0] && p[-1] != '/') --p;
++ #endif
+    progname = p;
+  
+  #ifdef RLIMIT_STACK

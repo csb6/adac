@@ -1,0 +1,768 @@
+*** ../currentbase/Makefile.in	Thu Nov 25 18:08:52 1993
+--- Makefile.in	Wed Dec 22 23:40:15 1993
+***************
+*** 29,35 ****
+  # See below for how to change them for certain systems.
+  
+  # Selection of languages to be made.
+! LANGUAGES = c c++ objective-c proto
+  
+  ALLOCA =
+  ALLOCA_FLAGS =
+--- 29,35 ----
+  # See below for how to change them for certain systems.
+  
+  # Selection of languages to be made.
+! LANGUAGES = c c++ objective-c ada proto
+  
+  ALLOCA =
+  ALLOCA_FLAGS =
+***************
+*** 392,398 ****
+  # Lists of files for various purposes.
+  
+  # A list of all the language-specific executables.
+! COMPILERS = cc1 cc1plus cc1obj
+  
+  # Language-specific object files for C.
+  C_OBJS = c-parse.o c-lang.o c-lex.o c-pragma.o \
+--- 392,398 ----
+  # Lists of files for various purposes.
+  
+  # A list of all the language-specific executables.
+! COMPILERS = cc1 cc1plus cc1obj gnat1
+  
+  # Language-specific object files for C.
+  C_OBJS = c-parse.o c-lang.o c-lex.o c-pragma.o \
+***************
+*** 410,415 ****
+--- 410,443 ----
+     cp-expr.o cp-pt.o cp-edsel.o cp-xref.o \
+     $(CPLUS_INPUT) cp-spew.o c-common.o cp-error.o cp-errfn.o
+  
++ # Languages-specific object files for Ada.
++ GNAT1_C_OBJS = bind_gnat1drv.o a-adaint.o a-gtran3.o a-misc.o a-trans3.o \
++  a-trans4.o a-trans.o a-uint.o
++ 
++ GNAT_ADA_OBJS = alloc.o atree.o casing.o comperr.o csets.o debug.o \
++  debug_sem.o einfo.o errcount.o errout.o excep.o expand.o exp_attr.o \
++  exp_ch2.o exp_ch3.o \
++  exp_ch4.o exp_ch5.o exp_ch6.o exp_ch7.o exp_ch8.o exp_ch9.o exp_ch10.o \
++  exp_ch11.o exp_ch12.o exp_ch13.o exp_prag.o exp_util.o fname.o frontend.o \
++  gnatvsn.o lib.o libfmt.o limits.o namet.o nmake.o opt.o osint.o output.o \
++  par.o rtsfind.o scans.o scn.o sem.o sem_attr.o sem_ch3.o sem_ch4.o \
++  sem_ch5.o sem_ch6.o sem_ch7.o sem_ch8.o sem_ch9.o sem_ch10.o sem_ch11.o \
++  sem_ch12.o sem_ch13.o sem_disp.o sem_eval.o sem_prag.o sem_res.o sem_type.o \
++  sem_util.o sinfo.o sinfo-change.o sinput.o snames.o sprint.o stand.o \
++  stringt.o switch.o sysid.o system.o system-assertions.o system-traceback.o \
++  system_environment.o tbuild.o treepr.o \
++  treeprs.o ttypes.o types.o uintp.o uname.o unixlib.o usage.o
++ 
++ GNATF_OBJS =  $(GNAT_ADA_OBJS) frontdrv.o xref.o xref_tab.o a-adaint.o
++ GNAT1_ADA_OBJS = $(GNAT_ADA_OBJS) back_end.o gnat1drv.o
++ GNAT1_OBJS = $(GNAT1_C_OBJS) $(GNAT1_ADA_OBJS)
++ 
++ GNATBIND_OBJS = gnatbind.o ali.o alloc.o bcheck.o binde.o binderr.o bindgen.o \
++   bindusg.o butil.o debug.o errcount.o excep.o gnatvsn.o libfmt.o \
++   limits.o namet.o opt.o osint.o output.o switch.o sysid.o system.o \
++   system-assertions.o system-traceback.o system_environment.o  \
++   types.o unixlib.o a-adaint.o
++ 
+  # Files specific to the C interpreter bytecode compiler(s).
+  BC_OBJS = bc-emit.o bc-optab.o
+  
+***************
+*** 484,489 ****
+--- 512,531 ----
+  # Avoid a lot of time thinking about remaking Makefile.in and *.def.
+  .SUFFIXES: .in .def
+  
++ # Say how to compile Ada programs.
++ .SUFFIXES: .ada .adb .ads
++ 
++ AFLAGS= -g -gnatg -gnata 
++ BOOT_AFLAGS= -O2 $(AFLAGS)
++ GNATBIND= gnatbind
++ 
++ .ada.o:
++ 	$(CC) -c $(AFLAGS) $<
++ .adb.o:
++ 	$(CC) -c $(AFLAGS) $<
++ .ads.o:
++ 	$(CC) -c $(AFLAGS) $<
++ 
+  Makefile: $(srcdir)/Makefile.in $(srcdir)/configure $(srcdir)/version.c \
+     $(srcdir)/config/$(xmake_file) $(srcdir)/config/$(tmake_file)
+  	sh config.status
+***************
+*** 514,519 ****
+--- 556,562 ----
+  # The next two ought to depend on objc-runtime, but that doesn't work yet.
+  OBJC objc: cc1obj
+  OBJECTIVE-C objective-c: cc1obj
++ Ada ada: gnat1 ;
+  PROTO: proto
+  
+  # Really, really stupid make features, such as SUN's KEEP_STATE, may force
+***************
+*** 576,581 ****
+--- 619,640 ----
+  cc1obj: $(P) $(OBJC_OBJS) $(OBJS) $(BC_OBJS) $(LIBDEPS)
+  	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o cc1obj $(OBJC_OBJS) $(OBJS) $(BC_OBJS) $(LIBS)
+  
++ # Needs to be built with CC=gcc
++ gnat1: $(P) $(GNAT1_OBJS) $(OBJS) $(BC_OBJS) $(LIBDEPS)
++ 	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o gnat1 $(GNAT1_OBJS) $(OBJS) $(BC_OBJS) $(LIBS)
++ 
++ gnatf: $(P) $(GNATF_OBJS) bind_frontdrv.o
++ 	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o gnatf $(GNATF_OBJS) bind_frontdrv.o
++ 
++ 
++ gnatbind: $(P) $(GNATBIND_OBJS) bind_gnatbind.o
++ 	$(CC) $(ALL_CFLAGS) $(LDFLAGS) -o gnatbind $(GNATBIND_OBJS)\
++                bind_gnatbind.o
++ 
++ # .s files for cross-building
++ gnat-cross: force
++ 	make $(GNAT1_ADA_OBJS) CC="gcc -Bstage1/" CFLAGS="-S -gnatp"
++ 
+  # Copy float.h from its source.
+  gfloat.h: $(FLOAT_H)
+  	cp $(FLOAT_H) gfloat.h
+***************
+*** 869,874 ****
+--- 928,1497 ----
+  
+  g++.o : g++.c $(CONFIG_H) gvarargs.h
+  
++ # Ada language specific files.
++ 
++ ada_extra_files : treeprs.ads sysid.ads a-einfo.h a-sinfo.h nmake.adb \
++ 	nmake.ads
++ 
++ bind_gnat1drv.c : $(GNAT1_ADA_OBJS)
++ 	$(GNATBIND) -n -t gnat1drv.ali
++ bind_gnat1drv.o : bind_gnat1drv.c 
++ 
++ bind_frontdrv.c : $(GNATF_OBJS)
++ 	$(GNATBIND) -t frontdrv.ali
++ 
++ bind_frontdrv.o : bind_frontdrv.c 
++ 
++ 
++ bind_gnatbind.c : $(GNATBIND_OBJS)
++ 	$(GNATBIND) -t gnatbind.ali
++ bind_gnatbind.o : bind_gnatbind.c
++ 
++ treeprs.ads : treeprs.adt sinfo.ads xtreeprs.spt
++ 	spitbol xtreeprs.spt
++ 
++ sysid.ads : sysid~u.ads
++ 	/bin/rm -f sysid.ads
++ 	cp sysid~u.ads sysid.ads
++ 
++ a-einfo.h : einfo.ads einfo.adb xeinfo.spt
++ 	spitbol xeinfo.spt
++ 
++ a-sinfo.h : sinfo.ads xsinfo.spt
++ 	spitbol xsinfo.spt
++ 
++ nmake.adb : nmake.adt sinfo.ads xnmake.spt
++ 	spitbol xnmake.spt -b
++ 
++ nmake.ads :  nmake.adt sinfo.ads xnmake.spt
++ 	spitbol xnmake.spt -s
++ 
++ mk-ttypes.o : mk-ttypes.c hconfig.h machmode.h
++ 	$(HOST_CC) -c $(HOST_CFLAGS) $(HOST_CPPFLAGS) $(INCLUDES) $(srcdir)/mk-ttypes.c
++ mk-ttypes : mk-ttypes.o $(HOST_LIBDEPS)
++ 	$(HOST_CC) $(HOST_CFLAGS) $(HOST_LDFLAGS) -o mk-ttypes \
++ 	 mk-ttypes.o $(HOST_LIBS)
++ 
++ ttypes.ads: stamp-ttypes ; @true
++ stamp-ttypes : ttypes.adt mk-ttypes $(srcdir)/move-if-change
++ 	./mk-ttypes ttypes.adt > tmp-ttypes.ads
++ 	$(srcdir)/move-if-change tmp-ttypes.ads ttypes.ads
++ 	touch stamp-ttypes
++ 
++ A_MISC_H = a-misc.h a-tree.def
++ 
++ a-adaint.o : $(CONFIG_H)
++ 
++ a-gtran3.o : $(CONFIG_H) $(TREE_H) obstack.h flags.h convert.h a-ada.h \
++    a-types.h a-atree.h a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h \
++    a-trans.h a-trans3.h a-trans4.h a-gtran3.h $(A_MISC_H) a-rtree.h 
++ 
++ a-ptypes.o : $(CONFIG_H)
++ 
++ a-misc.o : $(CONFIG_H) $(TREE_H) a-ada.h a-types.h a-atree.h a-sinfo.h \
++    a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-trans3.h $(A_MISC_H) \
++    a-rtree.h flags.h $(RTL_H) expr.h insn-codes.h
++ 
++ a-trans3.o : $(CONFIG_H) $(TREE_H) flags.h a-ada.h a-types.h a-atree.h \
++    a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-gtran3.h \
++    a-trans3.h a-trans4.h $(A_MISC_H) a-rtree.h convert.h 
++ 
++ a-trans4.o : $(CONFIG_H) $(TREE_H) flags.h a-ada.h a-types.h a-atree.h \
++    a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-trans3.h \
++    a-trans4.h $(A_MISC_H)
++ 
++ a-trans.o : $(CONFIG_H) $(TREE_H) flags.h a-ada.h a-types.h a-atree.h \
++    a-sinfo.h a-einfo.h a-namet.h a-string.h a-uint.h a-trans.h a-trans3.h \
++    a-gtran3.h a-trans4.h $(A_MISC_H) a-rtree.h 
++ 
++ a-uint.o : $(CONFIG_H) $(TREE_H) a-ada.h a-types.h a-atree.h a-sinfo.h \
++    a-einfo.h a-namet.h a-string.h a-uint.h 
++ 
++ ali.o : ali.ads ali.adb alloc.ads binderr.ads butil.ads debug.ads \
++    limits.ads namet.ads opt.ads osint.ads output.ads system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ alloc.o : alloc.ads 
++ 
++ atree.o : alloc.ads atree.ads atree.adb atree-ts.adb comperr.ads debug.ads \
++    einfo.ads output.ads sinfo.ads system.ads system-assertions.ads \
++    table.ads table.adb types.ads unchecked_conversion.ads \
++    unchecked_conversion.adb unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ back_end.o : alloc.ads atree.ads back_end.ads back_end.adb casing.ads \
++    debug.ads einfo.ads lib.ads limits.ads namet.ads output.ads sinfo.ads \
++    stringt.ads system.ads table.ads table.adb types.ads uintp.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ bcheck.o : ali.ads alloc.ads bcheck.ads bcheck.adb binderr.ads debug.ads \
++    gnatvsn.ads libfmt.ads limits.ads namet.ads opt.ads output.ads \
++    system.ads table.ads table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ binde.o : ali.ads alloc.ads binde.ads binde.adb binderr.ads butil.ads \
++    debug.ads limits.ads namet.ads opt.ads output.ads system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ binderr.o : alloc.ads binderr.ads binderr.adb butil.ads debug.ads \
++    errcount.ads excep.ads limits.ads namet.ads opt.ads osint.ads \
++    output.ads system.ads system-traceback.ads table.ads table.adb \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ bindgen.o : ali.ads alloc.ads binde.ads bindgen.ads bindgen.adb debug.ads \
++    limits.ads namet.ads opt.ads osint.ads output.ads system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ bindusg.o : bindusg.ads bindusg.adb osint.ads output.ads sysid.ads \
++    system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ butil.o : alloc.ads butil.ads butil.adb debug.ads limits.ads namet.ads \
++    output.ads system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ casing.o : alloc.ads casing.ads casing.adb csets.ads debug.ads limits.ads \
++    namet.ads output.ads scans.ads system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ comperr.o : comperr.ads comperr.adb debug.ads errcount.ads excep.ads \
++    osint.ads output.ads system.ads system-traceback.ads treepr.ads \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ csets.o : csets.ads csets.adb opt.ads system.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ debug.o : debug.ads debug.adb output.ads system.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ debug_sem.o : alloc.ads atree.ads debug.ads debug_sem.ads debug_sem.adb \
++    einfo.ads output.ads sinfo.ads sinput.ads system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ einfo.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads einfo.adb \
++    limits.ads namet.ads output.ads sinfo.ads snames.ads system.ads \
++    system-assertions.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ errcount.o : errcount.ads system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ errout.o : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
++    errcount.ads errout.ads errout.adb excep.ads exp_util.ads lib.ads \
++    limits.ads namet.ads opt.ads output.ads scans.ads sinfo.ads sinput.ads \
++    stand.ads system.ads table.ads table.adb types.ads uintp.ads uname.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ excep.o : excep.ads 
++ 
++ exp_attr.o : alloc.ads atree.ads debug.ads einfo.ads exp_attr.ads \
++    exp_attr.adb exp_ch9.ads limits.ads namet.ads nmake.ads opt.ads \
++    output.ads rtsfind.ads sem.ads sem_res.ads sinfo.ads snames.ads \
++    stand.ads system.ads table.ads table.adb tbuild.ads ttypes.ads \
++    types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ exp_ch10.o : exp_ch10.ads 
++ 
++ exp_ch11.o : exp_ch11.ads 
++ 
++ exp_ch12.o : exp_ch12.ads 
++ 
++ exp_ch13.o : alloc.ads atree.ads debug.ads einfo.ads exp_ch13.ads \
++    exp_ch13.adb exp_ch3.ads nmake.ads output.ads rtsfind.ads sinfo.ads \
++    snames.ads system.ads table.ads table.adb tbuild.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_ch2.o : alloc.ads atree.ads debug.ads einfo.ads exp_ch2.ads \
++    exp_ch2.adb output.ads sinfo.ads system.ads table.ads table.adb \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_ch3.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
++    exp_ch3.ads exp_ch3.adb exp_ch9.ads exp_util.ads limits.ads namet.ads \
++    nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch3.ads \
++    sem_res.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
++    system-assertions.ads table.ads table.adb tbuild.ads types.ads \
++    uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_ch4.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
++    exp_ch4.ads exp_ch4.adb exp_ch9.ads exp_util.ads limits.ads namet.ads \
++    nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_eval.ads \
++    sem_res.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
++    table.ads table.adb tbuild.ads types.ads uintp.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_ch5.o : alloc.ads atree.ads debug.ads einfo.ads exp_ch5.ads \
++    exp_ch5.adb exp_ch9.ads exp_util.ads nmake.ads opt.ads output.ads \
++    rtsfind.ads sem.ads sem_util.ads sinfo.ads snames.ads system.ads \
++    table.ads table.adb tbuild.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ exp_ch6.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
++    exp_ch6.ads exp_ch6.adb exp_ch9.ads exp_util.ads limits.ads namet.ads \
++    nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch3.ads \
++    sem_disp.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
++    system-assertions.ads table.ads table.adb tbuild.ads types.ads \
++    uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_ch7.o : exp_ch7.ads exp_ch7.adb exp_ch9.ads system.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_ch8.o : exp_ch8.ads 
++ 
++ exp_ch9.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
++    exp_ch3.ads exp_ch9.ads exp_ch9.adb exp_util.ads limits.ads namet.ads \
++    nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_res.ads sinfo.ads \
++    snames.ads stand.ads system.ads system-assertions.ads table.ads \
++    table.adb tbuild.ads types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ exp_prag.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
++    exp_prag.ads exp_prag.adb exp_util.ads nmake.ads opt.ads output.ads \
++    rtsfind.ads sem.ads sinfo.ads snames.ads system.ads \
++    system-assertions.ads table.ads table.adb tbuild.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ exp_util.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads \
++    errcount.ads exp_util.ads exp_util.adb lib.ads limits.ads namet.ads \
++    nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch13.ads \
++    sem_res.ads sem_util.ads sinfo.ads sinput.ads snames.ads stand.ads \
++    system.ads system-assertions.ads table.ads table.adb tbuild.ads \
++    ttypes.ads types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ expand.o : alloc.ads atree.ads debug.ads debug_sem.ads einfo.ads \
++    exp_attr.ads exp_ch10.ads exp_ch11.ads exp_ch12.ads exp_ch13.ads \
++    exp_ch2.ads exp_ch3.ads exp_ch4.ads exp_ch5.ads exp_ch6.ads exp_ch7.ads \
++    exp_ch8.ads exp_ch9.ads exp_prag.ads exp_util.ads expand.ads expand.adb \
++    opt.ads output.ads sinfo.ads sinput.ads system.ads table.ads table.adb \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ fname.o : alloc.ads comperr.ads csets.ads debug.ads fname.ads fname.adb \
++    limits.ads namet.ads opt.ads osint.ads output.ads system.ads \
++    system-assertions.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ frontend.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
++    frontend.ads frontend.adb lib.ads limits.ads namet.ads opt.ads \
++    output.ads par.ads rtsfind.ads scn.ads sem.ads sinfo.ads snames.ads \
++    sprint.ads stand.ads stringt.ads system.ads table.ads table.adb \
++    treepr.ads types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb usage.ads 
++ 
++ gnat1drv.o : alloc.ads atree.ads back_end.ads casing.ads comperr.ads \
++    csets.ads debug.ads einfo.ads errcount.ads errout.ads excep.ads \
++    frontend.ads gnat1drv.ads gnat1drv.adb gnatvsn.ads lib.ads limits.ads \
++    namet.ads opt.ads osint.ads output.ads par.ads sinfo.ads system.ads \
++    system-assertions.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb usage.ads 
++ 
++ gnatbind.o : ali.ads alloc.ads bcheck.ads binde.ads binderr.ads \
++    bindgen.ads bindusg.ads butil.ads debug.ads errcount.ads excep.ads \
++    gnatbind.adb gnatvsn.ads libfmt.ads limits.ads namet.ads opt.ads \
++    osint.ads output.ads system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ gnatvsn.o : gnatvsn.ads system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ lib.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
++    fname.ads gnatvsn.ads lib.ads lib.adb lib-list.adb lib-load.adb \
++    lib-sort.adb lib-writ.adb libfmt.ads limits.ads namet.ads osint.ads \
++    output.ads par.ads scn.ads sinfo.ads system.ads table.ads table.adb \
++    types.ads uname.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ libfmt.o : libfmt.ads system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ limits.o : limits.ads 
++ 
++ namet.o : alloc.ads debug.ads limits.ads namet.ads namet.adb namet-ch.adb \
++    output.ads system.ads system-assertions.ads table.ads table.adb \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ nmake.o : alloc.ads atree.ads debug.ads einfo.ads nmake.ads nmake.adb \
++    output.ads sinfo.ads snames.ads system.ads table.ads table.adb \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ opt.o : opt.ads system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ osint.o : alloc.ads debug.ads limits.ads namet.ads opt.ads osint.ads \
++    osint.adb output.ads switch.ads sysid.ads system.ads \
++    system-assertions.ads system_environment.ads table.ads table.adb \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb \
++    unixlib.ads 
++ 
++ output.o : output.ads output.adb system.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb unixlib.ads 
++ 
++ par.o : alloc.ads atree.ads casing.ads comperr.ads csets.ads debug.ads \
++    einfo.ads errout.ads excep.ads fname.ads lib.ads limits.ads namet.ads \
++    nmake.ads opt.ads output.ads par.ads par.adb par-ch10.adb par-ch11.adb \
++    par-ch12.adb par-ch13.adb par-ch2.adb par-ch3.adb par-ch4.adb \
++    par-ch5.adb par-ch6.adb par-ch7.adb par-ch8.adb par-ch9.adb \
++    par-endh.adb par-labl.adb par-load.adb par-prag.adb par-sync.adb \
++    par-tchk.adb par-util.adb scans.ads scn.ads sinfo.ads sinfo-change.ads \
++    sinput.ads snames.ads system.ads table.ads table.adb tbuild.ads \
++    types.ads uintp.ads uname.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ rtsfind.o : alloc.ads atree.ads casing.ads comperr.ads csets.ads debug.ads \
++    einfo.ads excep.ads fname.ads lib.ads limits.ads namet.ads nmake.ads \
++    opt.ads output.ads rtsfind.ads rtsfind.adb sem.ads sem_util.ads \
++    sinfo.ads snames.ads system.ads table.ads table.adb tbuild.ads \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ scans.o : scans.ads scans.adb system.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ scn.o : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
++    errout.ads lib.ads limits.ads namet.ads opt.ads output.ads scans.ads \
++    scn.ads scn.adb scn-nlit.adb scn-slit.adb sinfo.ads sinput.ads \
++    snames.ads stringt.ads system.ads table.ads table.adb types.ads \
++    uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem.o : alloc.ads atree.ads casing.ads comperr.ads debug.ads debug_sem.ads \
++    einfo.ads errout.ads exp_util.ads expand.ads lib.ads limits.ads \
++    namet.ads opt.ads output.ads sem.ads sem.adb sem_attr.ads sem_ch10.ads \
++    sem_ch11.ads sem_ch12.ads sem_ch13.ads sem_ch3.ads sem_ch4.ads \
++    sem_ch5.ads sem_ch6.ads sem_ch7.ads sem_ch8.ads sem_ch9.ads \
++    sem_prag.ads sem_util.ads sinfo.ads sinput.ads snames.ads stand.ads \
++    system.ads table.ads table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_attr.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
++    namet.ads nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_attr.ads \
++    sem_attr.adb sem_ch6.ads sem_ch8.ads sem_eval.ads sem_res.ads \
++    sem_type.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
++    table.ads table.adb tbuild.ads types.ads uintp.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_ch10.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads \
++    errcount.ads errout.ads lib.ads limits.ads namet.ads nmake.ads opt.ads \
++    output.ads sem.ads sem_ch10.ads sem_ch10.adb sem_ch6.ads sem_ch7.ads \
++    sem_ch8.ads sem_util.ads sinfo.ads sinfo-change.ads snames.ads \
++    stand.ads stringt.ads system.ads table.ads table.adb tbuild.ads \
++    types.ads uname.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch11.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
++    namet.ads opt.ads output.ads sem_ch11.ads sem_ch11.adb sem_ch5.ads \
++    sem_ch8.ads sem_util.ads sinfo.ads stand.ads system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch12.o : alloc.ads atree.ads casing.ads comperr.ads debug.ads \
++    einfo.ads errout.ads exp_util.ads lib.ads limits.ads namet.ads opt.ads \
++    output.ads sem.ads sem_ch10.ads sem_ch12.ads sem_ch12.adb sem_ch13.ads \
++    sem_ch3.ads sem_ch6.ads sem_ch7.ads sem_ch8.ads sem_res.ads \
++    sem_util.ads sinfo.ads snames.ads stand.ads system.ads table.ads \
++    table.adb tbuild.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch13.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads excep.ads \
++    limits.ads namet.ads nmake.ads opt.ads output.ads rtsfind.ads sem.ads \
++    sem_ch13.ads sem_ch13.adb sem_ch3.ads sem_ch8.ads sem_eval.ads \
++    sem_res.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
++    table.ads table.adb ttypes.ads types.ads uintp.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_ch3.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
++    exp_util.ads limits.ads namet.ads nmake.ads opt.ads output.ads \
++    rtsfind.ads sem.ads sem_ch12.ads sem_ch13.ads sem_ch3.ads sem_ch3.adb \
++    sem_ch5.ads sem_ch6.ads sem_ch7.ads sem_ch8.ads sem_ch9.ads \
++    sem_eval.ads sem_res.ads sem_type.ads sem_util.ads sinfo.ads snames.ads \
++    stand.ads system.ads system-assertions.ads table.ads table.adb \
++    tbuild.ads ttypes.ads types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch4.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads \
++    exp_util.ads limits.ads namet.ads nmake.ads opt.ads output.ads sem.ads \
++    sem_ch3.ads sem_ch4.ads sem_ch4.adb sem_ch8.ads sem_type.ads \
++    sem_util.ads sinfo.ads snames.ads stand.ads system.ads table.ads \
++    table.adb tbuild.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch5.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
++    limits.ads namet.ads opt.ads output.ads sem.ads sem_ch3.ads sem_ch5.ads \
++    sem_ch5.adb sem_ch8.ads sem_disp.ads sem_eval.ads sem_res.ads \
++    sem_type.ads sem_util.ads sinfo.ads snames.ads stand.ads system.ads \
++    table.ads table.adb types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch6.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
++    exp_util.ads lib.ads limits.ads namet.ads nmake.ads opt.ads output.ads \
++    rtsfind.ads sem.ads sem_ch3.ads sem_ch4.ads sem_ch6.ads sem_ch6.adb \
++    sem_ch8.ads sem_ch9.ads sem_disp.ads sem_res.ads sem_util.ads sinfo.ads \
++    sinfo-change.ads snames.ads stand.ads stringt.ads system.ads table.ads \
++    table.adb tbuild.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_ch7.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads errout.ads \
++    lib.ads limits.ads namet.ads opt.ads output.ads sem.ads sem_ch13.ads \
++    sem_ch3.ads sem_ch7.ads sem_ch7.adb sem_ch8.ads sem_util.ads sinfo.ads \
++    snames.ads stand.ads system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_ch8.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads errout.ads \
++    limits.ads namet.ads nmake.ads opt.ads output.ads sem.ads sem_attr.ads \
++    sem_ch3.ads sem_ch4.ads sem_ch5.ads sem_ch6.ads sem_ch8.ads sem_ch8.adb \
++    sem_res.ads sem_type.ads sem_util.ads sinfo.ads sinfo-change.ads \
++    snames.ads stand.ads system.ads table.ads table.adb tbuild.ads \
++    types.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_ch9.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
++    namet.ads opt.ads output.ads sem.ads sem_ch3.ads sem_ch4.ads \
++    sem_ch5.ads sem_ch6.ads sem_ch8.ads sem_ch9.ads sem_ch9.adb sem_res.ads \
++    sem_util.ads sinfo.ads snames.ads stand.ads system.ads table.ads \
++    table.adb tbuild.ads ttypes.ads types.ads uintp.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_disp.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads \
++    exp_ch6.ads output.ads sem_disp.ads sem_disp.adb sem_util.ads sinfo.ads \
++    system.ads table.ads table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_eval.o : alloc.ads atree.ads comperr.ads debug.ads debug_sem.ads \
++    einfo.ads errout.ads excep.ads limits.ads namet.ads output.ads \
++    sem_eval.ads sem_eval.adb sem_util.ads sinfo.ads sinput.ads snames.ads \
++    stand.ads stringt.ads system.ads system-assertions.ads table.ads \
++    table.adb tbuild.ads types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_prag.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
++    namet.ads nmake.ads opt.ads output.ads rtsfind.ads sem.ads sem_ch8.ads \
++    sem_eval.ads sem_prag.ads sem_prag.adb sem_res.ads sem_util.ads \
++    sinfo.ads snames.ads stand.ads system.ads table.ads table.adb \
++    tbuild.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sem_res.o : alloc.ads atree.ads comperr.ads debug.ads debug_sem.ads \
++    einfo.ads errout.ads expand.ads limits.ads namet.ads nmake.ads opt.ads \
++    output.ads rtsfind.ads sem.ads sem_attr.ads sem_ch3.ads sem_ch4.ads \
++    sem_ch5.ads sem_disp.ads sem_eval.ads sem_res.ads sem_res.adb \
++    sem_type.ads sem_util.ads sinfo.ads sinput.ads snames.ads stand.ads \
++    stringt.ads system.ads table.ads table.adb tbuild.ads types.ads \
++    uintp.ads unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_type.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads \
++    errout.ads limits.ads namet.ads output.ads sem_ch6.ads sem_ch8.ads \
++    sem_type.ads sem_type.adb sem_util.ads sinfo.ads snames.ads stand.ads \
++    system.ads system-assertions.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sem_util.o : alloc.ads atree.ads casing.ads comperr.ads csets.ads \
++    debug.ads einfo.ads errout.ads lib.ads limits.ads namet.ads nmake.ads \
++    opt.ads output.ads sem.ads sem_eval.ads sem_res.ads sem_type.ads \
++    sem_util.ads sem_util.adb sinfo.ads sinput.ads snames.ads stand.ads \
++    system.ads table.ads table.adb tbuild.ads types.ads uintp.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sinfo-change.o : alloc.ads atree.ads debug.ads einfo.ads output.ads \
++    sinfo.ads sinfo-change.ads sinfo-change.adb system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sinfo.o : alloc.ads atree.ads comperr.ads debug.ads einfo.ads output.ads \
++    sinfo.ads sinfo.adb system.ads system-assertions.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sinput.o : alloc.ads casing.ads debug.ads lib.ads limits.ads namet.ads \
++    output.ads scans.ads sinput.ads sinput.adb system.ads table.ads \
++    table.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ snames.o : alloc.ads comperr.ads debug.ads limits.ads namet.ads output.ads \
++    snames.ads snames.adb system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ sprint.o : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
++    lib.ads limits.ads namet.ads opt.ads output.ads sinfo.ads sprint.ads \
++    sprint.adb stand.ads stringt.ads system.ads table.ads table.adb \
++    types.ads uintp.ads uname.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ stand.o : alloc.ads atree.ads csets.ads debug.ads einfo.ads limits.ads \
++    namet.ads nmake.ads opt.ads output.ads sinfo.ads snames.ads stand.ads \
++    stand.adb stringt.ads system.ads table.ads table.adb ttypes.ads \
++    types.ads uintp.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ stringt.o : alloc.ads debug.ads output.ads stringt.ads stringt.adb \
++    system.ads system-assertions.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ switch.o : debug.ads opt.ads osint.ads output.ads switch.ads switch.adb \
++    sysid.ads system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ sysid.o : sysid.ads 
++ 
++ system-assertions.o : system.ads system-assertions.ads 
++ 
++ system-traceback.o : debug.ads system.ads system-traceback.ads \
++    system-traceback.adb types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ system.o : system.ads 
++ 
++ system_environment.o : system.ads system_environment.ads \
++    system_environment.adb 
++ 
++ tbuild.o : alloc.ads atree.ads debug.ads einfo.ads errout.ads limits.ads \
++    namet.ads nmake.ads output.ads sinfo.ads snames.ads stand.ads \
++    system.ads table.ads table.adb tbuild.ads tbuild.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ treepr.o : alloc.ads atree.ads casing.ads csets.ads debug.ads einfo.ads \
++    lib.ads limits.ads namet.ads opt.ads output.ads sinfo.ads sinput.ads \
++    stand.ads stringt.ads system.ads table.ads table.adb treepr.ads \
++    treepr.adb treeprs.ads types.ads uintp.ads uname.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ treeprs.o : sinfo.ads system.ads treeprs.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ ttypes.o : ttypes.ads 
++ 
++ types.o : system.ads types.ads types.adb unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ uintp.o : alloc.ads comperr.ads debug.ads limits.ads namet.ads output.ads \
++    system.ads system-assertions.ads table.ads table.adb types.ads \
++    uintp.ads uintp.adb unchecked_deallocation.ads \
++    unchecked_deallocation.adb 
++ 
++ uname.o : alloc.ads atree.ads casing.ads comperr.ads debug.ads einfo.ads \
++    lib.ads limits.ads namet.ads output.ads sinfo.ads system.ads \
++    system-assertions.ads table.ads table.adb types.ads uname.ads uname.adb \
++    unchecked_deallocation.ads unchecked_deallocation.adb 
++ 
++ unixlib.o : system.ads types.ads unchecked_deallocation.ads \
++    unchecked_deallocation.adb unixlib.ads unixlib.adb 
++ 
++ usage.o : opt.ads osint.ads output.ads sysid.ads system.ads types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb usage.ads \
++    usage.adb 
++ 
++ xref.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads lib.ads \
++    limits.ads namet.ads osint.ads output.ads sinfo.ads sprint.ads \
++    stand.ads system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb xref.ads xref.adb \
++    xref_tab.ads 
++ 
++ xref_tab.o : alloc.ads atree.ads casing.ads debug.ads einfo.ads lib.ads \
++    limits.ads namet.ads osint.ads output.ads sinfo.ads sinput.ads \
++    stand.ads system.ads table.ads table.adb types.ads \
++    unchecked_deallocation.ads unchecked_deallocation.adb xref_tab.ads \
++    xref_tab.adb
++ 
+  # To make a configuration always use collect2, set USE_COLLECT2 to ld.
+  ld: collect2
+  	rm -f ld
+***************
+*** 1853,1858 ****
+--- 2476,2486 ----
+  	  rm -f $(bindir)/$(target)-gcc-1; \
+  	  ln $(bindir)/gcc $(bindir)/$(target)-gcc-1; \
+  	  mv $(bindir)/$(target)-gcc-1 $(bindir)/$(target)-gcc; \
++ 	  if [ -f gnat1 ] ; then \
++ 	    rm -f $(bindir)/gnatbind; \
++ 	    $(INSTALL_PROGRAM) gnatbind $(bindir)/gnatbind; \
++ 	    chmod a+x $(bindir)/gnatbind; \
++ 	  fi; \
+  	  if [ -f cc1plus ] ; then \
+  	    rm -f $(bindir)/g++; \
+  	    $(INSTALL_PROGRAM) g++ $(bindir)/g++; \
+***************
+*** 2161,2166 ****
+--- 2789,2835 ----
+  	-rm -f stage4/libgcc.a
+  	-cp libgcc.a stage4
+  	-if $(RANLIB_TEST) ; then $(RANLIB) stage4/libgcc.a; else true; fi
++ 
++ # gnat bootstrapping targets - use the same stage directories
++ gnatboot: force
++ 	$(MAKE) CC=gcc gnat1 AFLAGS="$(AFLAGS)"
++ 	$(MAKE) CC=gcc gnatbind AFLAGS="$(AFLAGS)"
++ 	$(MAKE) gnatstage1
++ 	$(MAKE) CC="gcc -Bstage1/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage1/gnatbind gnat1
++ 	$(MAKE) CC="gcc -Bstage1/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage1/gnatbind gnatbind
++ 	$(MAKE) gnatstage2
++ 	$(MAKE) CC="gcc -Bstage2/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage2/gnatbind gnat1
++ 	$(MAKE) CC="gcc -Bstage2/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage2/gnatbind gnatbind
++ 
++ gnatboot2: force
++ 	$(MAKE) CC="gcc -Bstage1/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage1/gnatbind gnat1
++ 	$(MAKE) CC="gcc -Bstage1/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage1/gnatbind gnatbind
++ 	$(MAKE) gnatstage2
++ 	$(MAKE) CC="gcc -Bstage2/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage2/gnatbind gnat1
++ 	$(MAKE) CC="gcc -Bstage2/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage2/gnatbind gnatbind
++ 
++ gnatboot3: force
++ 	$(MAKE) CC="gcc -Bstage2/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage2/gnatbind gnat1
++ 	$(MAKE) CC="gcc -Bstage2/" AFLAGS="$(BOOT_AFLAGS)" LDFLAGS="$(BOOT_LDFLAGS)" GNATBIND=stage2/gnatbind gnatbind
++ 
++ gnatcompare: force
++ 	for file in $(GNAT1_ADA_OBJS); do \
++ 	  tail +16c $$file > tmp-foo1; \
++ 	  tail +16c stage2/$$file > tmp-foo2 2>/dev/null \
++ 	    && (cmp tmp-foo1 tmp-foo2 || echo $$file differs); \
++ 	done
++ 	-rm -f tmp-foo*
++ 
++ gnatstage1: force
++ 	-if [ -d stage1 ] ; then true ; else mkdir stage1 ; fi
++ 	-mv -f $(GNAT1_ADA_OBJS) $(GNATBIND_OBJS) gnat1 gnatbind stage1
++ 
++ gnatstage2: force
++ 	-if [ -d stage2 ] ; then true ; else mkdir stage2 ; fi
++ 	-mv -f $(GNAT1_ADA_OBJS) $(GNATBIND_OBJS) gnat1 gnatbind stage2
++ 
++ gnatclean: force
++ 	rm -f $(GNAT1_OBJS) $(GNATF_OBJS) $(GNATBIND_OBJS) *.ali gnat1 gnatbind
+  
+  # Copy just the executable files from a particular stage into a subdirectory,
+  # and delete the object files.  Use this if you're just verifying a version

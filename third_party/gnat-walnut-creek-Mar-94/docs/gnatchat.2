@@ -1,0 +1,816 @@
+Administrative note: The preferred address for submission of comments is
+gnat-chat@cs.nyu.edu. We fiddle things so that gnat-world is essentially an
+alias for gnat-chat so that replies do not automaticaly go to the gnat-world
+list. This list has hundreds of names, growing daily, and we prefer not to
+have it turn into an email free-for-all, which is why the only output channel
+is us generating abstracted and referenced comments. Later on, we think the
+best thing will be to establish an unmoderated internet newsgroup for GNAT
+that will allow free discussion of problems etc. The time to do this seems
+to us to be when we make the first release (not so far away, as we constantly
+remind ourselves!)
+
+Reference: GC-2.1
+Date: 24 Apr 1993
+Author: Stephen M. Youndt (hacker!steve@uunet.UU.NET)
+Subject: GNAT Library model
+References: GNOTE1, April 12
+
+ >Regarding the "one file-one object" model of GNAT, I think you're mistaken
+ >in the level of acceptance you expect. You may not be aware, but many Ada
+ >programmers have grown to expect that the library system will allow them to
+ >do certain things. One example that I can think of now is having two files
+ >with different names, containing the source, slightly different, to the
+ >same compilation unit(s). One compilation unit might contain stubbed out
+ >procedures to talk to devices that don't exist on the development machine,
+ >and the other would contain the full up device control routines.
+
+ Robert Dewar replies
+
+   Well there are actually three points here. First the issue of one source
+   file to one object. That seems pretty much irrelevant. Ada systems differ
+   widely on how many objects are produced for a program. Some existing systems
+   generate one object module per Ada *program* (i.e. one giant object module
+   for the whole program), whereas some generate object files at a granularity
+   even smaller than a compilation unit. Especially if you take Steve's view
+   that the compilation engine is a black box, the number of object modules
+   is irrelevant. Where it is relevant is when Ada speaks to the rest of the
+   world. In the GNAT world, we quite expect a program to be composed of C
+   and Ada freely mixed together with a make file controlling the whole program
+   and in this situation a single object per source file is useful and natural.
+
+   Now what I thought might actually be under discussion was the restriction
+   to a single compilation unit per file, although the example actually has
+   nothing to do with that. Still let me address it since at least nominally
+   it is relevant to the point. Many Ada style guidelines in any case require
+   this approach, and in some Ada systems, notably Rational, there isn't any
+   existing concept of multiple CU's per file. The question is, do people
+   really use this and is it important to support? The limitation is not
+   actually inherent to our approach, and we could certainly relax it. I had
+   hoped that Steve's note might give some examples but actually it really
+   doesn't address this issue at all. Any one else out there want to put in
+   an oar saying "AARGH! I can't do without multiple units per file!"?
+
+   Now let's address the example in Steve's comment, which has nothing to do
+   with one object per source, or one unit per file, but rather with the
+   default naming restriction that requires unit and file names to match.
+   In his example, we have multiple implementations of the same unit, with
+   the desired unit to be selected at compile time, or possibly, in the case
+   of a body, at bind time. There are several possible approaches in the GNAT
+   environment for handling this, and in a given situation one would want to
+   choose and codify an approach that makes sense.
+
+     1.  Call the files by different names, and then rename the file to be
+         compiled. This is obviously suitable only on a small scale. It's
+	 what we do in GNAT itself for the small number of situations of this
+	 kind (e.g. we have two implementations of the body of package Osint,
+	 the operating system interface, and we call then osintds.ada and
+	 osintux.ada for DOS and Unix, and then rename the appropriate one
+	 to osint for compilation).
+
+     2.  The different files can live in different directories, and then the
+	 search path selects the appropriate directory. This is quite
+	 convenient if you have a whole collection of files that is specialized
+	 to an environment.
+
+     3.  A file name directory can be used. Remember that this mechanism allows
+	 arbitrary mapping of unit names to file names. The selection of the
+	 appropriate files to be compiled is then a matter of selecting the
+	 proper file name directory, which is simply a text file that gives
+	 the names of the source files.
+
+   There are a number of other possible approaches, but these three probably
+   cover the ground in practice. Note that similar management issues arise
+   when you have multiple header files in a C environment.
+
+   Note that I don't mention the general Adalib mechanism, because basically
+   we regard that as a kludge with so many undesirable characteristics that
+   we think most users should avoid it. In particular for the given example,
+   the single library approach results in the semantics that the version you
+   get depends on which version was compiled most recently. That sounds very
+   error prone in a distributed development environment.
+
+ >Granted, you propose a partial solution, in wrapping GNAT in shell scripts
+ >and such that make use of an AdaLib subdirectory, but I think it needs to
+ >go a bit farther. Most Ada programmers I have met have very little under-
+ >standing of the machines they're running on, and a freindlier APSE is
+ >definitely a plus when dealing with these people.
+
+   We don't really think of the AdaLib subdirecttory as a solution, partial or
+   otherwise, but rather it's just a demonstration that arbitrary semantics
+   can be achieved. Since the semantics of the AdaLib approach seem to us
+   undesirable (e.g. it replicates the undesirable behavior of conventional
+   Ada library systems where if you happen to have two units of the same name,
+   then the later compiled one is taken, and it also allows the creation of
+   programs for which no consistent source exists. We certainly don't want to
+   disallow it (there is no way we could), but we certainly don't want to
+   suggest its use.
+
+ >Additionally, if the AdaLib approach is not implemented up front, the idea
+ >of compiling "into" a library that many shops have become dependent on
+ >goes out the window. Within my company (GTE Government Systems) we tend to
+ >organize our source code in directory trees made up of what we call CSCIs
+ >(Computer Software Configuration Items), which corresponds to a single
+ >"system", a complete program or set of programs to do a given task. These
+ >CSCIs are broken up into lower level components that are logically related,
+ >and given to a single group of programmers. On particularly large systems,
+ >these lower level components may in turn be broken up into smaller units,
+ >and this happens again and again until the size of a given component is
+ >manageable by a small group of people (typically 2 or 3). The idea of
+ >compiling into a black box master library is very important to this sort
+ >of setup. Once all the components are in place, a single responsible
+ >person will link the program(s) and carry on to the testing phase.
+
+   A lot of this comment is in the category of "we've always done things that
+   way, and that's the way we want to do things". In a sense you can't answer
+   this because you can't tell people what they think. However, looking
+   objectively at the description of the environment, it seems to me to fit
+   perfectly well into our scheme. In particular, the whole discussion of
+   the source tree arrangement makes perfect sense, and since in our system
+   the structure of the library mirrors the structure of the source (since
+   in a sense the source *is* the library), my guess is that once our scheme
+   is fully understood, it will certainly work better than "a library". Indeed
+   most Ada vendors have found that the idea of a single library just plain
+   doesn't work, and have had to implement various multi-library systems.
+   Since sources can be arranged hierarchically and spread out across networks
+   and multiple file systems etc, you could say that GNAT automatically has
+   the notion of a distributed library which can have either a hierarchical
+   or network structure (the latter coming from the use of links).
+
+   As to the specific issue of compiling into a black box library and having
+   someone else do the link etc., this also seems to fit perfectly well into
+   our scheme. The generated objects can be placed into a separate directory,
+   and then the binder and linker is run from this directory (remember that
+   the binder references *only* the object modules).
+
+   Finally, as Gnote1 points out, the shell script can recreate the black box
+   monolithic library for those who want it. I really don't understand the
+   point that if we don't somehow enforce this (in our view undesirable)
+   choice of approaches, then it is "out of the window". If people chuck it
+   out of the window, fine, we expect them to. If people like this approach
+   they can use it, no problem!
+
+ >I don't believe this sort of organization is all that unusual within the
+ >Ada industry, and an APSE similar to those in use for the last 10 years
+ >is vital to its continuation. It's great that C programmers won't find
+ >GNAT unusual, but C programmers probably won't use GNAT. Ada programmers
+ >will, but only of if it looks like an Ada development environment,
+ >not a C environment. If your purpose is to see GNAT used, it needs to
+ >look like a traditional system, even if it isn't. Most Ada programmers
+ >couldn't care less what the compiler does in the background. They just
+ >want it to act as they expect.
+
+   If GNAT only finds an audience among current Ada users then it is a total
+   failure, and a pointless excercise in waste of tax payers money. The whole
+   idea is to expand the use of Ada and in particular to provide a vehicle
+   which is suitable for research purposes which need the availability of the
+   source code. I hope (and believe) that you are quite wrong in your
+   estimation on this point!
+
+   As to the idea that Ada programmers will only use GNAT if it looks like
+   a traditional environment to them, I think this overstates the issue, but
+   there certainly are difficulties in moving to any new system. One of the
+   problems is that in practice Ada environments look very different from one
+   another and this problem of having to rethink how to do things when moving
+   from say the Alsys model of multi-libraries to the Telesoft one is quite
+   tricky (yes I know they are the same company now, but at least for the
+   moment, they still have two ways of solving this problem!) Similarly, moving
+   to the Rational environment can be quite a shock if you are determined to do
+   things exactly as you have always done them.
+
+   If you absolutely insist on maintaining your current working practices,
+   completely unchanged, then your obvious choice is to continue using the Ada
+   compilation system that you are used to using!
+
+ >Now that I've completed this treatise, somebody is bound to tell me to
+ >put up or shut up. Fine, I'm willing to work to make GNAT what I need.
+
+   Well we are certainly not going to tell you to shut up--the whole point of
+   this mailing list is to encourage comments of this kind, and it's
+   particularly useful to get input of the form "what you're doing won't
+   work for our problems". On the other hand, "putting up" is certainly welcome.
+   putting up by all means. In particular, more detailed scenarios of what
+   you and others are doing, and the descriptions of the problems you are
+   addressing in terms of program structure are very relevant and useful. We
+   are not particularly oriented to solving these problems in exactly the same
+   way as existing Ada systems, but we do want to be sure that we have workable
+   and hopefully superior solutions.
+
+ >Just tell me who I need to talk to. :-)
+
+   You're talking to the right people, this is where the action is!
+
+Reference: GC-2.2
+Date: 28 Apr 1993
+Author: Wolfgang Polak (wp@pocs.com)
+Subject: GNAT Library model
+References: GNOTE1, April 12
+
+ >Your library design looks very nice. A minor point came to mind while
+ >reading. In outlining the "traditional" way it looks like you've
+ >thought in the same direction. Instead of requiring additional shell
+ >sripts, why not
+ >
+ > - Have an option for the compiler to rewrite the source (if error-free)
+ >   with the proper name (possibly into a different directory).
+ >
+ > - Make this option work for multiple units in a single file.
+ >
+ >This would allow Ada programmers to use their old ways and would
+ >simplify importing of existing code. One can even choose to either
+ >continue development with the old source structure (I may use
+ >another ada compiler on the same sources) or the new ones.
+
+Robert Dewar replies
+
+   The important thing to realize is that GNAT is not an Ada compiler, rather
+   it is an Ada front end for GCC, together with necessary enhancements so
+   that GCC supports the semantics of Ada. That means that we have to fit into
+   the structure of the GCC driver, which certainly does not accomodate writing
+   source files, and is committed to only generating a single call to the
+   assembler per invocation, and hence a single object file. That's why we need
+   to accomplish this with external means.
+
+   In any case, we really don't want to encourage the "traditional" monolithic
+   library approach, since we think it has severe flaws, but we do of course
+   want to allow it. We feel that if w provide appropriate utilities and
+   scripts, then from a programmer's view it doesn't make much difference
+   whether you are running a shell script called gnat, or gcc itself directly.
+
+   Generally we expect most Ada compilations to be run via a make utility in
+   any case, so in practice, the user is unlikely to interact directly with
+   either the compiler or the shell script.
+
+   Regarding source structures, see my note at the end of this issue.
+
+Reference: GC-2.3
+Date: 28 Apr 1993
+Author: Wolfgang Polak (wp@pocs.com)
+Subject: GNAT Library model
+References: GNOTE1, April 12
+
+ >As you predicted, the approach taken (with regard to not preserving the
+ >results of some compilations) seems a bit radical. Although the potential
+ >exists for better optimization across compilation units, the question
+ >of general efficiency with normal use is a major concern.
+
+ >I think the approach should quickly be studied from a performance
+ >point of view. The claims of the GNote (Dated: April 12,1993):
+
+  >> ...                          It's not at all clear that rereading and
+  >> recompiling the source is less efficient than writing and reading back in
+  >> these trees.
+
+ >need to be substantiated.  Clearly, all current implementations have
+ >taken a different approach and this seems like unnecessary risk.
+ >Especially the subunit issue which is stated to be a SEPARATE  :-)
+ >decision should be treated as an option.  I believe the TeleSoft
+ >compiler had the ability to defer code generation until bind-time
+ >but it was an optimization option that was only expected to be used
+ >infrequently because of efficiency concerns.	It may be valuable to
+ >find out how much benefit they were able to gain with this type of
+ >optimization.  Although I believe their approach took advantage of
+ >all library units, not just subunits.  With the introduction of
+ >child packages in 9x, is it likely that use of subunits will increase?
+
+Robert Dewar replies:
+
+  Well of course you can't get really good figures on performance until you
+  have something like a finished product. Our preliminary testing indicates
+  that we are on the right track, compared to existing Ada compilers, from
+  a performance point of view. You should also realize that my experience
+  comes from the land of fast compilers (the Realia COBOL compiler for the
+  PC compiles at over 100,000 lines per minute, producing very high quality
+  code, and the syntax checker I wrote in assembler parsers Ada at over
+  three million lines a minute on my PC (55,000 lines in 0.9 seconds), that
+  figure includes system I/O (from a disk cache), scanning and parsing). The
+  performance of existing Ada compilers is dismal by these kind of standards.
+  Now our goal is not specially to build an outstandlingly fast compiler, but
+  rather that it should be reasonably fast. We'll see! See also the discussion
+  in GC-2.6.
+
+ >My overall point is that it seems the project may be taking
+ >unnecessary risk by adopting this policy. Although GNAT may come
+ >close to "C" performance in re-reading specs, the recompilation of bodies
+ >required by generics, inline subprograms, and subunits will almost certainly
+ >exact a serious performance penalty.
+
+Robert Dewar comments:
+
+  Actually I think of this decision as a risk reduction approach, since it
+  completely eliminates a very tricky and error prone part of the compiler
+  (namely the writing and reading of trees). How do I know it's tricky and
+  error prone -- well I wrote this code, in preliminary form, before we
+  decided on our current approach!
+
+  One thing to realize is that there is nothing fundamental in our decision
+  to recompile the sources. We could perfectly well write out the trees and
+  read them back in if we wanted to write the code to do this. The only
+  disadvantage would be that the compiler would have to read object files,
+  which is peculiar in the GCC environment.
+
+  Phrases like "serious performance penalty" don't mean much in the absense
+  of quantitative data. Ada compiler users are used to extremely slow
+  compilers, so the concern is not surprising I suppose!
+
+  The concern about recompiling bodies is a natural one, but remember that
+  here too, a "traditional" compiler would have to reread the trees for these
+  bodies, and these trees can be giant (often a factor of several bigger than
+  the source, and as anyone who has written fast compilers knows, system
+  I/O is a major part of compilation time).
+
+  As for subunits, it is important to realize that this really is a major
+  risk reduction step. In order to do true separate compilation of subunits,
+  we would have to make radical changes to the structure of the GCC back end,
+  since it has no concept of compiling nested procedures where the context
+  is in a different object file. For example, there is no way that the inner
+  procedure could know stack offsets in the outer procedure, so probably we
+  would have to do our own stack layout, but that would really break things.
+  Not only is the required work on GCC substantial, but it is not clear that
+  it would be within the acceptable range of modification (remember that there
+  is only one GCC backend, and we can make necessary modifications for Ada,
+  but not at the expense of introducing significant instability).
+
+  Actually, our initial inclination was to indefintely postpone the
+  implementation of subunits, precisely because we couldn't figure out
+  how to solve some of the difficulties involved. The approach we are
+  taking now makes the implementation of subunits trivial and also has
+  the side effect of generating better code than would be possible with
+  any separate compilation approach. The only downside is increased
+  compilation time. It's interesting to note that Tony Hoare recently
+  observed that with current fast processors the whole idea of separate
+  compilation should be rethought. We aren't going quite that far, although
+  we have considered an option that lets the whole program be compiled
+  together. Note that the MIPS C compiler has always had this option (to
+  permit inter-procedural optimization).
+
+ >I am also a little concerned
+ >that one or more "killer" commercial applications will come along
+ >that will have a nice Ada interface (with generics) that will exclude
+ >GNAT users because of the need to have source for the bodies. Although you
+ >say that holding back source is not it the spirit of GNU, the reality
+ >is this is the common practice and GNAT users will suffer because
+ >of the lack of access to these products. Vendors of reusable libraries
+ >are likely to comment that GNAT is "broken". ... Could be a problem!
+
+Robert Dewar comments:
+
+  Maybe in the commercial world, the distribution of compiler specific
+  Ada libraries in object form only is common practice (I don't know, I
+  never saw such a product!) However in the academic/research world, which
+  is the target community for GNAT, the common practice is to distribute
+  source.
+
+  If a commercial manufacturer came along and wanted to distribute secure
+  source for GNAT, the easiest thing would be to encrypt the source, and
+  then add a decryption circuit in the compiler. Of course this can be
+  subverted, but with the kind of knowledge that comes from having the
+  source of the compiler, distributing things in internal tree form would
+  not protect the integrity of the source in any case.
+
+ >----------------------------------------------------------------------
+ >Questions:
+
+
+ >A) Around or about line 383 the note states:
+ >
+ >>>  Bodies of packages containing either inlined subprograms that are called,
+ >>>	of generic bodies that are instantiated.
+ >	^^
+ >  Should this be "or"
+
+   Yes, thanks! (it's useful to have typos pointed out!)
+
+ >B) On a different topic: how will exception propagation be done?
+ >Is it planned to generate tables that will reduce the non-exception
+ >case overhead, or to use predominately run-time generated structers.
+
+   We will shortly be releasing GNOTE2 which outlines our approach to
+   exception handling. Yes, we are planning to reduce the non-exception
+   case overhead as far as possible, and an interesting aspect of the
+   design is that the exception handler is language-independent (i.e. our
+   GCC exception handler knows nothing special about Ada).
+
+ >Good luck,
+ >  Tom Griest
+
+   Thanks!
+
+Reference: GC-2.4
+Date: 29 Apr 1993
+Author: Sy Wong
+Subject: Names of files
+References: GNOTE1, April 12
+
+ >I assume GNAT uses limited filename lengths for a particular OS. For NT and
+ >OS/2, the filenames can be 256 which is longer than most Ada compiler
+ >filename length limits. How can I get some early release source to see the
+ >problems in transporting to OS/2?
+
+Robert replies:
+
+  On any given system, a file name length will introduce some restrictions
+  in unit names and deeply nested subunits or child units. If the restriction
+  is severe, there are two possible reactions:
+
+    Live with rather short package names at the library level. This is what
+    we are currently doing, at least on a short term basis, for GNAT, since
+    we are doing bootstrapping compilations under DOS.
+
+    Use a file name directory, this removes all name length restrictions
+
+  We are not releasing any sources prior to the initial release of the system
+  in June (they are simply much too fluid at the moment). However, don't worry
+  about "transporting to OS/2" -- since OS/2 is one of our primary targets
+  (it's at the moment the only stable home of GCC on the PC!)
+
+ >On many Ada Repository (SIMTEL 20) files the files extensions of .ads, .adb,
+ >.sep, .ada (for procedure) seems to be used. The .ada on VAX I recall allows
+ >compilations commands to omit writing .ada and seems to be not very
+ >satisfactory. An often encountered bad example:
+ > very_long_common_part_a-few-unique-characters.ada.
+ >This makes converting repository files to be manipulated on DOS extremely
+ >difficult. May be you can spell out some recommended rules for truncation
+ >between old OS and newer OSs.
+
+  Well the problem of short DOS file names is not exactly a GNAT-specific
+  problem. We do allow any choice of distinguishing extensions, so if any
+  one is using this kind of approach for choosing file names, then things
+  are smooth. In general if you are acquiring a structure of Ada file names
+  from a foreign source to use with GNAT, it will often be most appropriate
+  to use the file name directory approach. We'll provide a little tool for
+  constructing these directory files from an existing set of sources.
+
+ >  As an example of another such switch, consider the switch in GNAT which
+ >  specifies the character set to be used for identifiers. The 9X RM requires
+ >  that the standard mode allow only Latin-1 letters in identifiers, however,
+ >  it quite explicitly suggests that other modes might be appropriate,
+ >  depending on local character set usage....
+ >  ......... In GNAT, we have a switch with the current settings:
+ >
+ >	1  Latin-1
+ >	....
+ >	5  IBM PC
+ >	6  Allow all possible upper half ASCII characters
+ >	7  Allow no upper half ASCII characters (like Ada-83)
+ >
+ >  The default is Latin-1, except on PC's where the default is IBM PC. Of
+ >  course if anyone ever tried to validate GNAT (we have no current intention
+ >  of doing so, and it's not part of our project), then of course they would
+ >  have to specify Latin-1 as part of the validation switch choice.
+
+ >It is a pleasant surprise to see options 5,6,7 in GNAT.
+ >
+ >By IBM PC means ALL 256 character or that is option 6? I expect all the
+ >upper set will be allowed but not C0 non-format-effecter characters. If this
+ >surmise is correct, then options 5 and 6 will be indistinguishable if punning
+ >is used.
+
+Robert Dewar replies:
+
+  The surmise is incorrect. The PC mode allows only upper half characters that
+  correspond to letters on the PC, with appropriate upper/lower case
+  equivalence. For example, the character that you get by typing Alt-130,
+  whose code is 16#82# is a lower case e-acute and is allowed in identifiers
+  as is the character you get by typing Alt-144 (16#90#) which is upper case
+  E-acute, and these letters are case equivalent. On the other hand, if you
+  type Alt-242, that's a plus-or-minus sign, and it's not allowed in
+  identifiers in mode 5. Roughly the idea in mode 5 is that you type valid
+  identifier names with allowed Latin-1 type graphics in the normal PC style,
+  and as long as you stay on the PC everything works as you expect. Of course,
+  as is to be expected with any localization option, you will run into trouble
+  trying to port the source program to non-PC environments without doing
+  a character conversion.
+
+  This means that mode 5 and mode 6 are quite different, because in mode 6,
+  any old upper half character is allowed in identifiers, and no case
+  equivalence is assumed. As Sy Wong has pointed out, this is useful in
+  dealing with some encoding methods for Chinese character sets and similar
+  approaches, but of course sources that take advantage of this may be even
+  harder to port!
+
+ >Is validation rule such that any of local character set including 5 and 6
+ >will be acceptable as long as latin-1 is included as default or option.
+
+  OF COURSE! That's the point I had hoped to make absolutely clear in my
+  original note. Furthermore this has always been the case in Ada 83. To
+  validate, you need a compiler which, when run with a set of options which
+  is documented in the VSR (validation status report), implements exactly
+  the Ada semantics as required by the validation suite.
+
+ >p.s. I hope my earlier question with regard to Erhard's MUST have body
+ >statement and GNAT's must NOT have body contradiction has an obvious answer.
+
+  Sy, I never got your earlier note, but see GC-2.8 for a discussion of
+  this issue. It is a place where Ada 9X thinking is undergoing some changes.
+
+Reference: GC-2.5
+Date: 28 Apr 1993
+Author: Fred Roeber (fjr@ssd.ray.com)
+Subject: GNAT Library model
+References: GNOTE1 (Apr 12)
+
+ >I got the document fine. I went through it. I am really impressed
+ >by the design approach you guys are taking. The fact that shared code
+ >generics are not supported was about the biggest problem I saw since that
+ >directly impacts executable code size which is constrained in many cases.
+ >The fact that subunits are recompiled in a block didn't bother me too much
+ >since with most existing compilers it is more efficient to do that anyway
+ >for the majority of the cases. Having to reparse the source for all
+ >dependent packages is a concern but is a reasonable tradeoff of processor
+ >power against ease of development. People may want to change their coding
+ >practices as a result of it. Our normal approach is to embed all the
+ >descriptive documentation for functions in the package spec since that is
+ >where their public interface is defined. Thus, the specs have a lot of
+ >extra comments in them that would slow parsing under your scheme. Anyway,
+ >keep up the good work on everything. Fred
+
+Robert replies:
+
+  Don't be too quick to change your coding practices. What is important is not
+  some abstract impression of what performance might be, but the actuality of
+  the performance. For example, the current GNAT scans and parses comment lines
+  on a PC at well over a million lines a minute. This means that even if your
+  specs contain a 50,000 lines of extra documentation, you are only talking
+  about adding 3 seconds of compilation time. Furthermore, many tree structures
+  such as Diana store the comments in the tree anyway, and it is almost
+  certainly the case that reading in such trees is slower than reading in the
+  source, since really the parsing of comments is I/O limited.
+
+  We realize that there are ways of using virtual memory addresses to read in
+  only the part of the tree that is needed, but this is likely to add a
+  significant amount of overhead to the entire compilation process.
+
+  With regard to shared generics, there is nothing in our approach that is
+  inconsistent with shared generics. Indeed if anything they fit in more
+  smoothly, since a generic unit would then generate a single object file
+  in a completely familiar manner. Our decision not to do shared generics
+  initially has nothing to do with the library design, and everything to do
+  with the inherent difficulties in implementing shared generics. In fact
+  before we got so radical in our design that we got to the point of allowing
+  generic macro expansion to be used *without* creating dependencies that
+  limit expressive power, we were quite drawn to shared generics, since they
+  fit the model better than inline expansion!
+
+Reference: GC-2.6
+Date: 28 Apr 1993
+Author: Ian Wand (ian.wand @jrc.it)  [Ian is on sabbatical in Italy!]
+Subject: GNAT Library model
+References: GNOTE1 (Apr 12)
+
+  ADA LIBRARY MECHANISMS
+
+ >Your recent mailings about the library mechanisms have been most
+ >interesting. In many ways the GNAT decisions are similar to
+ >those we implemented 7-8 years ago for the York compiler
+ >(for Ada 83), which was subsequently validated for VAX,
+ >SUN and various Clipper-based machine (and we also
+ >have other versions, including one for the RS6000). The compiler is still
+ >available commercially from Intergraph. We have used it for teaching
+ >for the last 6 years.
+
+ >Essentially we tried to implement a system as compatible as possible
+ >with existing UNIX/C usage: we resisted the closed Ada world favoured by
+ >most implementors. Conventional UNIX tools are used for manipulating
+ >files (rm, etc) and make is used to build complete systems. However
+ >the system is not as radical as yours. We don't implement (i.e. we ignore)
+ >INLINE.
+
+Robert comments:
+
+  The nice thing about implementing inline is that we can do inline generic
+  instantiations by macro expansion *without* restricting expressive power.
+
+ >In summary:
+ >
+ >1. We do have a small text file "ADA-LIBRARY" that contains:
+ >
+ >	name
+ >	file name
+ >	the time it was compiled
+ >	the kind of unit - subprogram spec, package body etc.
+ >	the kind of subunit if applicable
+ >	whether it is a generic, an instantiation, obsolete
+ >	a list of units it depends on
+ >	a list of stubs if applicable
+ >      for subunits, the parent's name
+ >
+ > No further information is saved for the unit.
+
+Robert Dewar comments:
+
+  As Ian notes, we have basically followed the same line of thinking, but
+  taken it to a more radical conclusion. In particular, we avoided the notion
+  of a central library file, and information that is required about a unit
+  goes in the object file. The most notable single difference is that we base
+  our consistency checks on the source files, so the time of compilation is
+  completely irrelevant. To make this clear, consider the effect of
+  recompiling a source that has not been modified when there is no need to
+  do so. In conventional Ada systems, this would force recompilation of all
+  dependent units. In our system, nothing at all would happen with respect
+  to previously compiled dependent units. If you want the effect of forcing
+  recompilation of all sources depending on source BLA, then in GNAT you
+  would simply "touch BLA" to update its time stamp.
+
+ >2. The front end of the compiler reparses and builds the compiler
+ >   data structures for each unit named in a with clause.
+ >   This gives a uniform treatment of all units in the compiler at the
+ >   expense of rebuilding each time from the source code (it gets cheaper
+ >   as processor power goes up, but disc access times remain roughly the same).
+ >   I am convinced this was the correct decision.  In early experiments
+ >   we found that a "flattened" form of our internal data structure was
+ >   up to ten times the size of the source it represented: the rebuilding
+ >   time was often comparable with the time taken to recalculate the
+ >   internal data structure from source.
+
+   This is the point at which our approaches are essentially identical. It is
+   encouraging to have some past data based on experimentation in a different
+   environment which confirms that our decision is reasonable. This should
+   at least encourage the skeptics (those worrying about efficiency) to take
+   a wait and see attitude.
+
+
+ >3. The Ada library file is used by the compiler to note and find units, and
+ >   by a tiny Ada loader (Ald) to ascertain the object files that will be
+ >   needed to make a final executable program.  The standard UNIX loader is
+ >   used to make the final object program.
+
+   As desribed in GNOTE1, our normal method of finding units is to use an
+   algorithm that connects unit names and file names. However, we also allow
+   the use of a unit/file name directory file that functions in this respect
+   much like the York library file.
+
+   The equivalent of Ald, is what we call our binder, which is incidentally
+   also a tiny program. It gets its information from what we call the ADL
+   files, one of which is generated for each object file, and in fact we
+   hope on most systems that the ADL file can merely be a section of
+   foreign text living inside the object file, so that from a users point
+   of view there is only an object file.
+
+ >4. The compiler will deal with multiple units per file, but it "prefers"
+ >   single units in each file. We use extensions .H for specs, .A for
+ >   bodies, and .O and .o for their corresponding object code.
+
+   The current implementation of GNAT allows use of any nmaing scheme based
+   on suffixes and/or separate extensions for source files. We only generate
+   one object file for a combined spec/body combination, so we don't need
+   two extensions for this purpose (see also discussion in GC-2.8.
+
+ >5. Search paths can be set up using flags (just like C) for library sharing.
+
+ >6. A tool "adep" constructs a make file that can be used to maintain
+ >   a complete Ada program.
+
+   Reasonable, we plan to do the same.
+
+ >However, unlike you, we do separately compile subunits.  We thought that
+ >efficiency problems would mandate this approach.  Furthermore we insist
+ >on seeing a complete generic before compiling any instantiation (which
+ >is done by macro expansion - we decided, after much debate, against
+ >the option of providing linkage code for each generic and with a
+ >single copy of the body).
+
+   As previously noted, the decision on subunits is not particularly mandated
+   by our library approach, but by other considerations. We'll see how the
+   compilation efficiency issues shape up. One advantage we have over you is
+   that machines have got faster since you started your work!
+
+ >The system has been used to build some very large systems (during testing).
+ >The largest system we compiled was made up of 50 separate libraries,
+ >involving 2500 units and several million lines of source. This compiled in
+ >about 15 hours on an Intergraph workstation (somewhat faster than many other
+ >systems we have heard about!).
+
+   Encouraging! One point is that we certainly do not thing of GNAT as a toy
+   that can only compile small programs. Even in the academic/research setting
+   there are many giant programming projects around for which we intend GNAT
+   to be suitable.
+
+Reference: GC-2.7
+Date: 28 Apr 1993
+Author: Robert Dewar
+Subject: GNAT Library model, object file generation
+References: GNOTE1 (Apr 12)
+
+  In this note, which is basically an addendum to GNOTE1, I add our thinking
+  about generation of object files.
+
+  The basic decision is that when you have a spec and body of a package or
+  subprogram, only one object file is generated, from the compilation of the
+  body (remember that the compilation of the body in any case involves the
+  compilation of the spec, so that all the necessary code for both the spec
+  and body can be generated at that time).
+
+  A consequence of this approach is that it is not in general *necessary* to
+  compile specs separately at all. However, in practice it will often be
+  useful to be able to compile specs for syntax/semantic checking purposes,
+  to make sure they are OK before letting clients much with them, and of
+  course GNAT permits such checking compilations, just as it permits similar
+  compilations of subunits on their own for checking purposes.
+
+  The case of packages with no bodies is broken down into three subcases:
+
+    1.	If package bodies are always required (the current 9X proposal, almost
+	certain to be changed to 2, if it has not already been so changed)
+
+      In this case the issue of packages with no bodies does not arise, you
+      won't be able to even try to compile them generating code.
+
+    2.	If package bodies are forbidden for packages that in Ada 83 would not
+	require a body. This is the likely decision in Ada 9X according to
+	current thinking.
+
+      In this case you know at the time of compiling a spec that there will be
+      no body, and you generate the required (single) object file for the
+      package as a result of compiling the spec. Compilation of the spec in
+      this case is required (at least it's required in general when there is
+      elaboration required -- interesting thought, should we at least for
+      pre-elaborable packages *not* require it to be compiled?)
+
+      If there is an attempt to compile a body in such a case it is a fatal
+      semantic error which prevents generation of an object file in any case.
+
+    3.	In the Ada 83 case, a package body is truly optional in some cases
+
+      We aren't committed to supporting full Ada 83, but we do have an Ada 83
+      switch and we take the attitude that we will use it where it isn't too
+      much trouble to give the 83 semantics. A little surprisingly, the
+      infamous optional Ada 83 packages turn out to be such a case.
+
+      Suppose in Ada 83 mode we compile a package spec that does not require
+      a body. Well, as in Ada 9X, we generate an object file for the spec
+      (the conditions for allowing an optional body in 83, and forbidding
+      a body in 9X under assumption of approach 2 are identical, so this isn't
+      even a case where we need to test the 9X flag.
+
+      Now suppose we compile the body, well we test the Ada 83 switch, and
+      allow the compilation to proceed normally if it is set (avoiding the
+      9X diagnostic that the body is not allowed). The compilation produces
+      an object file that contains the required code for both the spec and
+      the body, as usual, and overrides the object file for the spec.
+
+      Now suppose we reedit and recompile the spec. Well this compilation
+      outputs another object file that obliterates the previous object file
+      that contained the body code, and we have faithfully reproduced the
+      required (and horrible) semantics of Ada 83, where such a compilation
+      silently causes the body to be lost.
+
+  For subunits, we will generate a single object module that corresponds to
+  the entire subunit tree.
+
+  As mentioned previously, we will probably also have a switch that requests
+  that the entire program be compiled as a single unit, allowing additional
+  inter-module optimizations, such as inter-module inline expansion even if
+  pragma Inline is not used.
+
+Reference: GC-2.8
+Date: 28 Apr 1993
+Author: Robert Dewar
+Subject: GNAT Library model, multiple units per file
+References: GNOTE1 (Apr 12), GC-2.1, GC-2.2
+
+  Revisiting the issue of allowing multiple units per file, we could take
+  any of the following three approaches:
+
+    1.	The current approach, one unit per file period.
+
+    2.	Allow multiple units per file in the following specific circumstances.
+
+	   Spec and body in the same file (happens especially in 83 mode when
+	   you have a trivial body and want to document this fact in the spec)
+
+	   Subunits in same file as parent (seems a bit strange to some, but
+	   actually is more common than you think, reflects a top-down
+	   programming style that wants the presentation, but not necessarily
+	   the separate compilation) afforded by subunits.
+
+    3.	Allow multiple units per file if a file name directory is used (this
+	would work almost automatically by just having multiple entries that
+	map multiple units to the same file name).
+
+  Options 2 and 3 are not hard to implement. The attraction of option 1 is
+  simplicity.
+
+  Option 2 is definitely irregular, and thus a bit confusing to describe. It
+  is motivated by a guess as to the most common cases of actually using the
+  ability to have multiple units in a file. Furthermore it of course fits fine
+  into our library approach, since the bodies/subunits are never with'ed
+  separately.
+
+  Option 3 is fairly easy to implement. It perhaps is also fairly easy to
+  describe. After all there is a general rule:
+
+    The file name must match (i.e. be derivable) from the unit name
+
+  If one is using standard suffixes or extensions to form file names, then it
+  is a natural context of this rule that you can't have more than one unit in
+  a file, since they have to have separate names, and thus would map to
+  separate file names. If on the other hand you were using a file name
+  directory file, then it falls out pretty smoothly to allow this. One
+  annoying complication is dealing with an attempted recompilation of the
+  same unit more than once in a single file. Ada 9X allows this to be rejected,
+  and we would certainly want to reject it, but it makes for a complication in
+  the rules.
+
+  This is an area in which we really would like input. On the one hand we want
+  to be as flexible as possible. On the other hand, we don't want to introduce
+  unnecessary complexity into the system. Thoughts anyone?

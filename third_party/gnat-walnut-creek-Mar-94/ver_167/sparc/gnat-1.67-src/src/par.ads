@@ -1,0 +1,34 @@
+------------------------------------------------------------------------------
+--                                                                          --
+--                         GNAT COMPILER COMPONENTS                         --
+--                                                                          --
+--                                  P A R                                   --
+--                                                                          --
+--                                 S p e c                                  --
+--                                                                          --
+--                            $Revision: 1.9 $                              --
+--                                                                          --
+--             Copyright (c) 1992,1993, NYU, All Rights Reserved            --
+--                                                                          --
+-- GNAT is free software;  you can  redistribute it  and/or modify it under --
+-- terms  of the GNU  General  Public  License  as  published  by the  Free --
+-- Software  Foundation;  either version 2,  or (at your option)  any later --
+-- version.  GNAT is distributed  in the hope  that it will be useful,  but --
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANT- --
+-- ABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public --
+-- License  for  more details.  You should have received  a copy of the GNU --
+-- General Public License along with GNAT;  see file COPYING. If not, write --
+-- to the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA. --
+--                                                                          --
+------------------------------------------------------------------------------
+
+--  The Par procedure and its subunits contains all the parsing routines
+--  for the top down recursive descent parser that constructs the parse tree
+
+procedure Par;
+--  Parse the compilation unit contained in the current source file and
+--  enter its N_Compilation_Unit node into the appropriate entry of the
+--  File.Table (i.e. File.Table (Current_Unit).Cunit). It also sets the
+--  File.Table (Current_Unit).Entity field to point to the corresponding
+--  defining entity. The tree on return is parsed, and decorated with any
+--  needed implicit label declarations.

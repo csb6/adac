@@ -1,0 +1,205 @@
+Subject: GNAT README
+
+                                GNAT Project
+                           GNU-NYU Ada Translator
+
+This file is a copy of README which is located on cs.nyu.edu (128.122.140.24)
+in pub/gnat (via anonymous ftp).  It contains distribution instructions
+for the current GNAT distribution.
+
+The pub/gnat directory contains recent releases of GNAT.  The file "features"
+which lists the language features that are implemented in the lastest version
+of GNAT is located both in the pub/gnat directory and as part of each
+distribution.  It is updated periodically to reflect new features put into the
+latest release.
+
+If you are picking up versions of GNAT, please check this file regularly for
+news that may be important for your installation.  It is also updated after
+distributions to include corrections to installation directions.
+
+For those who obtained their copy of GNAT from an Ada CDROM or from floppies
+copied from a friend and do not have FTP access but do have internet email
+access, we have set up an automatic mailing procedure for this README file.
+The procedure is to send an email message to "gnat-send-readme@cs.nyu.edu".
+As long as the mailer can figure out your return email address it will
+send you via email the latest version of the README kept in the pub/gnat
+directory.  Note: ftp users can also use this service.
+
+The Installation Update News will always be at this spot near the top.
+Other information pertaining to unpacking the distribution for Sparc and
+OS/2 follow later in this README.
+
+Installation Update News:
+=========================================================================
+All references to the binary and source distributions of release 1.73
+have been removed from this README.  There were too many problems -- the
+only reasonable suggestion we can give here is to get 1.74.
+
+IMPORTANT NOTE (sparc binary version 1.74)
+If you picked this up before 2/12 14:45 EDT, gnatbl is missing.  We simply
+replaced the entire gz file at that time with gnatbl included.
+
+NOTE (sparc binary version 1.74)
+The installation Makefile left out a ranlib of libgnat.a.  This is harmless,
+but causes the warning message:
+  "ld: PATH/libgnat.a: warning: archive has no table of contents; add one using
+    ranlib(1)"
+...when running gnatbl for example.  To fix this do "ranlib PATH/libgnat.a".
+This was also fixed by a new gz file if you picked it up after 17:40 EDT
+on 02/12/94.
+
+NOTE (sparc binary version 1.74)
+The doconfig script forgets to remind you to add the bin directory created
+to the front of your PATH.  In particular, it is not sufficient to call
+gnatbl by naming it explicitly, since it uses PATH to find gnatbind and gcc.
+One possible effect of having this wrong occurs if gnatbl calls the wrong
+gnatbind: lots of error messages about wrong versions.
+
+IMPORTANT NOTE (OS/2 binary distribution users - version 1.74):
+  If you got the OS/2 binary distribution from our ftp site (cs.nyu.edu) after
+Feb. 13 5:35 PM EST, the problems mentioned below have hopefully either been
+fixed or documented in the file \gcc\READ.ME included with the distribution.
+  A utility called gnatL.exe was included in the \gcc\bin directory by mistake.
+Please ignore this file.  You may delete it if you like.
+  Because of a problem with gnatbl.exe, you must have the file gnat.lib in your
+current directory in order to use this utility.  Gnat.lib may be found in the
+directory \gcc\lib of the partition on which you installed GNAT for OS/2.
+You may also get an error message similar to the following when using gnatbl:
+    Link 386: Fatal Error L1022:
+    Response line too long
+    error executing  c:\gcc\bin\gcc.exe
+If this happens, you can try copying the contents of the directory \gnatlib
+to your current directory, or creating a linker response file and invoking the
+linker directly, bypassing gnatbl and gcc altogether.
+  There is a mistake in the batch file makeexamples.cmd in the \gcc\examples
+directory.  In the line that starts out with "for %f in ...", all occurrences
+of %f should be changed to %%f.
+  There is another mistake in the batch file gnat.cmd in the \gcc\bin directory.
+The line that reads:
+    gnatbl %1.ali %2 %3 %4 %5 %6 %7 %8 %9
+should instead read:
+    gnatbl %1.ali -o %1.exe %2 %3 %4 %5 %6 %7 %8 %9
+  The installation routine fails to copy the file fly-gnat.cmd from the second
+diskette to the \gcc\bin directory.  You may want to do so, especially if you
+want to make copies of GNAT for OS/2 to give someone else, and don't have the
+original diskettes handy.
+  Finally (we hope), you may get the impression that the installation routine is
+"stuck" after unzipping \gcc\lib\os2.lib.  What is happening at this point is
+that the run time library is being compiled.  At least one person has had the
+experience of having this step take a very long time (in excess of 15 minutes
+on a 386-based computer).
+
+IMPORTANT NEWS:
+With release 1.73 (finally - after the New Year's lag -- but certainly
+worth the wait) we have implemented search paths and a GNAT Run Time
+Library.  This has lots of effects on installation and execution -- so
+don't presume you know -- time to take a fresh look at the READMEs and
+at gnat-intro.
+
+NOTICE: We know nothing about the possibilities of doing anything with the
+latest sources and versions of GNAT prior to 1.67.  If you do not have
+1.67 or later -- you may have to start from executables.  All of your own
+code should also be freshly compiled.
+
+==========================================================================
+A LITTLE NEWS:
+We have automated our procedures for creating new distributions and plan to
+place new releases in this directory (cs.nyu.edu:pub/gnat [128.122.140.24])
+with much greater frequency than the past.  We will no longer announce each
+release -- users can just check the directory on occasion.  This makes it more
+important to look for changes in this README.
+
+CONTENTS (in a little more detail):
+In addition to this README file and "features", the subdirectory "docs"
+contains various documents about GNAT; the file "unz50x32.exe" is used
+for unpacking OS2 zip files (more below).
+
+There are source and binary distributions both for sparc machines running
+SunOs 4.1 (these distribution files end in ".gz") and for OS2 (these
+distribution files end in ".zip").
+
+For those who have received this distribution via the PAL (Public Ada Library)
+or off of an Ada CDROM the distribution file names will probably be a little
+different than from the ones used on the cs.nyu.edu ftp site.  The sparc files
+will be in a subdirectory ver_XXX/sparc with a name bin.tgz, rather than
+gnat-1.XX-sparc-bin.tar.gz and the OS2 files will be in a subdirectory
+ver_XXX/os2 with a name of disk1.zip rather than gnat-1.XX-os2-disk1.zip.
+The instructions given below still apply just the names used in them are
+different.
+
+Since the front end of GNAT is written in Ada, you need a running version
+of GNAT in order to build GNAT from the sources.  Once you have GNAT
+running on your system, most releases can be built from previous ones.
+To get started initially (and when there are boostrap problems that will
+be documented here) you need to install GNAT from a binary distribution.
+We anticipate that many people will never have an interest in building
+GNAT, and will therefore simply pick up new binary distributions.
+
+Intructions for installing and running GNAT are in each distribution.  The
+source distributions also contain instructions for building GNAT.
+
+RETRIEVING:
+Make sure that you transfer with ftp in binary mode.
+
+UNPACKING SPARC DISTRIBUTIONS:
+The Unix (specifically sparc) distributions need to be uncompressed with
+'gunzip', and then unpacked with tar.  Here is the scoop on gunzip:
+
+  Because the unix `compress' utility is patented (by two separate patents,
+  in fact), we cannot use it; it's not free software.
+
+  Therefore, the GNU Project has chosen a new compression utility, `gzip',
+  which is free of any known software patents and which tends to compress
+  better anyway.  All compressed files in the GNU anonymous FTP area
+  (prep.ai.mit.edu:/pub/gnu) have been converted to the new format.  Files
+  compressed with this new compression program end in `.gz' (as opposed to
+  `compress'-compressed files, which end in `.Z').
+
+  Gzip can uncompress `compress'-compressed files and `pack' files
+  (which end in `.z').  This is possible because the various
+  decompression algorithms are not patented---only compression is.
+
+  The gzip program is available from any GNU mirror site in shar, tar, or
+  gzipped tar format (for those who already have a prior version of gzip and
+  want faster data transmission).  It works on virtually every unix system,
+  MSDOS, OS/2, and VMS.
+
+UNPACKING OS/2 DISTRIBUTIONS:
+The executables for the OS/2 version of GNAT are split into 2 files, each of
+which can fit on one 3.5-inch high-density diskette.  The installation procedure
+requires the use of two diskettes.  BOTH DISKETTES MUST BE COMPLETELY BLANK,
+i.e., with no hidden files or defective sectors - each diskette must have
+1,457,664 bytes available.  Although it is possible to install GNAT on a FAT
+partition, such an installation will not be fully functional.  In fact, we do
+not support installations on FAT partitions.
+
+The following directions are written in a generic manner so that they do not
+refer to a specific version of GNAT.  Instead gnat-1.xx is used below and it
+refers to whatever version of GNAT you are trying to unpack.  For example,
+one such version might be gnat-1.67-os-bin-disk2.zip (xx for 67).
+
+To install GNAT for OS/2, unzip the files gnat-1.xx-os2-bin-disk1.zip and
+gnat-1.xx-os2-bin-disk2.zip onto separate diskettes.  (If you don't have the
+unzip program, you can download the file unz50x32.exe, run it in an empty
+directory, and copy the file unzip.exe to a directory listed in your PATH
+environment variable.  Please note that PKUNZIP will NOT work.)  In other
+words, copy the file gnat-1.xx-os2-bin-disk1.zip to your hard drive, make the
+drive containing a blank formatted diskette the current drive, and then unzip
+the file using the command:
+   UNZIP drive:path\GNAT-1.xx-OS2-BIN-DISK1.ZIP
+where "drive" and "path" is the drive and path in which the file
+gnat-1.xx-os2-bin-disk1.zip resides.  Do likewise with
+gnat-1.xx-os2-bin-disk2.zip.  Once you have unzipped both files, follow the
+instructions in the file READ.ME, which is on the second diskette.  You will
+need about 4 MB of free disk space after you have copied the contents of both
+diskettes to your hard drive.
+
+The instructions for compiling the source code for GNAT are in the file
+README.OS2, which will appear in the directory gnat-1.xx-src\src on your hard
+drive once you unzip the file gnat-1.xx-src.zip.  These instructions assume
+your current directory is the root directory of an HPFS partition when you
+issue the unzip command.  You will need about 50 MB of free disk space after
+you have unzipped gnat-1.xx-src.zip and copied the zip file containing the
+most recent sources for gcc itself (gcc-2.5.8.zip at the time this was written)
+to your hard drive.  The instructions for building gas 1.38.1 (the GNU
+assembler) and the latest version of gcc are also in the file README.OS2.

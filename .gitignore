@@ -4,3 +4,10 @@ build/
 # TODO: unzip and add these at some point
 tests/acats/
 .vscode/
+# Omitting other files from Walnut Creek CD for now since they do not seem relevant
+third_party/gnat-walnut-creek-Mar-94/gas_gcc/
+third_party/gnat-walnut-creek-Mar-94/ver_167/os2/
+third_party/gnat-walnut-creek-Mar-94/ver_167/sparc/bin.tgz
+third_party/gnat-walnut-creek-Mar-94/ver_167/sparc/src.tgz
+third_party/gnat-walnut-creek-Mar-94/ver_173/
+third_party/gnat-walnut-creek-Mar-94/ver_174/

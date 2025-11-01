@@ -1,0 +1,1186 @@
+GNAT-NOTE #1
+Jan 31, 1993
+Revised: April 8, 1993
+Revised: April 12, 09:51
+Robert B. K. Dewar
+
+A LIBRARY DESIGN FOR GNAT
+
+This design is based on discussions in the GNU-Ada design group at NYU, as
+well as taking into account contributions from others, including especially
+Richard Stallman. The basic philosophy is to provide an environment which
+is fully flexible, and at the same time has a natural and intuitive style
+of use both for Ada programmers used to the more conventional Ada library
+model, and to Unix programmers. The original version of this note was
+generated in January, but the design has undergone extensive modification
+since then. The approach described here is that implemented in GNAT as of
+April, 1993.
+
+
+Background -- The Ada Library Model of Compilation
+--------------------------------------------------
+
+This document addresses the issue of representing what the Ada RM calls the
+library "file", and implementing the semantics associated with this entity.
+First, let's review the Ada model. We use the term Ada model to describe
+the common interpretation of the intention of the reference manual. As we
+shall see later, the RM can be read in a rather flexible manner (the basic
+issue being the extent to which its discussion of the library is talking
+about a conceptual or physical entity). Existing Ada implementations have
+in fact taken a particular interpretation, which is what we describe here.
+
+An Ada library (we will always use this terminology to distinguish it from
+other uses of the word library) is a data structure that gathers the results
+of a set of compilations of Ada source files. A compilation is performed in
+the context of such a library, and the information in the library is used
+to enforce type consistency between separately compiled modules. Unlike some
+other language environments, all such type checking is performed at compile
+time, and Ada guarantees at the language level that separately compiled
+modules of a complete Ada program are type consistent.
+
+Building an Ada program consists of selecting a main program (typically this
+is a parameterless procedure compiled into the Ada library), and all the other
+modules on which this main program depends. These modules are then bound into
+a single executable program. For the most part this process is similar to the
+normal link step which is familiar from other language environments, but there
+are some Ada-specific semantics which are intended to be enforced at link time.
+
+Let's look at some specific examples of how the Ada library model works.
+Suppose that we have a program consisting of the following elements, called
+compilation units, each of which is separately compiled.
+
+    1.	-- Specification of MAIN procedure
+	procedure MAIN;
+
+    2.	-- Body (implementation) of MAIN procedure
+	with PROC1, PACKG1;   -- units needed by MAIN program
+	procedure MAIN is     -- not required to be called MAIN
+	   ...
+	end;
+
+    3.	-- Specification of PROC1 procedure
+	with PACKG1;
+	procedure PROC1 (....);
+
+    4.	-- Body of PROC1 procedure
+	procedure PROC1 (....) is
+	   ...
+	end;
+
+    5	-- Specification of package PACKG1
+	package PACKG1 is
+	   ...
+	end;
+
+    6.	-- Body of package PACKG1
+	package body PACKG1 is
+	   ...
+	end;
+
+Note: in this discussion we use all upper case for unit names to clearly
+distinguish them from file names, which are all lower case. Actual casing
+requirements are more flexible of course. In particular, we prefer to use
+the mixed case convention (e.g. Utility_Package) in our actual Ada code, but
+the clear font difference helps avoid confusion in a document of this type.
+
+Notice first of all that for each procedure and package, there are two
+separate parts. First we have the specification (which gives the name and
+types of the procedure parameters, and is essentially similar in function
+to a function prototype -- or collection of prototypes in the case of a
+package -- in C. The other part is the body which is the implementation.
+These two parts can in general be compiled separately.
+
+A compilation unit may "depend" on other compilation units. The most typical
+way of creating such a dependence is by use of a "with" clause. For example,
+in the above set of units, procedure MAIN depends on procedure PROC1.
+
+A definite order of compilation is enforced by the language semantics (and
+implemented by use of the Ada library). In our example here, the compilation
+order must respect the following partial ordering:
+
+     Spec of MAIN must be compiled before Body of MAIN
+     Spec of PROC1 must be compiled before Body of PROC1
+     Spec of PACKG1 must be compiled before Body of PACKG1
+     Spec of PROC1 must be compiled before Body of MAIN
+     Spec of PACKG1 must be compiled before Body of MAIN
+     Spec of PACKG1 must be compiled before Spec of PROC1
+
+Basically the idea is that you must compile the specs of anything you depend
+on before compiling the dependent unit, and in addition, the spec of a unit
+must be compiled before its corresponding body. Within these rules there is
+a fair amount of freedom in the compilation order. For example, in the current
+example, there is no rule about the order in which the bodies must be compiled.
+
+An important idea here is one of "obsolete" units. If a unit is recompiled,
+then units which depend on it are obsolete, and must be recompiled. Again the
+Ada library is the data structure which is used to implement this requirement.
+For example, in our example here, if the spec of PACKG1 is recompiled, then
+the body of Main, and the spec and body of PROC1 must be recompiled (further-
+more, in accordance with the ordering rules given above, the spec of PROC1
+must be recompiled before the body of Main).
+
+There are a few more fine points in the model.
+
+   A compiler must be able to take as input a compilation, which is a series
+   of one or more compilation units. The normal model is that a single source
+   file can contain several compilation units, although the Ada RM says nothing
+   about source files, so this is not a necessary convention. In particular,
+   it would be possible to declare that the representation of a compilation
+   consisting of several units consists of a series of files, each containing
+   more than one unit. However, most, but not all implementations, have just
+   assumed that "compilation unit = file", so that submitting a file to the
+   compiler involves submitting a series of compilation units.
+
+   If two files contain the same unit, then the one which gets into the
+   library is the one compiled latest. The meaning of the program thus depends
+   on the order of compilation of its components. A particularly confusing
+   case is when multiple units appear in a file. If file F1 contains units
+   A,B,C and file F2 contains unit B, then compiling F2 after F1 will remove
+   the old version of B from the library, but leave A and C intact.
+
+   It is permissible to compile the body of a procedure without compiling
+   the corresponding spec. In this case the body acts as a spec, and has
+   the same dependencies as the spec. In the example above, we could omit
+   compilation unit number 1, and compilation unit 2 would act as the spec
+   for MAIN.
+
+   The specification for a subprogram can be omitted, in which case the body
+   acts as a spec. The exact details of how this works are a little tricky.
+   In particular, when you have a body that is serving as a spec in this
+   way, it will be as usual by the introduction of a separate spec. Once
+   a spec has been introduced, compiling a body which is incompatible with
+   the spec must be rejected.
+
+   In Ada/83, certain packages may have optional package bodies (these are
+   typically packages containing only type and variable declarations). In
+   Ada/9X, such packages may *not* have associated package bodies.
+
+   If the specification of a procedure contains a pragma inline, or the
+   specification of a package contains one or more inlined procedures, then
+   any unit that depends on the specification also depends on its body, since
+   it needs the body to do the inlining. In this case the body containing the
+   inlined procedures must be compiled before the with'ing unit.
+
+In the Ada Reference Manual, there are specific references to a "library file",
+and this is often taken to mean that the Ada library should be or must be
+represented using a file in the normal sense. Most Ada systems do in fact
+implement the Ada library in this manner, so that a compilation specifies
+a source file and an Ada library, and the effect of the compilation is to
+generate object and listing output *and* to update the library file. However,
+it is clearly accepted that the RM does not require this implementation
+approach. In this view, an Ada library is a conceptual entity that can be
+implemented in any manner that provides the required semantics.
+
+Note: in the model where a library file is maintained, special Ada specific
+utilities are required to rename, move or copy units between libraries,
+since the Ada library information must be maintained in an Ada specific
+form known only to components of the Ada system.
+
+Note: an Ada purist will note that the proper technical term for what we
+have called a specification or spec here is "declaration", but the (mis)use
+of the term spec(ification) is essentially universal in the Ada world, so we
+follow this de facto standard in our terminology, except that from now on
+we will adopt the internal GNAT terminology: specification, spelled out in
+full, is a syntactic term, referring to the defined Ada grammar. The
+abbreviation spec is reserved for referring to declarations of units.
+We actually find the use of spec in this context helpful, since for example
+if one refers to the spec for a given body, the meaning is clear, whereas
+if you refer to the declaration for a package body, it is not clear whether
+you are talking about the declaration of the body itself, or the package
+declaration.
+
+
+Some Relevant Ada Language Features
+-----------------------------------
+
+This section summarizes some important features of Ada that are relevant to
+this discussion. Ada knowledgeable people can skip this, but it will be helpful
+to those whose knowledge comes from the non-Ada world.
+
+Subunits and Stubs
+
+   A nested body, such as a nested procedure body, or nested package body,
+   can be made into a subunit. This means that it is in a separate file,
+   and at least in some sense is compiled separately. We say in some sense
+   here because it must be compiled in the context of its parent, just as
+   though it had been inline. In the parent, we have a "stub" that stands
+   for the missing body, e.g.
+
+	procedure JUNK is separate;
+
+   The body is then placed in a separate compilation unit, typically in
+   a separate file, and looks like:
+
+	separate (PARENT)
+	procedure JUNK is .. <normal procedure body code> ..
+
+   where PARENT is the name of the unit containing the stub. Semantically
+   the overall effect of this structure should be semantically equivalent
+   to including the subunit inline, although that isn't quite exactly right
+   in Ada terms, since the subunit can have its own context clause (with'ed
+   units), and, although there is no conceptual reason for this restriction
+   (i.e. it stems from methodological considerations, rather than technical
+   considerations), Ada does not permit with clauses other than at the start
+   of the compilation.
+
+Child Units
+
+   A child unit in Ada 9X is an extension of its parent unit, which is a
+   library package. Child units have qualified names indicating the parent
+   (e.g. unit XYZ.ARN is a child of unit XYZ). A child unit has both a spec
+   and a body. The spec acts as an extension of the parent spec, and the
+   body acts as an extension of the parent body.
+
+Inlined Subprograms
+
+   The spec of a subprogram can be marked using a pragma Inline, which means
+   that an attempt should be made to inline the code of the body. This creates
+   a dependence of the unit containing a call on the body. Actually the rule
+   in the RM is that this dependence is only established if the body has been
+   compiled before the unit containing the call. This is a natural consequence
+   of the library model in the RM, and means for instance that if two packages
+   call inlined routines in one another, one can not expect both requests to
+   be satisfied (which one is satisfied depends on the order of compilation).
+
+Generic Units
+
+   A generic unit is essentially a macro for a subprogram or package where
+   the parameters can be types as well as normal procedure parameters. To
+   use a generic it must be instantiated giving specific values for the
+   parameters. This conceptually creates a copy of the spec and body which
+   are appropriately customized.
+
+   An obvious implementation is simply to inline the customized copies at the
+   point of instantiation. However this creates a problem since it means that
+   a dependency is created from the unit containing the instantiation to the
+   body. As we discussed for the inlined subprogram case, that can cause some
+   restrictions in cases where two packages instantiate generics declared in
+   the other. In the case of inlined subprograms, we could just ignore the
+   inlining request, but in the generic case we get stuck.
+
+   There are approaches for getting around these limitations, but they are
+   complicated. We won't go into them further here. We note that the Ada/83
+   RM specifically allows an implementation to place restrictions on the use
+   of generics consistent with this model of inline expansion, but in any
+   case the GNAT scheme is simple as we shall see and has no such restrictions.
+
+
+Background -- The GNU Model of compilation
+------------------------------------------
+
+The GNU model of compilation is that separate files which constitute the
+program are separately compiled and each compilation produces a corresponding
+object file. These object files are then linked together by specifying a list
+of object files in a program. A library consists of a set of such object files
+and there is no library file as such, although there is a notion of dependence
+on headers (which are of course source files).
+
+In this model, standard system utilities (rm, mv, cp) can be used to remove,
+rename, and copy modules.
+
+In the case of C and C++ programs, a given source file can #include header
+files. In this case to compile the file, the header files must be available.
+The make utility in GNU usage in general specifies for each object file
+which source files must be around to generate it, i.e. it establishes a
+dependency of the object file on a set of sources. As long as the dependencies
+in the make file are correct, and as long as all compilations are performed
+using this make file, then consistency of the system is guaranteed. However
+there is nothing to stop compilations being carried out without the use of
+make, and in such cases, it is possible to generate executables which are
+inconsistent, e.g. more than one incompatible version of a given header file
+appears in separate object modules.
+
+
+The Design Goal - Unification
+-----------------------------
+
+The goal in this design is to reconcile the Ada and GNU models of compilation.
+On the one hand, we want the Ada guarantee of inter-module type integrity
+that is guaranteed by the Ada language specification -- in particular it
+should be essentially impossible to link a type inconsistent program. On
+the other hand, we want to fit into the GNU model in which separate
+compilations generate separate object files (and which has no place for a
+global library file).
+
+
+The Basic Model of GNAT Compilation
+-----------------------------------
+
+In this section we will describe the basic module of GNAT compilation. Before
+starting, we should warn Ada programmers that they are likely to react that
+the GNAT approach is at best peculiar and at worst wrong, because it is quite
+different from conventional Ada models. However, we ask for such readers to
+read ahead with an open mind. Later on we will describe how the system can
+be used in a manner that has identical semantics to typical library based
+Ada systems if that is desirable.
+
+The fundamental point is that we use the GNU view of compilation as our
+starting point, and in particular we are entirely source based. A GNAT
+compilation specifies a source file, and generates a single object file.
+There are *no* library files, or any centralized library information of any
+kind.
+
+A GNAT source file contains a single compilation unit (a compilation is
+represented as a series of source files, each containing one compilation
+unit). Furthermore there is a mapping from unit names to file names, so
+that from a unit name one can always determine the file name. This mapping
+is quite flexible, as we shall describe later, but for the examples in this
+document we will use the default file naming convention as follows:
+
+   The file name is the expanded name of the unit with dots replaced by
+   minus signs. An additional minus sign is appended to specs to distinguish
+   them from bodies. The extension .ada is included in all files.
+
+Some examples of these default mapping rules are:
+
+     Unit name			  File name
+
+   PACKGE1 (spec)		 packge-.ada
+   PACKGE2 (body)		 packge.ada
+   SCN.NLIT (subunit)		 scn-nlit.ada
+   CHILD.PKG (child spec)	 child-pkg-.ada
+   XYZ.ARG.LMS (subunit 	 xyz-arg-lms.ada
+   ABC.DEF.GHI (child spec)	 abc-def.ghi-.ada
+
+The corresponding object file has the same file name with the extension .o
+(which is why the spec and body of a file have to have different file names,
+not just different extensions).
+
+As in a C file with #include'd header files, a GNAT source file may require
+other source files for its compilation. These include:
+
+   The corresponding spec for a body. For example if we compile a package
+   body xyz.ada, we will reference the source of the package spec in xyz-.ada
+
+   The parent spec of a child library spec. Child libraries are extensions of
+   their parent library, so to compile a child library, we must have the
+   files for its parent available (and since this principle is applied
+   recursively, the entire set of ancestors will be needed). For example,
+   if we are compiling the child spec abc-def-.ada, we will need the source
+   of its parent in abc-.ada.
+
+   With'ed specifications. The context clause of an Ada compilation unit
+   specifies a series of units whose specs contain entities that may be
+   referenced in the compilation. The sources of all such specs must be
+   available. For example if we compile xyz.ada, and Unit XYZ with's unit
+   ABC, then we will need the source file abc-.ada containing the spec of ABC.
+
+   Parent body for a subunit. If we are compiling a subunit, then it can
+   reference entities declared in its parent, so certainly we must have the
+   source of the parent around. For example, if we are compiling the subunit
+   in file abc-def.ada, then we will need the source of its parent in abc.ada
+
+   Bodies of inlined subprograms. If we call an inlined procedure declared
+   in some spec, then we need not only the source of that spec, but also the
+   body. For example, if unit ABC with's the inlined subprogram RAPID, then
+   the compilation of abc.ada will require not only the spec of the source in
+   rapid-.ada, but also the body in the file rapid.ada
+
+   Bodies of instantiated generics. This is exactly the same situation. For
+   example if unit TOP1 instantiates a generic subprogram GENERAL1, then
+   the compilation of top1.ada will require not only the spec of the source in
+   general1-.ada, but also the generic body in general1.ada
+
+   Bodies of packages containing either inlined subprograms that are called,
+   of generic bodies that are instantiated. This is a similar case. Suppose
+   that unit JUNK1 with's the package PACK1, and makes a call to the inlined
+   subprogram XYZ declared in PACK1, or instantiates the generic spec GEN1
+   declared in PACK1, then the compilation of junk1.ada will require not only
+   the package spec in pack1-.ada, but also the package body in pack1.ada.
+
+All these rules probably seem quite reasonable to a C programmer, since they
+are similar to the requirements that compilation of a C source containing
+a #include for a header requires the header to be around. However, an Ada
+programmer is likely to be puzzled.
+
+The key understanding is that in GNAT, dependencies are not from one
+compilation unit to another, but from object files to corresponding sources.
+Let's take another look at the example at the start of this note:
+
+    1.	-- Specification of MAIN procedure (in file main-.ada)
+	procedure MAIN;
+
+    2.	-- Body (implementation) of MAIN procedure (in file main.ada)
+	with PROC1, PACKG1;   -- units needed by MAIN program
+	procedure MAIN is     -- not required to be called MAIN
+	   ...
+	end;
+
+    3.	-- Specification of PROC1 procedure (in file proc1-.ada)
+	with PACKG1;
+	procedure PROC1 (....);
+
+    4.	-- Body of PROC1 procedure (in proc1.ada)
+	procedure PROC1 (....) is
+	   ...
+	end;
+
+    5	-- Specification of package PACKG1 (in file packg1-.ada)
+	package PACKG1 is
+	   ...
+	end;
+
+    6.	-- Body of package PACKG1 (in file packg1.ada)
+	package body PACKG1 is
+	   ...
+	end;
+
+Now we have a number of dependencies of object files on source files as
+follows:
+
+    main-.o    depends on main-.ada
+    main.o     depends on main.ada, main-.ada, proc1-.ada, packg1-.ada
+    proc1-.o   depends on proc1-.ada, packg1-.ada
+    proc1.o    depends on proc1.ada proc1-.ada, packg1-.ada
+    packg1-.o  depends on packg1-.ada
+    packg1.o   depends on packg1.ada, packg1-.ada
+
+Note that the dependencies are transitive, in this example the dependency
+of proc1.o on packg1-.ada is such a transitive dependence. This is similar
+to a situation in C where a header #include's another header, and of course
+both header files must be around to compile a file including the first header.
+
+In this approach, we are reinterpreting the "order of compilation" rules
+to be "dependency on source files" rules. A rule that says that the body
+of MAIN cannot be compiled until the spec of MAIN has been compiled is
+reinterpreted to mean that the body of MAIN cannot be compiled unless the
+source of the spec of MAIN is available.
+
+The rules about compilations obsoleting other compilations are similarly
+reinterpreted. The rule that says that recompiling the source of MAIN
+obsoletes the body is taken to mean that reediting the source of MAIN
+requires the body to be recompiled.
+
+One interesting consequence of the GNAT approach is that if all the sources
+of a program are available, there are in fact no restrictions on the order
+of compilation, the units can be compiled in any order. We can even compile
+bodies before the corresponding specs if we want.
+
+This model of source dependencies has a number of significant advantages.
+It's certainly much more familiar to non-Ada programmers, and we believe
+that it is fundamentally much simpler than conventional Ada library models.
+Furthermore, there are a number of technical difficulties relating to
+circular dependencies in the conventional model (where two units depend
+on one another) that completely disappear. For instance, consider the
+following situation:
+
+    1.	-- Specification of PACKG1 (in file packg1-.ada)
+	package PACKG1 is
+	  procedure PROC1;
+	  pragma Inline (PROC1);
+	  ...
+	end PACKG1;
+
+    2.	-- Body (implementation) of PACKG1 (in file packg1.ada)
+	with PACKG2;
+	package body PACKG1 is
+	   ...
+	   PROC2;
+	   ...
+	end PACKG1;
+
+    3.	-- Specification of PACKG2 (in file packg2-.ada)
+	package PACKG2 is
+	  procedure PROC2;
+	  pragma Inline (PROC2);
+	  ...
+	end PACKG2;
+
+    4.	-- Body (implementation) of PACKG2 (in file packg2.ada)
+	with PACKG1;
+	package body PACKG2 is
+	   ...
+	   PROC1;
+	   ...
+	end PACKG1;
+
+This is the case of mutually recursive inline references that causes trouble
+in the conventional model, since to accomplish both inlining actions, the
+units for the bodies of the two packages would have to depend on one another.
+Note incidentally that we are not talking about a case of actual recursive
+inlining, we assume in this example that the call to PROC1 is not in the
+body of PROC2, but in some other subprogram, and similarly the call to PROC2
+is not in the body of PROC1, but also in some other subprogram, so this
+situation is perfectly sensible, and it would be desirable to have both
+inline actions achieved.
+
+In the GNAT model there is no special problem, the dependencies are:
+
+    packg1-.o  depends on packg1-.ada
+    packg1.o   depends on packg1.ada, packg1-.ada, packg2.ada, packg2-.ada
+    packg2-.o  depends on packg2-.ada
+    packg2.o   depends on packg1.ada, packg1-.ada, packg2.ada, packg2-.ada
+
+No big surprises, no particular problems! It's just that, as one might expect
+any change to any of the four sources requires that the bodies of the two
+packages be recompiled.
+
+Now the failure of the normal Ada library model in this case is not critical,
+since the semantic effect of failing to achieve inlining is just a loss of
+efficiency. However, consider a similar example with mutual generic
+instantiation:
+
+    1.	-- Specification of PACKG1 (in file packg1-.ada)
+	package PACKG1 is
+	  generic
+	     type X is private;
+	     procedure PROC1 (M : X);
+	  ...
+	end PACKG1;
+
+    2.	-- Body (implementation) of PACKG1 (in file packg1.ada)
+	with PACKG2;
+	package body PACKG1 is
+	   ...
+	   package NEW1 is new PROC1 (Integer);
+	   ...
+	end PACKG1;
+
+    3.	-- Specification of PACKG2 (in file packg2-.ada)
+	package PACKG2 is
+	  generic
+	     type X is private;
+	     procedure PROC2 (M : X);
+	  ...
+	end PACKG2;
+
+    4.	-- Body (implementation) of PACKG2 (in file packg2.ada)
+	with PACKG1;
+	package body PACKG2 is
+	   ...
+	   package NEW2 is new PROC2 (Integer);
+	   ...
+	end PACKG1;
+
+Once again, we are not talking about an actual recursive instantiation, which
+would be illegal in Ada. The instantiation of PROC2 does not occur in the
+body of PROC1, and the instantiation of PROC1 does not occur in the body of
+PROC2, so this program is perfectly legal.
+
+Now we are in trouble with the Ada dependency model if we are trying to
+inline generics, because once again this would generate a mutual dependency
+between the two package bodies. In the conventional Ada model, we have two
+ways out of this:
+
+   o  Take advantage of the permission in Ada/83 to refuse to compile this
+      particular program. The Ada programmer may be annoyed, but you are
+      still conforming. This is a bit of "subsetting" that is specifically
+      permitted by the standard. Note however that it is either possible or
+      likely, depending on your point of view, that Ada/9X will withdraw
+      this subsetting permission, and in any case, this subsetting is not
+      desirable from an Ada programmer's point of view.
+
+   o  Figure out how to avoid the dependencies. There are two approaches.
+      One is to use shared implementations of generics, which causes all
+      kinds of implementation problems. The other is to compile the
+      instantiated copies in separate object files, and then defer their
+      compilation till the necessary information is at hand. This approach
+      is also tricky, and certainly does not conform with our "one source,
+      one object" approach.
+
+Now let's look at what happens in the GNAT model. We simply get the same
+set of dependencies as in the inline case:
+
+    packg1-.o  depends on packg1-.ada
+    packg1.o   depends on packg1.ada, packg1-.ada, packg2.ada, packg2-.ada
+    packg2-.o  depends on packg2-.ada
+    packg2.o   depends on packg1.ada, packg1-.ada, packg2.ada, packg2-.ada
+
+Again, no particular problems! It's just that we have to recompile both
+package bodies if any of the four sources is modified. Furthermore we can
+use the simple generic inlining model without introducing any of the
+restrictions usually associated with this model.
+
+
+Ensuring Consistency
+--------------------
+
+One thing that will be worrying Ada programmers at this point is how we
+ensure that an executable Ada program is guaranteed to be consistent. In
+the C case, we answer this question by saying "generate a correct make
+file with the proper dependencies, preferably with a tool, and then jolly
+well use it whenever you compile -- caveat emptor those who don't follow
+this rule! Well that doesn't sound good enough for Ada programmer's who
+have a much more strenuous view of safety and correctness -- indeed this
+is a principle aspect of the appeal of Ada.
+
+In particular, suppose we have the six files of our first example:
+
+    1.	-- Specification of MAIN procedure
+	procedure MAIN;
+
+    2.	-- Body (implementation) of MAIN procedure
+	with PROC1, PACKG1;   -- units needed by MAIN program
+	procedure MAIN is     -- not required to be called MAIN
+	   ...
+	end;
+
+    3.	-- Specification of PROC1 procedure
+	with PACKG1;
+	procedure PROC1 (....);
+
+    4.	-- Body of PROC1 procedure
+	procedure PROC1 (....) is
+	   ...
+	end;
+
+    5	-- Specification of package PACKG1
+	package PACKG1 is
+	   ...
+	end;
+
+    6.	-- Body of package PACKG1
+	package body PACKG1 is
+	   ...
+	end;
+
+Now we do the following:
+
+   Compile packg1-.ada to generate packg1-.o
+   Compile packg1.ada  to generate packg1.o
+   Compile proc1-.ada  to generate proc1-.o
+   Compile proc1.ada   to generate proc1.o
+   Compile main-.ada   to generate main-.o
+   Compile main.ada    to generate main.o
+
+So far so good, six nice consistent object files. Now let's do the following:
+
+   Edit source of packg1-.ada
+   Recompile packg1-.ada to generate new version of packg1-.o
+   Recompile packg1.ada to generate new version of packg1.o
+
+Now if we were using a proper make file, the dependencies in this make file
+would force us to recompile the spec and body of PROC1 and the body of MAIN.
+But suppose we don't use the make file. Well we have six objects that are
+certainly NOT consistent.
+
+GNAT has two lines of defence against an attempt to construct a program from
+a set of inconsistent objects. First, when we said we generated no centralized
+library information, the operable word was centralized. In fact we do generate
+some library information for each object file. We call this information the
+ADL (Ada Library) information, and the most important component is a recording
+of the time stamps of all sources on which this unit depends.
+
+Before a program is linked, the Ada binder (you could also call it a prelinker
+to use the more familiar GU terminology) must be run. Ada semantics require
+this step for two reasons. First, initialization calls must be made to
+initialize unit specs and bodies (this initialization activity is called
+elaboration in Ada), and you can't tell the order of these calls until you
+have the whole program. Second, it is possible to construct a situation in
+which no possible order of elaboration exists. Such a situation is considered
+a compile time error, and must be diagnosed prior to execution.
+
+Part of the processing in the GNAT binder makes sure that the program is
+consistent by looking at time stamps in the ADL information associated with
+the object modules of the program. In our attempted subversion of the system
+above, the binder will detect an error resulting from the time stamp of the
+source file packg1-.ada in the ADL for packg1-.o and packg1.o will not match
+the time stamp of this same source file in the ADL for the other modules. The
+binder will then give a message something like:
+
+  Please recompile proc1-.ada (source of packg1-.ada has been modified)
+  Please recompile proc1.ada (source of packg1-.ada has been modified)
+  Please recompile main.ada (source of packg1-.ada has been modified)
+
+These correspond to messages typically obtained from Ada library systems if
+they are kind enough to keep traces of obsoleted modules around. Many existing
+Ada libraries are *not* kind enough to do this, and so will simply generate
+messages saying that these three units are missing from the library (because
+they were removed from the library when packg1-.ada was recompiled).
+
+Note that only the time stamps of the source files are relevant. The time
+when the source file was compiled is irrelevant, and in particular if you
+recompile the same source file without having edited anything, you'll get
+the same object file, and nothing will get obsoleted, which makes sense of
+course, but conventional Ada library systems will obsolete things in this
+situation and require quite unnecessary recompilations.
+
+Suppose we have a more devious programmer, who has saved the object file from
+a previous bind operation on this program (the binder generates an object file
+containing the elaboration calls in the required order), and who tries to link
+the program without calling the binder. Well the second level of GNAT defence
+steps in. The object files themselves contain external references which include
+time stamp information, and the linker will not be able to link the program.
+The error messages are a little bit more mysterious, you will get something
+like:
+
+   Unresolved external symbol: packg1%s-1993-04-03:00:00.00
+
+which is to be interpreted to mean that someone wanted the version of the
+spec whose source has the given time stamp, but there is no corresponding
+object file, meaning that the source has been modified and recompiled.
+
+These two lines of defence ensure the same level of security that is provided
+by conventional Ada library systems (actually some such systems don't provide
+the second level of defence).
+
+A really determined programmer can still cheat by deliberately modifying the
+time stamps of files. We don't particularly encourage this, but we don't try
+to prevent it. After all, in an environment where the programmer can change
+any bits in sight, we can only make it harder to subvert the consistency
+requirement, not impossible. The important thing is to have sufficient
+defences that we could never get an inconsistent program other than by very
+deliberate subversion of the defences. As an example of the use of such
+subversion, consider a programmer who wants to add an entry to a spec, and
+guesses, correctly as it turns out, that files currently with'ing the old
+version of the spec don't really need to be compiled. Well it will in fact
+work to edit the spec, add the new declaration, and then change the time stamp
+of the source back to its original value. However, this sort of thing is
+obviously risky, not guaranteed to work, and definitely in the caveat emptor
+range!
+
+
+Order of Compilation Issues
+---------------------------
+
+As we have observed, the GNAT model doesn't really place restrictions on
+the order of compilation. In particular, if the sources are all around,
+it is perfectly possible to compile a package body before compiling the
+corresponding package spec.
+
+However, a consequence of such an inverted compilation order maybe that when
+the package body is compiled, the package spec will be found to have syntax
+errors. Of course the compilation cannot proceed in this case. GNAT will
+generate messages clearly identifying the syntax errors in the spec, and
+will refuse to generate an object file.
+
+Normal Ada practice is of course to compile the spec first, and then only
+compile the body if the spec is error free. This practice is still generally
+desirable in the GNAT environment. Furthermore, as a result of the Ada semantic
+requirements, if you compile a spec without errors, then you are absolutely
+guaranteed that any subsequent compilation that makes use of this spec will
+not encounter errors from the recompilation of the spec that occurs as a
+normal part of the GNAT processing.
+
+Note the contrast here with the use of C headers, which one generally does
+not compile in isolation, and even if you can compile them in isolation, the
+fact that compiling a header generates no errors is no guarantee that its
+incorporation by #include into some other file will not generate additional
+context dependent errors.
+
+It may be desirable in practice to enforce the spec-before-body order of
+compilation. That's easily done by using make files that introduce additional
+dependencies of object files on other object files for referenced specs. For
+instance, going back to our standard six file example, the normal GNAT make
+file looks like:
+
+    main-.o    depends on main-.ada
+    main.o     depends on main.ada, main-.ada, proc1-.ada, packg1-.ada
+    proc1-.o   depends on proc1-.ada, packg1-.ada
+    proc1.o    depends on proc1.ada proc1-.ada, packg1-.ada
+    packg1-.o  depends on packg1-.ada
+    packg1.o   depends on packg1.ada, packg1-.ada
+
+If you want to ensure that specs are compiled before bodies, additional
+dependencies can be added:
+
+    main-.o    depends on main-.ada
+    main.o     depends on main.ada, main-.ada, proc1-.ada, packg1-.ada
+		and also on main-.o, proc1-.o, packg1-.o
+    proc1-.o   depends on proc1-.ada, packg1-.ada
+		 and also on packg1-.o
+    proc1.o    depends on proc1.ada proc1-.ada, packg1-.ada
+		 and also on proc1-.o, packg1-.o
+    packg1-.o  depends on packg1-.ada
+    packg1.o   depends on packg1.ada, packg1-.ada
+		 and also on packg1-.o
+
+Now if you run make using this set of dependencies you get the normal spec
+before body rules. Suppose for example you edit packg1-.o and run make.
+Clearly in the resulting make file packg1-.ada must be compiled before
+packg1.ada, since the compilation of packg1.ada depends on output from the
+compilation of packg1-.ada and therefore must be done after it.
+
+We anticipate a make-depend type utility for GNAT that will have a switch
+to specify whether or not you want this type of enforcement of compilation
+order. The compiler itself certainly does not need this enforcement, and so
+our approach provides maximum flexibility for the programmer in this regard.
+
+Note that you probably don't want to introduce dependencies on object files
+for bodies, even if you are dependent on the corresponding sources. Such
+additional dependencies wouldn't provide any methodological advantages, and
+would have the disadvantage of creating restrictions on the use of pragma
+Inline and generic instantiations.
+
+
+Handling Subunits
+-----------------
+
+Subunits could be handled with no further special considerations in the above
+model. In particular, the object files for the subunit bodies would depend
+on the source files of their parents, and the usual GNAT model would apply,
+including the user option of whether or not to force the normal Ada order
+of compilation that requires the parent to be compiled first.
+
+However, we take a much more radical view of subunits. The reasons for this
+view are essentially orthogonal to the considerations given so far, and
+are fundamentally the following:
+
+1. There are a number of situations where you would normally expect the
+   compiler to know things at compile time, e.g. which outer level variables
+   are referenced by inner level procedures, which packages declare tasks,
+   etc which you can't know in a conventional Ada system because there may
+   be subunits present which you can't see when you are compiling the parent.
+   This results in a degradation of the code. For example, consider the
+   following:
+
+	procedure XYZ is
+	   A : Integer;
+	   B : Integer;
+
+	   package Inner is
+	      procedure Munge;
+	   end Inner;
+
+	   package body Inner is separate;
+
+	begin
+	   ...
+	end;
+
+   Now we are compiling the parent. We would like to know if tasks are present
+   so that we know whether or not to establish a task master for this procedure
+   or we would like to know if A is referenced by an inner procedure, so that
+   we know if it can be kept in a register. Neither of these questions can be
+   answered in a conventional system when compiling the parent, so we have to
+   assume the worst, and the effect is that the presence of subunits can
+   degrade the code quality considerably.
+
+2. Package subunits are a huge mess to implement. Consider in the above example
+   that the body for Inner looks like:
+
+	separate (XYZ)
+	package body Inner is
+	   M : Integer;
+	   ...
+	end;
+
+   Semantically the integer M belongs to the stack frame of its enclosing
+   procedure, and in particular it has the lifetime of this stack frame.
+   Where the heck shall we put it? We can't easily put it in that stack
+   frame directly, since when we compiled the enclosing procedure, we
+   didn't know that M existed.
+
+   This problem (one might say headache) is well known to Ada implementors.
+   There are a number of schemes, none of them fully satisfactory, and many
+   of them introduce significant implementation complexity.
+
+3. GNAT is making use of the existing backend of GCC, which certainly is not
+   set up for separate compilation of inner procedures, let alone package
+   subunits. We could presumably teach it what it needs to know, and make the
+   necessary modifications, but they are rather language specific, and we
+   prefer to avoid the need for making this kind of modification to the
+   backend of GCC.
+
+These factors combine to make subunits a big headache. In GNAT we choose to
+get rid of all of them at a stroke by deciding that we will not attempt to
+generate an object file for a subunit tree unless the sources of all necessary
+subunits are present. We then essentially macro-substitute the bodies for
+their stubs, and all the above problems disappear. If you want to think of
+this in C terms, consider that the way you would model subunits in C is to
+use #include to drag in the separate bodies, and then of course all the sources
+would have to be around to compile the parent.
+
+In the context of GNAT, there are two consequences. First subunits themselves
+do not generate object files and do not need to be separately compiled. In
+this respect they are similar to C include files, which are not separately
+compiled and do not have corresponding object files. Second, the parent unit
+can only be compiled to generate its object module if the sources of the
+subunits are all available.
+
+There are two immediate reactions that an Ada programmer will have. First
+there are efficiency concerns -- "Boy, you're forcing a lot of extra
+compilation, that's going to be very slow!" We'll deal with this concern
+in a separate section. The more significant concern is that the whole point
+of using subunits is to separate concerns. Consider the following scenario:
+
+   Susan develops the parent unit XYZ, which has two subunits XYZ.A and XYZ.B
+   she creates the source file xyz.ada and then gives the task of writing
+   the two subunits to Jose and Jack.
+
+   Jose creates the source file xyz-a.ada containing the subunit XYZ.A
+
+   Jack creates the source file xyz-b.ada containing the subunit XYZ.B
+
+In a conventional Ada system, Susan will compile her parent unit before giving
+the tasks to Jose and Jack to be sure that it is syntactically and semantically
+correct. She can't test it, except possibly with dummy stubs, but she still
+wants to make sure it doesn't contain obvious compile errors before checking
+it into the configuration management system.
+
+Similarly Jose and Jack will want to compile their subunits, using the compiled
+version of the parent, to check that they are syntactically and semantically
+correct. Again they can't easily test them, but they want to be able to catch
+obvious errors early on.
+
+When all components of the system are ready, then testing can begin with the
+assurance that no syntax or semantic errors will appear when the system is
+assembled.
+
+Are we going to lose that important capability in GNAT, given its approach of
+compiling the whole thing together? The answer is no. It's true that we can't
+make an object file of the whole structure until all units are there, but that
+of itself is not really a limitation, because we can't test things till we
+have all the subunits anyway.
+
+What GNAT does permit is to run the compilations of the parent on its own,
+or the bodies of the subunits in the presence of their parent sources in
+syntax/semantic check only mode. No object file will be generated, but the
+same assurances that the component is syntactically and semantically correct
+apply. Since the primary purpose of the compilations that Susan, Jose and
+Jack did was to ensure freedom from such errors, the GNAT system has exactly
+the same functional capabilities as a conventional Ada system.
+
+
+What About Efficiency?
+----------------------
+
+There are two efficiency concerns presented by this source-based approach.
+First, we are constantly recompiling units in the simple case from their
+source. For example, given the package:
+
+	with XYZ, MNO, TEXT_IO; use TEXT_IO;
+	procedure JFK is
+	begin
+	   Put (XYZ.WHO);
+	   Put (MNO.SHOT);
+           Put ("JFK?:");
+	end;
+
+the GNAT compiler, asked to compile file jfk.ada, is going to have to
+recompile the specs of XYZ, MNO and TEXT_IO. That sounds bad, but let's
+look at the alternative. In conventional Ada library based systems, the
+result of a compilation is to place information, typically some kind of
+intermediate tree, in the library. A subsequent WITH then fetches this
+tree from the library. In practice, this tree information can be huge, often
+much bigger than the source. It's not at all clear that rereading and
+recompiling the source is less efficient than writing and reading back in
+these trees. It's true that recompiling means redoing syntax and semantic
+checking, but there may be less I/O to do, and reading and writing linked
+structures can be complex.
+
+Of course we won't know how this really compares till we have detailed
+performance figures, but from the performance we see so far, we don't think
+our approach will be significantly slower than the conventional library
+approach, and it may well be faster.
+
+The second efficiency concern has to do with our "recompile-the-whole-tree"
+approach to subunits. In the case where a complete program is being compiled
+anyway, there is of course no disadvantage in our approach, since each
+subunit has to be compiled once in any case.
+
+The situation in which the GNAT approach is obviously "inefficient" is when
+a modification is made to a single subunit, and the whole tree must be
+recompiled. Obviously one can construct examples where the amount of extra
+recompilation required is significant. We know this, and it's a conscious
+trade off. In return for this extra recompilation effort, we are in a position
+to generate much more efficient code for subunits, and also we simplify our
+implementation effort considerably. Furthermore, we think that the GNAT
+compiler will be fast enough that in practice, there will be few cases in
+which the general performance of GNAT will not be competitive with, or better
+than conventional systems. Again, time will tell.
+
+Note once more that there is nothing in the source based approach that mandates
+the compile-everything-at-once approach to subunits. This is a quite independent
+decision, and indeed we could revisit this decision later on, but remember that
+the only disadvantage in our approach is possible additional compilation time
+requirements. From every other point of view, we are clearly ahead in taking
+this approach to subunits.
+
+
+Finding Source Files
+--------------------
+
+The GNAT approach involves the ability to find a source file given the Ada
+unit name. There are two issues to be addressed. First how do we find the
+file name from the unit name?
+
+  There are two approaches in the GNAT system for addressing this question.
+  First algorithmic mappings are provided. The default mapping is the one
+  we mentioned at the start of this document:
+
+   The file name is the expanded name of the unit with dots replaced by
+   minus signs. An additional minus sign is appended to specs to distinguish
+   them from bodies. The extension .ada is included in all files.
+
+  Via command line switches, this algorithm can be modified by specifying
+  a different character than minus to replace dots (dot itself can be used),
+  and different suffixes to distinguish bodies and specs. One interesting
+  possibility is to specify that dots are to be converted to slashes (or
+  whatever the system uses for subdirectory indications), in which case the
+  subunits of a parent unit are gathered in a subdirectory of that name. This
+  in fact may be a useful enough option to build into the compiler in some
+  more direct form (e.g. if you can't find a-b.ada, then automatically go
+  look for a/b.ada).
+
+  The second approach, again activated by a command line switch or environment
+  variable, a separate file can be constructed that provides mapping of unit
+  names to file names. This mapping file is then consulted to determine the
+  file name, given the unit name.
+
+The second issue is how to find the source file, once the source file name
+has been determined. In GNAT this is done using a search path which specifies
+a list of directories to be checked in sequence to find the source file. This
+is analogous to the method that some C compilers use to locate header files.
+
+Advantages of the GNAT Model
+----------------------------
+
+In addition to the advantages that have already been discussed, there are
+two other respects in which the GNAT model is superior to the conventional
+Ada library model.
+
+First, all source files are simply normal system files, they can be copied
+around, deleted or organized using normal system utilities. In the case of
+a conventional library based system, the library is often an Ada-specific
+object that has to be manipulated with special Ada-specific tools. For
+instance, to delete a unit that is no longer needed in the GNAT system,
+simply use the system delete command on its source and object files, but
+in most Ada systems, a special library-delete command must be used.
+
+Similarly, the effect of multiple libraries can be achieved simply by having
+multiple directories of source files that are searched in an appropriate order.
+The conventional Ada library system often requires complex, non-portable,
+special features to support multiple libraries.
+
+Second, many of the anomalies that arise from special cases in the Ada
+library model are avoided. For example, suppose that there are two source
+files that both contain the spec of a procedure Util. In a conventional
+system, whichever source is compiled later "wins" without notification of
+any kind, which means that the semantics of the program can silently depend
+on the order of compilation. This can't happen in the normal use of GNAT,
+since two files with the same unit have to have the same file name, and
+can't accidentally coexist in the same directory.
+
+Similarly, in a system that permits multiple units in the same file, various
+anomalies arise as a result of other files which recompile some, but not all
+of these units. You then get a program which does not correspond to any set
+of coherent sources. That can never happen in GNAT. Every executable program
+must correspond to a particular set of source files, and could be recreated
+by compiling these source files without knowledge of the original order of
+compilation.
+
+
+Support of ASIS-Like Interfaces
+-------------------------------
+
+Specifications like ASIS provide an interface from Ada programs to information
+stored in the Ada program library, and at least from a presentational point
+of view seem to depend strongly on the notion of a program library which
+contains all the necessary information.
+
+The GNAT implementation of such an interface understands the library in this
+case to be the set of source files used to compile the program. To access the
+information in this "library" at the required semantic level, the source files
+must be recompiled. Again, this may or may not be more efficient than reading
+in the necessary information from the precompiled library file, but it's
+certainly functionally and semantically equivalent.
+
+
+But It Doesn't Sounds Like Ada to Me
+------------------------------------
+
+We believe that the Ada/83 reference manual can be read in a sufficiently
+flexible and abstract manner that nothing we are doing in the above approach
+in any sense violates the requirements of Ada. Basically we consider that the
+rules in the Ada/83 RM are essentially oriented to ensuring consistency in
+an Ada program, and that a lot of the description in chapter 10 of the RM is
+essentially the description of one possible approach to achieving this end.
+Furthermore, the Ada/9X reference manual will be written in a way that tries
+hard to avoid over-specification of the implementation approach.
+
+Nevertheless, most, in fact essentially all, existing Ada compilers have
+implemented the model in chapter 10 quite literally, and as a result, Ada
+programmers have come to expect a model of the world in which the monolithic
+library is the center of the Ada universe. Furthermore, some of our rules in
+GNAT, in particular the rule about mapping of unit names to file names, and
+the rule about only one compilation unit per source file, may seem to be
+unacceptable restrictions.
+
+However, GNAT is sufficiently flexible that in fact we think any particular
+approach to Ada library maintenance, including the various multi-library
+features provided by various vendors, can be faithfully copied from a
+functional point of view by adopting appropriate procedures.
+
+In particular, how would one model a conventional library system in which
+source files can contain multiple compilation units and have no naming
+restrictions. Here is one approach.
+
+   Create a directory called Adalib, which will represent the library. In
+   this directory we will place source files that meet the GNAT requirements
+   and their corresponding object files.
+
+   To compile an arbitrary Ada source file, first syntax check it. This can
+   be done using GNAT, because in syntax check only, the restrictions on
+   one unit per file, and on the names of the units, are ignored.
+
+   If there are syntax errors, forget it (GNAT sets a return code indicating
+   that syntax errors were found, so this is easy to implement in a shell
+   script or batch file).
+
+   Otherwise, run it through a utility which breaks it up in to separate
+   source files with GNAT naming conventions. Put these source files in
+   a temporary directory. Compile these source files with GNAT, but don't
+   generate code yet. Instead just do syntax and semantic checking. (Note
+   that the only required action of an Ada compiler at compile time is to
+   generate error messages and not update the library if there are errors).
+
+   If there are no syntax or semantic errors in any of the units, then copy
+   the sources to the library directory.
+
+   When the program is to be bound, first do the actual compilation of all
+   the units (which we know will work because we did a syntax and semantics
+   check already). Then bind the resulting objects and we are done.
+
+Note that Ada does not specify the division of labor between the compiler
+and binder, except to either require or strongly imply that syntax and
+semantic errors should be caught at the compiler level. Thus the fact that
+we are doing the actual code generation at what is logically bind time in
+the above scheme is perfectly permissible (it just seems to a user that the
+compilations are very quick and the binder somewhat slow!)
+
+This entire procedure can be implemented by appropriate shell scripts or
+batch files. We generally don't think that many people using GNAT will take
+this approach. In particular it succeeds in faithfully reintroducing some
+of the anomalies and limitations that we have worked to eliminate. However,
+it may be useful for dealing with existing Ada source code, and in particular
+the ACVC suite takes various liberties in its assumptions about chapter 10
+implications. For example, it assumes that a source file can contain more than
+one compilation unit. Thus this kind of mode will be helpful for running the
+ACVC suite.
+
+Of course this is just one possible scenario. Many others are possible. Since
+the fundamental capabilities of the GNAT compiler are free of many restrictions
+normally associated with Ada compilers, there is a lot of freedom in how such
+scenarios might be constructed.
+
+
+What do we Lose?
+----------------
+
+We do lose one feature that some may consider important. It is impossible with
+the GNAT approach to distribute a package for someone to use without at least
+giving them the source of the package specification. There is no way to
+distribute black-box libraries with this system that contain hidden
+information. Clearly one can imagine proprietary software situations in
+which this would seem like a restriction, but in the GCC world where we
+are committed to the free distribution of sources, this seems like an
+advantage.
+
+Similarly, it's hard to make proprietary tools that read information from
+our "library", since you have to use the compiler to read the library, because
+the library has to be created by recompiling the source. That means that your
+proprietary tool would have to include the GNAT compiler, and you can't do that
+since the licensing of the GNAT source, while very liberal, has one important
+restriction, namely that you can't incorporate it in proprietary products.
+Again this "restriction" seems like an advantage to us, given our commitment
+to maintaining full access to the sources of GNAT and related tools.
+
+Summary
+-------
+
+Although somewhat radical by conventional Ada standards, we think that a good
+case can be made that the GNAT approach is clearly superior. Certainly it meets
+the important goals of being consistent with the Ada standard, and being far
+less unfamiliar to non-Ada programmers. We also think it's much easier to
+understand than the conventional library based model. 
