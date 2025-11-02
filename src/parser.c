@@ -125,7 +125,8 @@ bool parse_basic_declaration(Declaration* decl)
             }
             break;
         case TOKEN_TYPE:
-            decl->kind = DECL_FULL_TYPE;
+        case TOKEN_SUBTYPE:
+            decl->kind = DECL_TYPE;
             // TODO: incomplete and private type declarations
             if(!parse_full_type_declaration(&decl->u.type)) {
                 return NULL;
@@ -190,43 +191,51 @@ bool parse_object_declaration(ObjectDecl* obj_decl)
 static
 bool parse_full_type_declaration(TypeDecl* type_decl)
 {
-    next_token(); // Skip 'type' keyword
-    switch(ctx.token.kind) {
-        case TOKEN_IDENT:
-            type_decl->name = ctx.token.text;
-            next_token();
-            // TODO: discriminant_part
-            if(!expect_token(TOKEN_IS)) {
-                return false;
-            }
-            next_token();
-            type_decl->type = calloc(1, sizeof(Type));
-            switch(ctx.token.kind) {
-                case TOKEN_RANGE:
-                    type_decl->type->kind = TYPE_INTEGER;
-                    if(!parse_integer_type_definition(&type_decl->type->u.int_)) {
-                        return false;
-                    }
-                    break;
-                case TOKEN_L_PAREN:
-                    type_decl->type->kind = TYPE_ENUM;
-                    if(!parse_enum_type_definition(&type_decl->type->u.enum_)) {
-                        return false;
-                    }
-                    break;
-                case TOKEN_ERROR:
-                    return false;
-                default:
-                    print_unexpected_token_error(&ctx.token);
-                    return false;
-            }
-            break;
-        case TOKEN_ERROR:
-            return false;
-        default:
-            print_unexpected_token_error(&ctx.token);
-            return false;
+    bool is_subtype = ctx.token.kind == TOKEN_SUBTYPE;
+    next_token(); // Skip 'type'/'subtype' keyword
+    if(!expect_token(TOKEN_IDENT)) {
+        return false;
     }
+    type_decl->name = ctx.token.text;
+    next_token();
+    // TODO: discriminant_part
+    if(!expect_token(TOKEN_IS)) {
+        return false;
+    }
+    next_token();
+    type_decl->type = calloc(1, sizeof(Type));
+    if(is_subtype) {
+        // TODO: properly parse this as a subtype_indication
+        if(!expect_token(TOKEN_IDENT)) {
+            return false;
+        }
+        type_decl->type->kind = TYPE_SUBTYPE;
+        type_decl->type->u.subtype.base = calloc(1, sizeof(Type));
+        type_decl->type->u.subtype.base->kind = TYPE_PLACEHOLDER;
+        type_decl->type->u.subtype.base->u.placeholder_name = ctx.token.text;
+        next_token();
+    } else {
+        switch(ctx.token.kind) {
+            case TOKEN_RANGE:
+                type_decl->type->kind = TYPE_INTEGER;
+                if(!parse_integer_type_definition(&type_decl->type->u.int_)) {
+                    return false;
+                }
+                break;
+            case TOKEN_L_PAREN:
+                type_decl->type->kind = TYPE_ENUM;
+                if(!parse_enum_type_definition(&type_decl->type->u.enum_)) {
+                    return false;
+                }
+                break;
+            case TOKEN_ERROR:
+                return false;
+            default:
+                print_unexpected_token_error(&ctx.token);
+                return false;
+        }
+    }
+
     if(!expect_token(TOKEN_SEMICOLON)) {
         return false;
     }
@@ -435,7 +444,7 @@ static
 void print_declaration(const Declaration* decl)
 {
     switch(decl->kind) {
-        case DECL_FULL_TYPE:
+        case DECL_TYPE:
             printf("Type declaration (name: %.*s, type: ", decl->u.type.name.len, decl->u.type.name.value);
             print_type(decl->u.type.type);
             putchar(')');
@@ -480,6 +489,11 @@ void print_type(const Type* type)
                 print_expression(type->u.enum_.literals + i);
                 putchar(' ');
             }
+            putchar(')');
+            break;
+        case TYPE_SUBTYPE:
+            printf("subtype (base type: ");
+            print_type(type->u.subtype.base);
             putchar(')');
             break;
         default:

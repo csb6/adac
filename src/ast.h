@@ -44,7 +44,7 @@ enum {
 // 3.3: Types and Subtypes
 // 3.4: Derived Types (these are just subtypes that do not implicitly convert to other subtypes with same base type)
 typedef struct {
-    struct Type_* inner_type;
+    struct Type_* base;
     // TODO: constraints
 } SubType;
 
@@ -104,7 +104,7 @@ extern Type universal_int_type;
 
 typedef uint8_t DeclKind;
 enum {
-    DECL_OBJECT, DECL_FULL_TYPE,
+    DECL_OBJECT, DECL_TYPE
 };
 
 // 3.2: Objects and Named Numbers

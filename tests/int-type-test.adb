@@ -14,4 +14,7 @@ package IntTypeTest is
     char: CharType := 'c';
     e: EnumType := A;
     bool: Boolean := True;
+
+    subtype NewBoolean is Boolean;
+    nb: NewBoolean := False;
 end;
