@@ -32,7 +32,7 @@ static bool parse_integer_type_definition(IntType* int_type);
 static bool parse_enum_type_definition(EnumType* enum_type);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
-static Expression* parse_numeric_literal(void);
+static Expression* parse_numeric_literal(Expression* expr);
 /* UTILITIES */
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
 static void next_token(void);
@@ -295,20 +295,33 @@ bool parse_enum_type_definition(EnumType* enum_type)
 static
 Expression* parse_expression(void)
 {
+    Expression* expr = calloc(1, sizeof(Expression));
     switch(ctx.token.kind) {
         case TOKEN_NUM_LITERAL:
-            return parse_numeric_literal();
+            expr = parse_numeric_literal(expr);
+            break;
+        case TOKEN_CHAR_LITERAL:
+            expr->kind = EXPR_CHAR_LIT;
+            expr->u.char_lit = ctx.token.text.value[0];
+            next_token();
+            break;
+        case TOKEN_IDENT:
+            expr->kind = EXPR_ENUM_LIT;
+            expr->u.enum_lit = ctx.token.text;
+            next_token();
+            break;
         case TOKEN_ERROR:
             return NULL;
         default:
             print_unexpected_token_error(&ctx.token);
             return NULL;
     }
+    return expr;
 }
 
 // TODO: use pool since likely to reuse same numeric literals
 static
-Expression* parse_numeric_literal(void)
+Expression* parse_numeric_literal(Expression* expr)
 {
     char num_buffer[128];
 
@@ -322,7 +335,6 @@ Expression* parse_numeric_literal(void)
         print_parse_error("Numeric literal is too long to be processed (max supported is 127 characters)");
         return NULL;
     }
-    Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
     if(mpz_init_set_str(expr->u.int_lit, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.base);

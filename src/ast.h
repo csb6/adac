@@ -12,6 +12,7 @@ struct Expression_;
 
 /* PACKAGES */
 
+// 7.1: Package Structure
 typedef struct PackageSpec_ {
     StringView name;
     struct Declaration_* decls; // TODO: support representation_clause/use_clause in this list
@@ -47,17 +48,18 @@ typedef struct {
     // TODO: constraints
 } SubType;
 
+// 3.5.1: Enumeration Types
 typedef struct {
     struct Expression_* literals;
     uint32_t literal_count;
 } EnumType;
 
-// 3.5: Scalar Types
 typedef struct {
     struct Expression_* lower_bound;
     struct Expression_* upper_bound; // inclusive
 } IntRange;
 
+// 3.5.4: Integer Types
 typedef struct {
     IntRange range;
 } IntType;
@@ -102,10 +104,7 @@ extern Type universal_int_type;
 
 typedef uint8_t DeclKind;
 enum {
-    // 3.2: Objects and Named Numbers
-    DECL_OBJECT,
-    // 3.3: Types and Subtypes
-    DECL_FULL_TYPE,
+    DECL_OBJECT, DECL_FULL_TYPE,
 };
 
 // 3.2: Objects and Named Numbers
@@ -142,6 +141,7 @@ enum {
 typedef struct Expression_ {
     ExprKind kind;
     union {
+        // 4.2: Literals
         mpz_t int_lit;
         char char_lit;
         StringView enum_lit;
