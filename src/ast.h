@@ -47,6 +47,11 @@ typedef struct {
     // TODO: constraints
 } SubType;
 
+typedef struct {
+    struct Expression_* literals;
+    uint32_t literal_count;
+} EnumType;
+
 // 3.5: Scalar Types
 typedef struct {
     struct Expression_* lower_bound;
@@ -81,6 +86,7 @@ typedef struct {
 typedef struct Type_ {
     TypeKind kind;
     union {
+        EnumType enum_;
         IntType int_;
         SubType subtype;
         ArrayType array;
@@ -130,17 +136,15 @@ typedef struct Declaration_ {
 
 typedef uint8_t ExprKind;
 enum {
-    EXPR_INT_LIT
+    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_ENUM_LIT
 };
-
-typedef struct {
-    mpz_t value;
-} IntLiteral;
 
 typedef struct Expression_ {
     ExprKind kind;
     union {
-        IntLiteral int_lit;
+        mpz_t int_lit;
+        char char_lit;
+        StringView enum_lit;
     } u;
 } Expression;
 

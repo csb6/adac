@@ -29,6 +29,7 @@ static bool parse_basic_declaration(Declaration* decl);
 static bool parse_object_declaration(ObjectDecl* obj_decl);
 static bool parse_full_type_declaration(TypeDecl* type_decl);
 static bool parse_integer_type_definition(IntType* int_type);
+static bool parse_enum_type_definition(EnumType* enum_type);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_numeric_literal(void);
@@ -36,7 +37,8 @@ static Expression* parse_numeric_literal(void);
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
 static void next_token(void);
 static bool expect_token(TokenKind kind);
-static void print_unexpected_token_error(void);
+static bool count_enum_literals(uint32_t* literal_count);
+static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 static void print_declaration(const Declaration* decl);
 static void print_type(const Type* type);
@@ -132,7 +134,7 @@ bool parse_basic_declaration(Declaration* decl)
         case TOKEN_ERROR:
             return NULL;
         default:
-            print_unexpected_token_error();
+            print_unexpected_token_error(&ctx.token);
             return NULL;
     }
     return decl;
@@ -166,7 +168,7 @@ bool parse_object_declaration(ObjectDecl* obj_decl)
         // number_declaration
         obj_decl->type = &universal_int_type;
     } else {
-        print_unexpected_token_error();
+        print_unexpected_token_error(&ctx.token);
         return false;
     }
 
@@ -198,25 +200,31 @@ bool parse_full_type_declaration(TypeDecl* type_decl)
                 return false;
             }
             next_token();
+            type_decl->type = calloc(1, sizeof(Type));
             switch(ctx.token.kind) {
                 case TOKEN_RANGE:
-                    type_decl->type = calloc(1, sizeof(Type));
                     type_decl->type->kind = TYPE_INTEGER;
                     if(!parse_integer_type_definition(&type_decl->type->u.int_)) {
+                        return false;
+                    }
+                    break;
+                case TOKEN_L_PAREN:
+                    type_decl->type->kind = TYPE_ENUM;
+                    if(!parse_enum_type_definition(&type_decl->type->u.enum_)) {
                         return false;
                     }
                     break;
                 case TOKEN_ERROR:
                     return false;
                 default:
-                    print_unexpected_token_error();
+                    print_unexpected_token_error(&ctx.token);
                     return false;
             }
             break;
         case TOKEN_ERROR:
             return false;
         default:
-            print_unexpected_token_error();
+            print_unexpected_token_error(&ctx.token);
             return false;
     }
     if(!expect_token(TOKEN_SEMICOLON)) {
@@ -245,6 +253,46 @@ bool parse_integer_type_definition(IntType* int_type)
 }
 
 static
+bool parse_enum_type_definition(EnumType* enum_type)
+{
+    next_token(); // Skip '('
+    uint32_t literal_count = 0;
+    if(!count_enum_literals(&literal_count)) {
+        return false;
+    }
+    enum_type->literal_count = literal_count;
+    enum_type->literals = calloc(enum_type->literal_count, sizeof(Expression));
+    for(uint32_t i = 0; i < enum_type->literal_count; ++i) {
+        switch(ctx.token.kind) {
+            case TOKEN_IDENT:
+                enum_type->literals[i].kind = EXPR_ENUM_LIT;
+                enum_type->literals[i].u.enum_lit = ctx.token.text;
+                break;
+            case TOKEN_CHAR_LITERAL:
+                enum_type->literals[i].kind = EXPR_CHAR_LIT;
+                enum_type->literals[i].u.char_lit = ctx.token.text.value[0]; // len is always 1
+                break;
+            default:
+                // Should be unreachable since count_enum_literals() succeeded
+                print_unexpected_token_error(&ctx.token);
+                return false;
+        }
+        next_token();
+        if(i + 1 < enum_type->literal_count) {
+            if(!expect_token(TOKEN_COMMA)) {
+                return false;
+            }
+            next_token();
+        }
+    }
+    if(!expect_token(TOKEN_R_PAREN)) {
+        return false;
+    }
+    next_token();
+    return true;
+}
+
+static
 Expression* parse_expression(void)
 {
     switch(ctx.token.kind) {
@@ -253,7 +301,7 @@ Expression* parse_expression(void)
         case TOKEN_ERROR:
             return NULL;
         default:
-            print_unexpected_token_error();
+            print_unexpected_token_error(&ctx.token);
             return NULL;
     }
 }
@@ -276,7 +324,7 @@ Expression* parse_numeric_literal(void)
     }
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
-    if(mpz_init_set_str(expr->u.int_lit.value, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
+    if(mpz_init_set_str(expr->u.int_lit, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.base);
         return NULL;
     }
@@ -297,16 +345,44 @@ bool expect_token(TokenKind kind)
         return false;
     }
     if(ctx.token.kind != kind) {
-        print_unexpected_token_error();
+        print_unexpected_token_error(&ctx.token);
         return false;
     }
     return true;
 }
 
 static
-void print_unexpected_token_error(void)
+bool count_enum_literals(uint32_t* literal_count)
 {
-    StringView token_str = token_to_str(&ctx.token);
+    Token token = ctx.token;
+    const char* curr = ctx.curr;
+    while(token.kind != TOKEN_R_PAREN) {
+        switch(token.kind) {
+            case TOKEN_IDENT:
+            case TOKEN_CHAR_LITERAL:
+                if(*literal_count == UINT32_MAX) {
+                    error_print(ctx.input_start, curr, "Enumeration type has too many literals to be processed (max supported is 2**32-1 literals)");
+                    return false;
+                }
+                ++*literal_count;
+                break;
+            case TOKEN_COMMA:
+                break;
+            case TOKEN_ERROR:
+                return false;
+            default:
+                print_unexpected_token_error(&token);
+                return false;
+        }
+        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+    }
+    return true;
+}
+
+static
+void print_unexpected_token_error(const Token* token)
+{
+    StringView token_str = token_to_str(token);
     print_parse_error("Unexpected token: '%.*s'", token_str.len, token_str.value);
 }
 
@@ -386,6 +462,14 @@ void print_type(const Type* type)
             print_expression(type->u.int_.range.upper_bound);
             printf("])");
             break;
+        case TYPE_ENUM:
+            printf("enum type (");
+            for(uint32_t i = 0; i < type->u.enum_.literal_count; ++i) {
+                print_expression(type->u.enum_.literals + i);
+                putchar(' ');
+            }
+            putchar(')');
+            break;
         default:
             printf("Unhandled type");
     }
@@ -396,11 +480,17 @@ void print_expression(const Expression* expr)
 {
     switch(expr->kind) {
         case EXPR_INT_LIT: {
-            char* num_str = mpz_get_str(NULL, 10, expr->u.int_lit.value);
+            char* num_str = mpz_get_str(NULL, 10, expr->u.int_lit);
             printf("%s", num_str);
             free(num_str);
             break;
         }
+        case EXPR_CHAR_LIT:
+            printf("'%c'", expr->u.char_lit);
+            break;
+        case EXPR_ENUM_LIT:
+            printf("%.*s", expr->u.enum_lit.len, expr->u.enum_lit.value);
+            break;
         default:
             printf("Unhandled expression");
     }

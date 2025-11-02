@@ -6,4 +6,8 @@ package IntTypeTest is
     foo: SmallInteger := 1;
     bar: constant BigInteger;
     foobar: constant := 1_000;
+
+    type CharType is ('a', 'b', 'c');
+    type EnumType is (A, B, C);
+    type MixedEnumType is (A, 'b', C, 'd', 'e');
 end;
