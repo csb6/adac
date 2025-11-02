@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include "ast.h"
 #include "error.h"
 #include "parser.h"
 
@@ -68,7 +69,12 @@ int main(int argc, char** argv)
 
     const char* input_start = input_file;
     const char* input_end = input_start + file_size;
-    parser_parse(input_start, input_end);
+    PackageSpec* spec = parser_parse(input_start, input_end);
+    if(spec == NULL) {
+        fprintf(stderr, "Failed to parse package spec\n");
+        return 1;
+    }
+    print_package_spec(spec);
 
     if(munmap(input_file, file_size) < 0) {
         perror("Failed to unmap input file");

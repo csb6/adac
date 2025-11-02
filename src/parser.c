@@ -2,6 +2,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "ast.h"
 #include "lexer.h"
@@ -37,6 +38,9 @@ static void next_token(void);
 static bool expect_token(TokenKind kind);
 static void print_unexpected_token_error(void);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
+static void print_declaration(const Declaration* decl);
+static void print_type(const Type* type);
+static void print_expression(const Expression* expr);
 
 PackageSpec* parser_parse(const char* input_start, const char* input_end)
 {
@@ -326,4 +330,78 @@ bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz)
     }
     *b = '\0';
     return true;
+}
+
+void print_package_spec(const PackageSpec* package_spec)
+{
+    printf("Package: %.*s\n", package_spec->name.len, package_spec->name.value);
+    printf("Declarations:\n");
+    for(const Declaration* decl = package_spec->decls; decl != NULL; decl = decl->next) {
+        printf("  ");
+        print_declaration(decl);
+        putchar('\n');
+    }
+}
+
+static
+void print_declaration(const Declaration* decl)
+{
+    switch(decl->kind) {
+        case DECL_FULL_TYPE:
+            printf("Type declaration (name: %.*s, type: ", decl->u.type.name.len, decl->u.type.name.value);
+            print_type(decl->u.type.type);
+            putchar(')');
+            break;
+        case DECL_OBJECT:
+            printf("Object declaration (%.*s: ", decl->u.object.identifier.len, decl->u.object.identifier.value);
+            if(decl->u.object.is_constant) {
+                printf("constant ");
+            }
+            print_type(decl->u.object.type);
+            if(decl->u.object.init_expr) {
+                printf(" := ");
+                print_expression(decl->u.object.init_expr);
+            }
+            putchar(')');
+            break;
+        default:
+            printf("Unknown declaration");
+    }
+}
+
+static
+void print_type(const Type* type)
+{
+    switch(type->kind) {
+        case TYPE_PLACEHOLDER:
+            printf("%.*s (placeholder)", type->u.placeholder_name.len, type->u.placeholder_name.value);
+            break;
+        case TYPE_UNIV_INTEGER:
+            printf("universal integer");
+            break;
+        case TYPE_INTEGER:
+            printf("integer (range: [");
+            print_expression(type->u.int_.range.lower_bound);
+            printf(", ");
+            print_expression(type->u.int_.range.upper_bound);
+            printf("])");
+            break;
+        default:
+            printf("Unhandled type");
+    }
+}
+
+static
+void print_expression(const Expression* expr)
+{
+    switch(expr->kind) {
+        case EXPR_INT_LIT: {
+            char* num_str = mpz_get_str(NULL, 10, expr->u.int_lit.value);
+            printf("%s", num_str);
+            free(num_str);
+            break;
+        }
+        default:
+            printf("Unhandled expression");
+    }
 }
