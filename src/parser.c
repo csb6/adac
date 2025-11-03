@@ -33,15 +33,15 @@ static ParseContext ctx;
 static bool parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
 static bool parse_basic_declaration(Declaration* decl);
-static bool parse_object_declaration(ObjectDecl* obj_decl);
-static bool parse_full_type_declaration(TypeDecl* type_decl);
+static bool parse_object_declaration(Declaration* decl);
+static bool parse_full_type_declaration(Declaration* decl);
 static bool parse_integer_type_definition(IntType* int_type);
 static bool parse_enum_type_definition(EnumType* enum_type);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_numeric_literal(Expression* expr);
 /* VISIBILITY */
-static bool push_declaration(Declaration* decl);
+static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
 static TypeDecl* find_visible_type_declaration(StringView name);
 /* UTILITIES */
@@ -104,9 +104,6 @@ bool parse_package_spec(PackageSpec* package_spec)
                 if(!package_spec->decls) {
                     package_spec->decls = decl;
                 }
-                if(!push_declaration(decl)) {
-                    return false;
-                }
             }
         }
     }
@@ -125,16 +122,14 @@ bool parse_basic_declaration(Declaration* decl)
 {
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
-            decl->kind = DECL_OBJECT;
-            if(!parse_object_declaration(&decl->u.object)) {
+            if(!parse_object_declaration(decl)) {
                 return NULL;
             }
             break;
         case TOKEN_TYPE:
         case TOKEN_SUBTYPE:
-            decl->kind = DECL_TYPE;
             // TODO: incomplete and private type declarations
-            if(!parse_full_type_declaration(&decl->u.type)) {
+            if(!parse_full_type_declaration(decl)) {
                 return NULL;
             }
             break;
@@ -144,14 +139,25 @@ bool parse_basic_declaration(Declaration* decl)
             print_unexpected_token_error(&ctx.token);
             return NULL;
     }
+    // TODO: recursive functions need their declaration pushed before body is done being defined.
+    //   Most other declarations cannot be self-referential and so should not push their names until
+    //   the declaration is done being parsed.
+    push_declaration(decl);
     return decl;
 }
 
 static
-bool parse_object_declaration(ObjectDecl* obj_decl)
+bool parse_object_declaration(Declaration* decl)
 {
+    decl->kind = DECL_OBJECT;
+    ObjectDecl* obj_decl = &decl->u.object;
     // TODO: support identifier_list
     obj_decl->name = ctx.token.text;
+    // TODO: print line number of previous definition
+    if(find_declaration_in_current_region(obj_decl->name) != NULL) {
+        print_parse_error("Redefinition of '%.*s' within same declarative region", obj_decl->name.len, obj_decl->name.value);
+        return false;
+    }
     next_token();
     if(!expect_token(TOKEN_COLON)) {
         return false;
@@ -197,14 +203,21 @@ bool parse_object_declaration(ObjectDecl* obj_decl)
 }
 
 static
-bool parse_full_type_declaration(TypeDecl* type_decl)
+bool parse_full_type_declaration(Declaration* decl)
 {
+    decl->kind = DECL_TYPE;
+    TypeDecl* type_decl = &decl->u.type;
     bool is_subtype = ctx.token.kind == TOKEN_SUBTYPE;
     next_token(); // Skip 'type'/'subtype' keyword
     if(!expect_token(TOKEN_IDENT)) {
         return false;
     }
     type_decl->name = ctx.token.text;
+    // TODO: print line number of previous definition
+    if(find_declaration_in_current_region(type_decl->name) != NULL) {
+        print_parse_error("Redefinition of '%.*s' within same declarative region", type_decl->name.len, type_decl->name.value);
+        return false;
+    }
     next_token();
     // TODO: discriminant_part
     if(!expect_token(TOKEN_IS)) {
@@ -364,27 +377,8 @@ Expression* parse_numeric_literal(Expression* expr)
 }
 
 static
-bool push_declaration(Declaration* decl)
+void push_declaration(Declaration* decl)
 {
-    switch(decl->kind) {
-        case DECL_OBJECT:
-            // TODO: print line number of previous definition
-            if(find_declaration_in_current_region(decl->u.object.name) != NULL) {
-                print_parse_error("Redefinition of '%.*s' within same declarative region", decl->u.object.name.len, decl->u.object.name.value);
-                return false;
-            }
-            break;
-        case DECL_TYPE:
-            // TODO: print line number of previous definition
-            if(find_declaration_in_current_region(decl->u.type.name) != NULL) {
-                print_parse_error("Redefinition of '%.*s' within same declarative region", decl->u.type.name.len, decl->u.type.name.value);
-                return false;
-            }
-            break;
-        default:
-            assert(false && "Unhandled declaration type");
-    }
-
     if(ctx.top_decl) {
         ctx.top_decl->next = decl;
     } else {
@@ -392,7 +386,6 @@ bool push_declaration(Declaration* decl)
         ctx.decl_stack[ctx.curr_stack_idx] = decl;
     }
     ctx.top_decl = decl;
-    return true;
 }
 
 // TODO: intern strings to make this faster
