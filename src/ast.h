@@ -7,6 +7,7 @@
 #include "string_view.h"
 
 struct Declaration_;
+struct TypeDecl_;
 struct Type_;
 struct Expression_;
 
@@ -44,7 +45,7 @@ enum {
 // 3.3: Types and Subtypes
 // 3.4: Derived Types (these are just subtypes that do not implicitly convert to other subtypes with same base type)
 typedef struct {
-    struct Type_* base;
+    struct TypeDecl_* base;
     // TODO: constraints
 } SubType;
 
@@ -66,8 +67,8 @@ typedef struct {
 
 // 3.6: Array types
 typedef struct {
-    struct Type_* index_type;
-    struct Type_* component_type;
+    struct TypeDecl_* index_type;
+    struct TypeDecl_* component_type;
     // TODO: constraints
     // TODO: multidimensional arrays
 } ArrayType;
@@ -82,10 +83,22 @@ typedef struct {
 
 // 3.8: Access types
 typedef struct {
-    struct Type_* inner_type;
+    struct TypeDecl_* inner_type;
 } AccessType;
 
-typedef struct Type_ {
+extern struct TypeDecl_ universal_int_type;
+
+/* DECLARATIONS */
+
+typedef uint8_t DeclKind;
+enum {
+    DECL_OBJECT, DECL_TYPE
+};
+
+// 3.3.1: Type Declarations
+typedef struct TypeDecl_ {
+    StringView name;
+    // TODO: discriminant_part
     TypeKind kind;
     union {
         EnumType enum_;
@@ -96,31 +109,15 @@ typedef struct Type_ {
         AccessType access;
         StringView placeholder_name;
     } u;
-} Type;
-
-extern Type universal_int_type;
-
-/* DECLARATIONS */
-
-typedef uint8_t DeclKind;
-enum {
-    DECL_OBJECT, DECL_TYPE
-};
+} TypeDecl;
 
 // 3.2: Objects and Named Numbers
-typedef struct {
-    StringView identifier;
-    Type* type;
+typedef struct ObjectDecl_ {
+    StringView name;
+    TypeDecl* type;
     struct Expression_* init_expr;
     bool is_constant;
 } ObjectDecl;
-
-// 3.3.1: Type Declarations
-typedef struct {
-    StringView name;
-    Type* type;
-    // TODO: discriminant_part
-} TypeDecl;
 
 typedef struct Declaration_ {
     DeclKind kind;

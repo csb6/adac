@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 #include "ast.h"
 #include "lexer.h"
 #include "token.h"
@@ -12,13 +13,20 @@
 #include "mini-gmp.h"
 
 typedef struct {
+    Declaration* decl_stack[32]; // Each item is a linked-list of Declarations
+    uint8_t curr_stack_idx;
+    Declaration* top_decl; // Pointer to last node of top-most decl list in decl_stack
     const char* curr;
     const char* input_start;
     const char* input_end;
     Token token;
 } ParseContext;
 
-Type universal_int_type = {.kind = TYPE_UNIV_INTEGER};
+static const char universal_integer_str[] = "universal_integer";
+TypeDecl universal_int_type = {
+    .kind = TYPE_UNIV_INTEGER,
+    .name = { .value = universal_integer_str, .len = sizeof(universal_integer_str) }
+};
 
 static ParseContext ctx;
 
@@ -33,6 +41,10 @@ static bool parse_enum_type_definition(EnumType* enum_type);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_numeric_literal(Expression* expr);
+/* VISIBILITY */
+static bool push_declaration(Declaration* decl);
+static Declaration* find_declaration_in_current_region(StringView name);
+static TypeDecl* find_visible_type_declaration(StringView name);
 /* UTILITIES */
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
 static void next_token(void);
@@ -41,7 +53,7 @@ static bool count_enum_literals(uint32_t* literal_count);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 static void print_declaration(const Declaration* decl);
-static void print_type(const Type* type);
+static void print_type_decl(const TypeDecl* type);
 static void print_expression(const Expression* expr);
 
 PackageSpec* parser_parse(const char* input_start, const char* input_end)
@@ -78,7 +90,6 @@ bool parse_package_spec(PackageSpec* package_spec)
     }
     next_token();
 
-    Declaration* prev_decl = NULL;
     bool done = false;
     while(!done) {
         switch(ctx.token.kind) {
@@ -94,12 +105,11 @@ bool parse_package_spec(PackageSpec* package_spec)
                 if(!parse_basic_declaration(decl)) {
                     return false;
                 }
-                if(prev_decl) {
-                    prev_decl->next = decl;
-                    prev_decl = decl;
-                } else {
+                if(!package_spec->decls) {
                     package_spec->decls = decl;
-                    prev_decl = decl;
+                }
+                if(!push_declaration(decl)) {
+                    return false;
                 }
             }
         }
@@ -145,7 +155,7 @@ static
 bool parse_object_declaration(ObjectDecl* obj_decl)
 {
     // TODO: support identifier_list
-    obj_decl->identifier = ctx.token.text;
+    obj_decl->name = ctx.token.text;
     next_token();
     if(!expect_token(TOKEN_COLON)) {
         return false;
@@ -160,10 +170,12 @@ bool parse_object_declaration(ObjectDecl* obj_decl)
     if(ctx.token.kind == TOKEN_IDENT) {
         // Type name
         // TODO: properly parse this as a subtype_indication or constrained_array_definition
-        // TODO: use pool to reduce allocations for identical placeholders
-        obj_decl->type = calloc(1, sizeof(Type));
-        obj_decl->type->kind = TYPE_PLACEHOLDER;
-        obj_decl->type->u.placeholder_name = ctx.token.text;
+        TypeDecl* type_decl = find_visible_type_declaration(ctx.token.text);
+        if(!type_decl) {
+            print_parse_error("Unknown type: %.*s", ctx.token.text.len, ctx.token.text.value);
+            return false;
+        }
+        obj_decl->type = type_decl;
         next_token();
     } else if(obj_decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
         // number_declaration
@@ -203,28 +215,30 @@ bool parse_full_type_declaration(TypeDecl* type_decl)
         return false;
     }
     next_token();
-    type_decl->type = calloc(1, sizeof(Type));
     if(is_subtype) {
         // TODO: properly parse this as a subtype_indication
         if(!expect_token(TOKEN_IDENT)) {
             return false;
         }
-        type_decl->type->kind = TYPE_SUBTYPE;
-        type_decl->type->u.subtype.base = calloc(1, sizeof(Type));
-        type_decl->type->u.subtype.base->kind = TYPE_PLACEHOLDER;
-        type_decl->type->u.subtype.base->u.placeholder_name = ctx.token.text;
+        TypeDecl* base_type_decl = find_visible_type_declaration(ctx.token.text);
+        if(!base_type_decl) {
+            print_parse_error("Unknown base type: %.*s", ctx.token.text.len, ctx.token.text.value);
+            return false;
+        }
+        type_decl->kind = TYPE_SUBTYPE;
+        type_decl->u.subtype.base = base_type_decl;
         next_token();
     } else {
         switch(ctx.token.kind) {
             case TOKEN_RANGE:
-                type_decl->type->kind = TYPE_INTEGER;
-                if(!parse_integer_type_definition(&type_decl->type->u.int_)) {
+                type_decl->kind = TYPE_INTEGER;
+                if(!parse_integer_type_definition(&type_decl->u.int_)) {
                     return false;
                 }
                 break;
             case TOKEN_L_PAREN:
-                type_decl->type->kind = TYPE_ENUM;
-                if(!parse_enum_type_definition(&type_decl->type->u.enum_)) {
+                type_decl->kind = TYPE_ENUM;
+                if(!parse_enum_type_definition(&type_decl->u.enum_)) {
                     return false;
                 }
                 break;
@@ -354,6 +368,84 @@ Expression* parse_numeric_literal(Expression* expr)
 }
 
 static
+bool push_declaration(Declaration* decl)
+{
+    switch(decl->kind) {
+        case DECL_OBJECT:
+            // TODO: print line number of previous definition
+            if(find_declaration_in_current_region(decl->u.object.name) != NULL) {
+                print_parse_error("Redefinition of '%.*s' within same declarative region", decl->u.object.name.len, decl->u.object.name.value);
+                return false;
+            }
+            break;
+        case DECL_TYPE:
+            // TODO: print line number of previous definition
+            if(find_declaration_in_current_region(decl->u.type.name) != NULL) {
+                print_parse_error("Redefinition of '%.*s' within same declarative region", decl->u.type.name.len, decl->u.type.name.value);
+                return false;
+            }
+            break;
+        default:
+            assert(false && "Unhandled declaration type");
+    }
+
+    if(ctx.top_decl) {
+        ctx.top_decl->next = decl;
+    } else {
+        // First decl in the current region
+        ctx.decl_stack[ctx.curr_stack_idx] = decl;
+    }
+    ctx.top_decl = decl;
+    return true;
+}
+
+static
+bool string_view_equal(const StringView* a, const StringView* b)
+{
+    if(a->len != b->len) {
+        return false;
+    }
+    return memcmp(a->value, b->value, a->len) == 0;
+}
+
+static
+TypeDecl* find_visible_type_declaration(StringView name)
+{
+    for(int stack_idx = ctx.curr_stack_idx; stack_idx >= 0; --stack_idx) {
+        Declaration* decl_list = ctx.decl_stack[stack_idx];
+        for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
+            if(decl->kind == DECL_TYPE && string_view_equal(&decl->u.type.name, &name)) {
+                return &decl->u.type;
+            }
+        }
+    }
+    return NULL;
+}
+
+static
+Declaration* find_declaration_in_current_region(StringView name)
+{
+    Declaration* decl_list = ctx.decl_stack[ctx.curr_stack_idx];
+    for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
+        switch(decl->kind) {
+            case DECL_TYPE:
+                if(string_view_equal(&decl->u.type.name, &name)) {
+                    return decl;
+                }
+                break;
+            case DECL_OBJECT:
+                if(string_view_equal(&decl->u.object.name, &name)) {
+                    return decl;
+                }
+                break;
+            default:
+                assert(false && "Unhandled declaration type");
+        }
+    }
+    return NULL;
+}
+
+static
 void next_token(void)
 {
     ctx.curr = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.curr, &ctx.token);
@@ -446,15 +538,15 @@ void print_declaration(const Declaration* decl)
     switch(decl->kind) {
         case DECL_TYPE:
             printf("Type declaration (name: %.*s, type: ", decl->u.type.name.len, decl->u.type.name.value);
-            print_type(decl->u.type.type);
+            print_type_decl(&decl->u.type);
             putchar(')');
             break;
         case DECL_OBJECT:
-            printf("Object declaration (%.*s: ", decl->u.object.identifier.len, decl->u.object.identifier.value);
+            printf("Object declaration (%.*s: ", decl->u.object.name.len, decl->u.object.name.value);
             if(decl->u.object.is_constant) {
                 printf("constant ");
             }
-            print_type(decl->u.object.type);
+            printf("%.*s", decl->u.object.type->name.len, decl->u.object.type->name.value);
             if(decl->u.object.init_expr) {
                 printf(" := ");
                 print_expression(decl->u.object.init_expr);
@@ -467,34 +559,32 @@ void print_declaration(const Declaration* decl)
 }
 
 static
-void print_type(const Type* type)
+void print_type_decl(const TypeDecl* type_decl)
 {
-    switch(type->kind) {
+    switch(type_decl->kind) {
         case TYPE_PLACEHOLDER:
-            printf("%.*s (placeholder)", type->u.placeholder_name.len, type->u.placeholder_name.value);
+            printf("%.*s (placeholder)", type_decl->u.placeholder_name.len, type_decl->u.placeholder_name.value);
             break;
         case TYPE_UNIV_INTEGER:
             printf("universal integer");
             break;
         case TYPE_INTEGER:
             printf("integer (range: [");
-            print_expression(type->u.int_.range.lower_bound);
+            print_expression(type_decl->u.int_.range.lower_bound);
             printf(", ");
-            print_expression(type->u.int_.range.upper_bound);
+            print_expression(type_decl->u.int_.range.upper_bound);
             printf("])");
             break;
         case TYPE_ENUM:
             printf("enum type (");
-            for(uint32_t i = 0; i < type->u.enum_.literal_count; ++i) {
-                print_expression(type->u.enum_.literals + i);
+            for(uint32_t i = 0; i < type_decl->u.enum_.literal_count; ++i) {
+                print_expression(type_decl->u.enum_.literals + i);
                 putchar(' ');
             }
             putchar(')');
             break;
         case TYPE_SUBTYPE:
-            printf("subtype (base type: ");
-            print_type(type->u.subtype.base);
-            putchar(')');
+            printf("subtype (base: %.*s)", type_decl->u.subtype.base->name.len, type_decl->u.subtype.base->name.value);
             break;
         default:
             printf("Unhandled type");
