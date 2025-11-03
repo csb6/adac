@@ -16,7 +16,7 @@ add_custom_target(gen_keyword_hash
 add_library(mini-gmp OBJECT third_party/mini-gmp/mini-gmp.c)
 target_include_directories(mini-gmp PUBLIC third_party/mini-gmp)
 
-add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/error.c)
+add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/error.c src/debug.c)
 target_include_directories(adac PRIVATE .)
 target_compile_options(adac PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
 target_link_libraries(adac PRIVATE mini-gmp)
