@@ -395,13 +395,19 @@ bool push_declaration(Declaration* decl)
     return true;
 }
 
+// TODO: intern strings to make this faster
 static
-bool string_view_equal(const StringView* a, const StringView* b)
+bool identifier_equal(const StringView* a, const StringView* b)
 {
     if(a->len != b->len) {
         return false;
     }
-    return memcmp(a->value, b->value, a->len) == 0;
+    for(uint32_t i = 0; i < a->len; ++i) {
+        if(tolower(a->value[i]) != tolower(b->value[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static
@@ -410,7 +416,7 @@ TypeDecl* find_visible_type_declaration(StringView name)
     for(int stack_idx = ctx.curr_stack_idx; stack_idx >= 0; --stack_idx) {
         Declaration* decl_list = ctx.decl_stack[stack_idx];
         for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
-            if(decl->kind == DECL_TYPE && string_view_equal(&decl->u.type.name, &name)) {
+            if(decl->kind == DECL_TYPE && identifier_equal(&decl->u.type.name, &name)) {
                 return &decl->u.type;
             }
         }
@@ -425,12 +431,12 @@ Declaration* find_declaration_in_current_region(StringView name)
     for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
         switch(decl->kind) {
             case DECL_TYPE:
-                if(string_view_equal(&decl->u.type.name, &name)) {
+                if(identifier_equal(&decl->u.type.name, &name)) {
                     return decl;
                 }
                 break;
             case DECL_OBJECT:
-                if(string_view_equal(&decl->u.object.name, &name)) {
+                if(identifier_equal(&decl->u.object.name, &name)) {
                     return decl;
                 }
                 break;

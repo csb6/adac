@@ -14,11 +14,13 @@ package IntTypeTest is
     char: CharType := 'c';
     e: EnumType := A;
     bool: Boolean := True;
+    bool2: boOlean := False;
 
     subtype NewBoolean is Boolean;
     nb: NewBoolean := False;
 
     -- subtype Bad is Nonexistent;
     -- type BigInteger is range 0 .. 1;
+    -- type biginteger is range 0 .. 1;
     -- BigInteger: Boolean;
 end;
