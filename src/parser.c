@@ -255,6 +255,21 @@ bool parse_full_type_declaration(Declaration* decl)
                     return false;
                 }
                 break;
+            case TOKEN_NEW:
+                next_token();
+                // TODO: properly parse this as a subtype_indication
+                if(!expect_token(TOKEN_IDENT)) {
+                    return false;
+                }
+                TypeDecl* base_type_decl = find_visible_type_declaration(ctx.token.text);
+                if(!base_type_decl) {
+                    print_parse_error("Unknown base type: %.*s", ctx.token.text.len, ctx.token.text.value);
+                    return false;
+                }
+                type_decl->kind = TYPE_DERIVED;
+                type_decl->u.subtype.base = base_type_decl;
+                next_token();
+                break;
             case TOKEN_ERROR:
                 return false;
             default:

@@ -74,6 +74,9 @@ void print_type_decl(const TypeDecl* type_decl)
         case TYPE_SUBTYPE:
             printf("subtype (base: %.*s)", type_decl->u.subtype.base->name.len, type_decl->u.subtype.base->name.value);
             break;
+        case TYPE_DERIVED:
+            printf("derived (base: %.*s)", type_decl->u.subtype.base->name.len, type_decl->u.subtype.base->name.value);
+            break;
         default:
             printf("Unhandled type");
     }

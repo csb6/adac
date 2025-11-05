@@ -28,7 +28,7 @@ enum {
     // 3.3: Types and Subtypes
     TYPE_SUBTYPE,
     // 3.4: Derived Types
-    TYPE_DERIVED_TYPE,
+    TYPE_DERIVED,
     // 3.5: Scalar types
     TYPE_ENUM, TYPE_INTEGER, TYPE_FLOAT_PT, TYPE_FIXED_PT,
     // 3.6: Array types

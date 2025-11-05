@@ -18,6 +18,8 @@ package IntTypeTest is
 
     subtype NewBoolean is Boolean;
     nb: NewBoolean := False;
+    type DistinctBoolean is new Boolean;
+    db: DistinctBoolean := True;
 
     -- subtype Bad is Nonexistent;
     -- type BigInteger is range 0 .. 1;
