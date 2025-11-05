@@ -153,7 +153,7 @@ const char* lex_string_literal(const char* input_start, const char* input_end, c
 }
 
 static
-const char* lex_identifier_or_keyword(const char* input_end, const char* curr, Token* token)
+const char* lex_identifier_or_keyword(const char* input_start, const char* input_end, const char* curr, Token* token)
 {
     const char* token_start = curr;
     ++curr;
@@ -163,6 +163,21 @@ const char* lex_identifier_or_keyword(const char* input_end, const char* curr, T
     const struct keyword_token* keyword = is_keyword(token_start, curr - token_start);
     if(keyword && (curr == input_end || !(isalnum(*curr) || *curr == '_'))) {
         token->kind = keyword->kind;
+        if(keyword->kind == TOKEN_AND) {
+            Token next_token;
+            const char* next = lexer_parse_token(input_start, input_end, curr, &next_token);
+            if(next_token.kind == TOKEN_THEN) {
+                token->kind = TOKEN_AND_THEN;
+                curr = next;
+            }
+        } else if(keyword->kind == TOKEN_OR) {
+            Token next_token;
+            const char* next = lexer_parse_token(input_start, input_end, curr, &next_token);
+            if(next_token.kind == TOKEN_ELSE) {
+                token->kind = TOKEN_OR_ELSE;
+                curr = next;
+            }
+        }
     } else {
         token->kind = TOKEN_IDENT;
         while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
@@ -361,7 +376,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 break;
             default:
                 if(isalpha(*curr)) {
-                    curr = lex_identifier_or_keyword(input_end, curr, token);
+                    curr = lex_identifier_or_keyword(input_start, input_end, curr, token);
                 } else if(isdigit(*curr)) {
                     curr = lex_numeric_literal(input_start, input_end, curr, token);
                 } else {
