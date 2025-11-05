@@ -132,8 +132,43 @@ typedef struct Declaration_ {
 
 typedef uint8_t ExprKind;
 enum {
-    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_ENUM_LIT
+    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_ENUM_LIT, EXPR_STRING_LIT,
+    EXPR_UNARY, EXPR_BINARY
 };
+
+typedef uint8_t UnaryOperator;
+enum {
+    OP_UNARY_PLUS, OP_UNARY_MINUS, OP_ABS, OP_NOT,
+
+    UNARY_OP_COUNT
+};
+
+typedef uint8_t BinaryOperator;
+enum {
+    // Logical operators
+    OP_AND, OP_AND_THEN, OP_OR, OP_OR_ELSE, OP_XOR,
+    // Relational operators
+    OP_EQ, OP_NEQ, OP_LT, OP_LTE, OP_GT, OP_GTE, OP_IN, OP_NOT_IN,
+    // Binary adding operators
+    OP_PLUS, OP_MINUS, OP_AMP,
+    // Multiplying operators
+    OP_MULT, OP_DIVIDE, OP_MOD, OP_REM,
+    // Highest precedence operator
+    OP_EXP,
+
+    BINARY_OP_COUNT
+};
+
+typedef struct UnaryExpr_ {
+    struct Expression_* right;
+    UnaryOperator op;
+} UnaryExpr;
+
+typedef struct BinaryExpr_ {
+    struct Expression_* left;
+    struct Expression_* right;
+    BinaryOperator op;
+} BinaryExpr;
 
 typedef struct Expression_ {
     ExprKind kind;
@@ -142,6 +177,9 @@ typedef struct Expression_ {
         mpz_t int_lit;
         char char_lit;
         StringView enum_lit;
+        StringView string_lit;
+        UnaryExpr unary;
+        BinaryExpr binary;
     } u;
 } Expression;
 

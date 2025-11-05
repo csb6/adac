@@ -3,7 +3,7 @@ package IntTypeTest is
     type SmallInteger is range 16#FFF# .. 12;
 
     type BigInteger is range 1 .. 12_000_000_000;
-    small_int: SmallInteger := 1;
+    small_int: SmallInteger := 1 + 2 * +4 * abs 1 / 3**12-1;
     big_int: constant BigInteger;
     c: constant := 1_000;
 

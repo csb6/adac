@@ -8,6 +8,7 @@
 #include "lexer.h"
 #include "token.h"
 #include "error.h"
+#include "static_assert.h"
 #include "string_view.h"
 #include "mini-gmp.h"
 
@@ -39,13 +40,16 @@ static bool parse_integer_type_definition(IntType* int_type);
 static bool parse_enum_type_definition(EnumType* enum_type);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
-static Expression* parse_numeric_literal(Expression* expr);
+static Expression* parse_expression_1(uint8_t min_precedence);
+static Expression* parse_primary_expression(void);
+static Expression* parse_numeric_literal(void);
 /* VISIBILITY */
 static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
 static TypeDecl* find_visible_type_declaration(StringView name);
 /* UTILITIES */
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
+#define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 static void next_token(void);
 static bool expect_token(TokenKind kind);
 static bool count_enum_literals(uint32_t* literal_count);
@@ -324,36 +328,194 @@ bool parse_enum_type_definition(EnumType* enum_type)
     return true;
 }
 
+enum {
+    UNARY = 1,
+    BINARY = 1 << 1
+};
+
+static const struct {
+    uint8_t kind; // Default of 0 means token is not an operator
+    // upper 3 bits: UnaryOperator (if any)
+    // lower 5 bits: BinaryOperator (if any)
+    uint8_t ops;
+} op_token_info[TOKEN_NUM_TOKEN_KINDS] = {
+    // Logical operators
+    [TOKEN_AND]      = {BINARY, OP_AND},
+    [TOKEN_AND_THEN] = {BINARY, OP_AND_THEN},
+    [TOKEN_OR]       = {BINARY, OP_OR},
+    [TOKEN_OR_ELSE]  = {BINARY, OP_OR_ELSE},
+    [TOKEN_XOR]      = {BINARY, OP_XOR},
+    // Relational operators
+    [TOKEN_EQ]       = {BINARY, OP_EQ},
+    [TOKEN_NEQ]      = {BINARY, OP_NEQ},
+    [TOKEN_LT]       = {BINARY, OP_LT},
+    [TOKEN_LTE]      = {BINARY, OP_LTE},
+    [TOKEN_GT]       = {BINARY, OP_GT},
+    [TOKEN_GTE]      = {BINARY, OP_GTE},
+    [TOKEN_IN]       = {BINARY, OP_IN},
+    [TOKEN_NOT_IN]   = {BINARY, OP_NOT_IN},
+    // Binary adding operators
+    [TOKEN_PLUS]     = {BINARY | UNARY, (OP_UNARY_PLUS << 5) | OP_PLUS},
+    [TOKEN_MINUS]    = {BINARY | UNARY, (OP_UNARY_MINUS << 5) | OP_MINUS},
+    [TOKEN_AMP]      = {BINARY, OP_AMP},
+    // Multiplying operators
+    [TOKEN_MULT]     = {BINARY, OP_MULT},
+    [TOKEN_DIVIDE]   = {BINARY, OP_DIVIDE},
+    [TOKEN_MOD]      = {BINARY, OP_MOD},
+    [TOKEN_REM]      = {BINARY, OP_REM},
+    // Highest precedence operator
+    [TOKEN_EXP]      = {BINARY, OP_EXP},
+    [TOKEN_NOT]      = {UNARY, OP_NOT << 5},
+    [TOKEN_ABS]      = {UNARY, OP_ABS << 5},
+};
+// BinaryOperator no longer fits in 5 bits; update precedence table layout
+STATIC_ASSERT(BINARY_OP_COUNT < 32);
+// UnaryOperator no longer fits in 3 bits; update precedence table layout
+STATIC_ASSERT(UNARY_OP_COUNT < 8);
+
+static const uint8_t unary_prec[UNARY_OP_COUNT] = {
+    // Unary adding operators
+    [OP_UNARY_PLUS]  = 4,
+    [OP_UNARY_MINUS] = 4,
+    // Highest precedence operators
+    [OP_ABS]         = 6,
+    [OP_NOT]         = 6
+};
+
+static const uint8_t binary_prec[BINARY_OP_COUNT] = {
+    // Logical operators
+    [OP_AND]      = 1,
+    [OP_AND_THEN] = 1,
+    [OP_OR]       = 1,
+    [OP_OR_ELSE]  = 1,
+    [OP_XOR]      = 1,
+    // Relational operators
+    [OP_EQ]       = 2,
+    [OP_NEQ]      = 2,
+    [OP_LT]       = 2,
+    [OP_LTE]      = 2,
+    [OP_GT]       = 2,
+    [OP_GTE]      = 2,
+    [OP_IN]       = 2,
+    [OP_NOT_IN]   = 2,
+    // Binary adding operators
+    [OP_PLUS]     = 3,
+    [OP_MINUS]    = 3,
+    [OP_AMP]      = 3,
+    // Multiplying operators
+    [OP_MULT]     = 5,
+    [OP_DIVIDE]   = 5,
+    [OP_MOD]      = 5,
+    [OP_REM]      = 5,
+    // Highest precedence operator
+    [OP_EXP]      = 6
+};
+
+static
+bool is_binary_op(TokenKind token)
+{
+    return token < cnt_of_array(op_token_info) && (op_token_info[token].kind & BINARY);
+}
+
+static
+bool is_unary_op(TokenKind token)
+{
+    return token < cnt_of_array(op_token_info) && (op_token_info[token].kind & UNARY);
+}
+
+#define binary_op(token) (op_token_info[token].ops & 0x1F) // Bottom 5 bits
+#define unary_op(token) (op_token_info[token].ops >> 5) // Top 3 bits
+
 static
 Expression* parse_expression(void)
 {
-    Expression* expr = calloc(1, sizeof(Expression));
+    return parse_expression_1(0);
+}
+
+static
+Expression* parse_expression_1(uint8_t min_precedence)
+{
+    Expression* left = parse_primary_expression();
+    if(!left) {
+        return NULL;
+    }
+    while(is_binary_op(ctx.token.kind) && binary_prec[binary_op(ctx.token.kind)] >= min_precedence) {
+        BinaryOperator op = binary_op(ctx.token.kind);
+        next_token();
+        Expression* right = parse_expression_1(binary_prec[op] + 1);
+        if(!right) {
+            return NULL;
+        }
+        Expression* expr = calloc(1, sizeof(Expression));
+        expr->kind = EXPR_BINARY;
+        expr->u.binary.left = left;
+        expr->u.binary.op = op;
+        expr->u.binary.right = right;
+        left = expr;
+    }
+    return left;
+}
+
+static
+Expression* parse_primary_expression(void)
+{
+    Expression* expr = NULL;
     switch(ctx.token.kind) {
         case TOKEN_NUM_LITERAL:
-            expr = parse_numeric_literal(expr);
+            expr = parse_numeric_literal();
             break;
         case TOKEN_CHAR_LITERAL:
+            expr = calloc(1, sizeof(Expression));
             expr->kind = EXPR_CHAR_LIT;
             expr->u.char_lit = ctx.token.text.value[0];
             next_token();
             break;
+        case TOKEN_STRING_LITERAL:
+            expr = calloc(1, sizeof(Expression));
+            expr->kind = EXPR_STRING_LIT;
+            expr->u.string_lit = ctx.token.text;
+            next_token();
+            break;
         case TOKEN_IDENT:
+            expr = calloc(1, sizeof(Expression));
             expr->kind = EXPR_ENUM_LIT;
             expr->u.enum_lit = ctx.token.text;
             next_token();
             break;
+        case TOKEN_L_PAREN:
+            next_token();
+            expr = parse_expression();
+            if(expr) {
+                if(!expect_token(TOKEN_R_PAREN)) {
+                    expr = NULL;
+                } else {
+                    next_token(); // Skip ')'
+                }
+            }
+            break;
         case TOKEN_ERROR:
-            return NULL;
+            break;
         default:
-            print_unexpected_token_error(&ctx.token);
-            return NULL;
+            if(is_unary_op(ctx.token.kind)) {
+                UnaryOperator op = unary_op(ctx.token.kind);
+                next_token();
+                Expression* right = parse_expression_1(unary_prec[op]);
+                if(right) {
+                    expr = calloc(1, sizeof(Expression));
+                    expr->kind = EXPR_UNARY;
+                    expr->u.unary.op = op;
+                    expr->u.unary.right = right;
+                }
+            } else {
+                print_unexpected_token_error(&ctx.token);
+            }
     }
     return expr;
 }
 
 // TODO: use pool since likely to reuse same numeric literals
 static
-Expression* parse_numeric_literal(Expression* expr)
+Expression* parse_numeric_literal(void)
 {
     char num_buffer[128];
 
@@ -367,6 +529,7 @@ Expression* parse_numeric_literal(Expression* expr)
         print_parse_error("Numeric literal is too long to be processed (max supported is 127 characters)");
         return NULL;
     }
+    Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
     if(mpz_init_set_str(expr->u.int_lit, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.base);

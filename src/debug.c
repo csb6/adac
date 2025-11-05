@@ -6,6 +6,8 @@
 static void print_declaration(const Declaration* decl);
 static void print_type_decl(const TypeDecl* type);
 static void print_expression(const Expression* expr);
+static void print_unary_operator(UnaryOperator op);
+static void print_binary_operator(BinaryOperator op);
 
 void print_package_spec(const PackageSpec* package_spec)
 {
@@ -93,7 +95,79 @@ void print_expression(const Expression* expr)
         case EXPR_ENUM_LIT:
             printf("%.*s", expr->u.enum_lit.len, expr->u.enum_lit.value);
             break;
+        case EXPR_STRING_LIT:
+            printf("\"%.*s\"", expr->u.string_lit.len, expr->u.string_lit.value);
+            break;
+        case EXPR_UNARY:
+            putchar('(');
+            print_unary_operator(expr->u.unary.op);
+            print_expression(expr->u.unary.right);
+            putchar(')');
+            break;
+        case EXPR_BINARY:
+            putchar('(');
+            print_expression(expr->u.binary.left);
+            print_binary_operator(expr->u.binary.op);
+            print_expression(expr->u.binary.right);
+            putchar(')');
+            break;
         default:
             printf("Unhandled expression");
+    }
+}
+
+static const char* const unary_op_str[UNARY_OP_COUNT] = {
+    [OP_UNARY_PLUS] = "+",
+    [OP_UNARY_MINUS] = "-",
+    [OP_ABS] = "abs",
+    [OP_NOT] = "not"
+};
+
+static const char* const binary_op_str[BINARY_OP_COUNT] = {
+    // Logical operators
+    [OP_AND]      = "and",
+    [OP_AND_THEN] = "and then",
+    [OP_OR]       = "or",
+    [OP_OR_ELSE]  = "or else",
+    [OP_XOR]      = "xor",
+    // Relational operators
+    [OP_EQ]       = "=",
+    [OP_NEQ]      = "/=",
+    [OP_LT]       = "<",
+    [OP_LTE]      = "<=",
+    [OP_GT]       = ">",
+    [OP_GTE]      = ">=",
+    [OP_IN]       = "in",
+    [OP_NOT_IN]   = "not in",
+    // Binary adding operators
+    [OP_PLUS]     = "+",
+    [OP_MINUS]    = "-",
+    [OP_AMP]      = "&",
+    // Multiplying operators
+    [OP_MULT]     = "*",
+    [OP_DIVIDE]   = "/",
+    [OP_MOD]      = "mod",
+    [OP_REM]      = "rem",
+    // Highest precedence operator
+    [OP_EXP]      = "**"
+};
+
+static
+void print_binary_operator(BinaryOperator op)
+{
+    if(op >= BINARY_OP_COUNT) {
+        printf(" unknown_op ");
+    } else {
+        printf(" %s ", binary_op_str[op]);
+    }
+}
+
+static
+void print_unary_operator(UnaryOperator op)
+{
+    if(op >= UNARY_OP_COUNT) {
+        printf("unknown_op ");
+    } else {
+        printf("%s ", unary_op_str[op]);
     }
 }
