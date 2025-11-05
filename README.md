@@ -11,8 +11,20 @@ GNAT from source.
 
 ## Progress
 
-- The lexer is largely complete, although it is lacking some validation checks.
-- The parser is in the early stages.
+- The lexer is largely complete, although it is DOES NOT currently support:
+  - Based literals with points
+  - Substitution of '#' with '"' within based literals
+
+- The parser is in the early stages. It currently supports:
+  - Integer, enumeration, subtype, and derived type definitions (although no constraints are supported besides ranges on integer types)
+  - Object (and constant) declarations
+  - Binary/unary expressions
+  - Integer, string, and character literals
+  - Some checking for redefinitions of names within same region
+  - Package specifications containing the supported kinds of declarations
+
+No semantic analysis or code generation is currently implemented. The goal is to eventually compile each compilation unit
+into an object file so that GNAT can be built and linked with GCC.
 
 ## Building
 
