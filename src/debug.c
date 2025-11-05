@@ -11,7 +11,7 @@ static void print_binary_operator(BinaryOperator op);
 
 void print_package_spec(const PackageSpec* package_spec)
 {
-    printf("Package: %.*s\n", package_spec->name.len, package_spec->name.value);
+    printf("Package: %.*s\n", SV(package_spec->name));
     printf("Declarations:\n");
     for(const Declaration* decl = package_spec->decls; decl != NULL; decl = decl->next) {
         printf("  ");
@@ -25,16 +25,16 @@ void print_declaration(const Declaration* decl)
 {
     switch(decl->kind) {
         case DECL_TYPE:
-            printf("Type declaration (name: %.*s, type: ", decl->u.type.name.len, decl->u.type.name.value);
+            printf("Type declaration (name: %.*s, type: ", SV(decl->u.type.name));
             print_type_decl(&decl->u.type);
             putchar(')');
             break;
         case DECL_OBJECT:
-            printf("Object declaration (%.*s: ", decl->u.object.name.len, decl->u.object.name.value);
+            printf("Object declaration (%.*s: ", SV(decl->u.object.name));
             if(decl->u.object.is_constant) {
                 printf("constant ");
             }
-            printf("%.*s", decl->u.object.type->name.len, decl->u.object.type->name.value);
+            printf("%.*s", SV(decl->u.object.type->name));
             if(decl->u.object.init_expr) {
                 printf(" := ");
                 print_expression(decl->u.object.init_expr);
@@ -51,7 +51,7 @@ void print_type_decl(const TypeDecl* type_decl)
 {
     switch(type_decl->kind) {
         case TYPE_PLACEHOLDER:
-            printf("%.*s (placeholder)", type_decl->u.placeholder_name.len, type_decl->u.placeholder_name.value);
+            printf("%.*s (placeholder)", SV(type_decl->u.placeholder_name));
             break;
         case TYPE_UNIV_INTEGER:
             printf("universal integer");
@@ -72,10 +72,10 @@ void print_type_decl(const TypeDecl* type_decl)
             putchar(')');
             break;
         case TYPE_SUBTYPE:
-            printf("subtype (base: %.*s)", type_decl->u.subtype.base->name.len, type_decl->u.subtype.base->name.value);
+            printf("subtype (base: %.*s)", SV(type_decl->u.subtype.base->name));
             break;
         case TYPE_DERIVED:
-            printf("derived (base: %.*s)", type_decl->u.subtype.base->name.len, type_decl->u.subtype.base->name.value);
+            printf("derived (base: %.*s)", SV(type_decl->u.subtype.base->name));
             break;
         default:
             printf("Unhandled type");
@@ -96,10 +96,10 @@ void print_expression(const Expression* expr)
             printf("'%c'", expr->u.char_lit);
             break;
         case EXPR_ENUM_LIT:
-            printf("%.*s", expr->u.enum_lit.len, expr->u.enum_lit.value);
+            printf("%.*s", SV(expr->u.enum_lit));
             break;
         case EXPR_STRING_LIT:
-            printf("\"%.*s\"", expr->u.string_lit.len, expr->u.string_lit.value);
+            printf("\"%.*s\"", SV(expr->u.string_lit));
             break;
         case EXPR_UNARY:
             putchar('(');

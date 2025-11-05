@@ -159,7 +159,7 @@ bool parse_object_declaration(Declaration* decl)
     obj_decl->name = ctx.token.text;
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(obj_decl->name) != NULL) {
-        print_parse_error("Redefinition of '%.*s' within same declarative region", obj_decl->name.len, obj_decl->name.value);
+        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(obj_decl->name));
         return false;
     }
     next_token();
@@ -178,7 +178,7 @@ bool parse_object_declaration(Declaration* decl)
         // TODO: properly parse this as a subtype_indication or constrained_array_definition
         TypeDecl* type_decl = find_visible_type_declaration(ctx.token.text);
         if(!type_decl) {
-            print_parse_error("Unknown type: %.*s", ctx.token.text.len, ctx.token.text.value);
+            print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             return false;
         }
         obj_decl->type = type_decl;
@@ -219,7 +219,7 @@ bool parse_full_type_declaration(Declaration* decl)
     type_decl->name = ctx.token.text;
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(type_decl->name) != NULL) {
-        print_parse_error("Redefinition of '%.*s' within same declarative region", type_decl->name.len, type_decl->name.value);
+        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(type_decl->name));
         return false;
     }
     next_token();
@@ -235,7 +235,7 @@ bool parse_full_type_declaration(Declaration* decl)
         }
         TypeDecl* base_type_decl = find_visible_type_declaration(ctx.token.text);
         if(!base_type_decl) {
-            print_parse_error("Unknown base type: %.*s", ctx.token.text.len, ctx.token.text.value);
+            print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
             return false;
         }
         type_decl->kind = TYPE_SUBTYPE;
@@ -263,7 +263,7 @@ bool parse_full_type_declaration(Declaration* decl)
                 }
                 TypeDecl* base_type_decl = find_visible_type_declaration(ctx.token.text);
                 if(!base_type_decl) {
-                    print_parse_error("Unknown base type: %.*s", ctx.token.text.len, ctx.token.text.value);
+                    print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
                     return false;
                 }
                 type_decl->kind = TYPE_DERIVED;
@@ -547,7 +547,7 @@ Expression* parse_numeric_literal(void)
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
     if(mpz_init_set_str(expr->u.int_lit, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", ctx.token.text.len, ctx.token.text.value, ctx.token.u.int_lit.base);
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), ctx.token.u.int_lit.base);
         return NULL;
     }
     next_token();
@@ -669,7 +669,7 @@ static
 void print_unexpected_token_error(const Token* token)
 {
     StringView token_str = token_to_str(token);
-    print_parse_error("Unexpected token: '%.*s'", token_str.len, token_str.value);
+    print_parse_error("Unexpected token: '%.*s'", SV(token_str));
 }
 
 static
