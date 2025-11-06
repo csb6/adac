@@ -177,6 +177,13 @@ const char* lex_identifier_or_keyword(const char* input_start, const char* input
                 token->kind = TOKEN_OR_ELSE;
                 curr = next;
             }
+        } else if(keyword->kind == TOKEN_NOT) {
+            Token next_token;
+            const char* next = lexer_parse_token(input_start, input_end, curr, &next_token);
+            if(next_token.kind == TOKEN_IN) {
+                token->kind = TOKEN_NOT_IN;
+                curr = next;
+            }
         }
     } else {
         token->kind = TOKEN_IDENT;
