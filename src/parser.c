@@ -678,7 +678,7 @@ Expression* parse_numeric_literal(void)
 static
 bool begin_region(void)
 {
-    if(ctx.curr_region_idx >= cnt_of_array(ctx.region_stack)) {
+    if(ctx.curr_region_idx + 1 >= cnt_of_array(ctx.region_stack)) {
         print_parse_error("Too many nested regions (maximum is %u nested regions)", cnt_of_array(ctx.region_stack));
         return false;
     }
