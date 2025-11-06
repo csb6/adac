@@ -81,6 +81,7 @@ static bool expect_token(TokenKind kind);
 static bool count_enum_literals(uint32_t* literal_count);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
+static bool identifier_equal(const StringView* a, const StringView* b);
 
 PackageSpec* parser_parse(const char* input_start, const char* input_end)
 {
@@ -117,13 +118,8 @@ bool parse_package_spec(PackageSpec* package_spec)
     next_token();
 
     begin_region();
-    bool done = false;
-    while(!done) {
+    while(ctx.token.kind != TOKEN_END) {
         switch(ctx.token.kind) {
-            case TOKEN_END:
-                done = true;
-                next_token();
-                break;
             case TOKEN_ERROR:
                 return false;
             default: {
@@ -135,14 +131,23 @@ bool parse_package_spec(PackageSpec* package_spec)
             }
         }
     }
-    package_spec->decls = curr_region(ctx).first;
-    end_region();
+    next_token(); // Skip 'end'
 
-    // TODO: support optional trailing name
+    if(ctx.token.kind == TOKEN_IDENT) {
+        if(!identifier_equal(&package_spec->name, &ctx.token.text)) {
+            print_parse_error("Closing identifier does not match package specification name (%.*s)", SV(package_spec->name));
+            return false;
+        }
+        next_token();
+    }
+
     if(!expect_token(TOKEN_SEMICOLON)) {
         return false;
     }
     next_token();
+
+    package_spec->decls = curr_region(ctx).first;
+    end_region();
 
     return expect_token(TOKEN_EOF);
 }

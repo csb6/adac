@@ -37,4 +37,4 @@ package IntTypeTest is
 
     function "+"(a : BigInteger; b : BigInteger) return BigInteger;
     -- procedure "+"(a : BigInteger; b : BigInteger);
-end;
+end inttypetest;
