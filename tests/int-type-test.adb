@@ -25,4 +25,16 @@ package IntTypeTest is
     -- type BigInteger is range 0 .. 1;
     -- type biginteger is range 0 .. 1;
     -- BigInteger: Boolean;
+
+    procedure zeroary_procedure;
+    procedure unary_procedure(a : CharType);
+    procedure binary_procedure(a : CharType; b : Boolean := False);
+
+    function zeroary_function return Boolean;
+    function unary_function(a : CharType) return Boolean;
+    function binary_function(a : CharType; b : Boolean := False) return Boolean;
+    function modes(a : in CharType; b : in out CharType; c : out Boolean) return Boolean;
+
+    function "+"(a : BigInteger; b : BigInteger) return BigInteger;
+    -- procedure "+"(a : BigInteger; b : BigInteger);
 end;

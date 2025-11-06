@@ -37,6 +37,14 @@ int is_graphic_character(char c)
 }
 
 static
+TokenKind lookahead(const char* input_start, const char* input_end, const char** curr)
+{
+    Token next_token;
+    *curr = lexer_parse_token(input_start, input_end, *curr, &next_token);
+    return next_token.kind;
+}
+
+static
 const char* lex_numeric_literal(const char* input_start, const char* input_end, const char* curr, Token* token)
 {
     const char* token_start = curr;
@@ -163,27 +171,38 @@ const char* lex_identifier_or_keyword(const char* input_start, const char* input
     const struct keyword_token* keyword = is_keyword(token_start, curr - token_start);
     if(keyword && (curr == input_end || !(isalnum(*curr) || *curr == '_'))) {
         token->kind = keyword->kind;
-        if(keyword->kind == TOKEN_AND) {
-            Token next_token;
-            const char* next = lexer_parse_token(input_start, input_end, curr, &next_token);
-            if(next_token.kind == TOKEN_THEN) {
-                token->kind = TOKEN_AND_THEN;
-                curr = next;
-            }
-        } else if(keyword->kind == TOKEN_OR) {
-            Token next_token;
-            const char* next = lexer_parse_token(input_start, input_end, curr, &next_token);
-            if(next_token.kind == TOKEN_ELSE) {
-                token->kind = TOKEN_OR_ELSE;
-                curr = next;
-            }
-        } else if(keyword->kind == TOKEN_NOT) {
-            Token next_token;
-            const char* next = lexer_parse_token(input_start, input_end, curr, &next_token);
-            if(next_token.kind == TOKEN_IN) {
-                token->kind = TOKEN_NOT_IN;
-                curr = next;
-            }
+        const char* next;
+        switch(keyword->kind) {
+            case TOKEN_AND:
+                next = curr;
+                if(lookahead(input_start, input_end, &next) == TOKEN_THEN) {
+                    token->kind = TOKEN_AND_THEN;
+                    curr = next;
+                }
+                break;
+            case TOKEN_OR:
+                next = curr;
+                if(lookahead(input_start, input_end, &next) == TOKEN_ELSE) {
+                    token->kind = TOKEN_OR_ELSE;
+                    curr = next;
+                }
+                break;
+            case TOKEN_NOT:
+                next = curr;
+                if(lookahead(input_start, input_end, &next) == TOKEN_IN) {
+                    token->kind = TOKEN_NOT_IN;
+                    curr = next;
+                }
+                break;
+            case TOKEN_IN:
+                next = curr;
+                if(lookahead(input_start, input_end, &next) == TOKEN_OUT) {
+                    token->kind = TOKEN_IN_OUT;
+                    curr = next;
+                }
+                break;
+            default:
+                break;
         }
     } else {
         token->kind = TOKEN_IDENT;

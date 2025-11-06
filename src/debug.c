@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "debug.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "ast.h"
@@ -25,6 +26,8 @@ static void print_type_decl(const TypeDecl* type);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
+static void print_params(const Declaration* params);
+static const char* param_mode_str(ParamMode mode);
 
 void print_package_spec(const PackageSpec* package_spec)
 {
@@ -58,9 +61,57 @@ void print_declaration(const Declaration* decl)
             }
             putchar(')');
             break;
+        case DECL_FUNCTION:
+            printf("Function declaration (name: %.*s, return type: %.*s, parameters: ",
+                   SV(decl->u.subprogram.name), SV(decl->u.subprogram.return_type->name));
+            print_params(decl->u.subprogram.params);
+            putchar(')');
+            break;
+        case DECL_PROCEDURE:
+            printf("Procedure declaration (name: %.*s, parameters: ", SV(decl->u.subprogram.name));
+            print_params(decl->u.subprogram.params);
+            putchar(')');
+            break;
         default:
             printf("Unknown declaration");
     }
+}
+
+static
+void print_params(const Declaration* params)
+{
+    putchar('(');
+    for(const Declaration* decl = params; decl != NULL; decl = decl->next) {
+        assert(params->kind == DECL_OBJECT);
+        const ObjectDecl* param = &decl->u.object;
+        printf("%.*s : %s %.*s", SV(param->name), param_mode_str(param->mode), SV(param->type->name));
+        if(param->init_expr) {
+            printf(" := ");
+            print_expression(param->init_expr);
+        }
+        printf("; ");
+    }
+    putchar(')');
+}
+
+static
+const char* param_mode_str(ParamMode mode)
+{
+    const char* mode_str = "No_mode";
+    switch(mode) {
+        case PARAM_MODE_IN:
+            mode_str = "in";
+            break;
+        case PARAM_MODE_OUT:
+            mode_str = "out";
+            break;
+        case PARAM_MODE_IN_OUT:
+            mode_str = "in out";
+            break;
+        default:
+            break;
+    }
+    return mode_str;
 }
 
 static

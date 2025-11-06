@@ -92,7 +92,13 @@ extern struct TypeDecl_ universal_int_type;
 
 typedef uint8_t DeclKind;
 enum {
-    DECL_OBJECT, DECL_TYPE
+    DECL_OBJECT, DECL_TYPE, DECL_FUNCTION, DECL_PROCEDURE
+};
+
+// 6.2: Formal Parameter Modes
+typedef uint8_t ParamMode;
+enum {
+    PARAM_MODE_NONE, PARAM_MODE_IN, PARAM_MODE_OUT, PARAM_MODE_IN_OUT
 };
 
 // 3.3.1: Type Declarations
@@ -117,13 +123,22 @@ typedef struct ObjectDecl_ {
     TypeDecl* type;
     struct Expression_* init_expr;
     bool is_constant;
+    ParamMode mode; // Only used if ObjectDecl is a formal parameter
 } ObjectDecl;
+
+typedef struct SubprogramDecl_ {
+    StringView name;
+    TypeDecl* return_type; // NULL for procedures
+    struct Declaration_* params; // all are ObjectDecls
+    bool is_operator;
+} SubprogramDecl;
 
 typedef struct Declaration_ {
     DeclKind kind;
     union {
         ObjectDecl object;
         TypeDecl type;
+        SubprogramDecl subprogram;
     } u;
     struct Declaration_* next;
 } Declaration;

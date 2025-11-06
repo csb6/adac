@@ -30,9 +30,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "mini-gmp.h"
 
 typedef struct {
-    Declaration* decl_stack[32]; // Each item is a linked-list of Declarations
-    uint8_t curr_stack_idx;
-    Declaration* top_decl; // Pointer to last node of top-most decl list in decl_stack
+    Declaration* first; // linked list of decls
+    Declaration* last; // Pointer to last node of decls
+} Region;
+
+typedef struct {
+    Region region_stack[32];
+    uint8_t curr_region_idx;
     const char* curr;
     const char* input_start;
     const char* input_end;
@@ -51,16 +55,20 @@ static ParseContext ctx;
 static bool parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
 static bool parse_basic_declaration(Declaration* decl);
-static bool parse_object_declaration(Declaration* decl);
-static bool parse_full_type_declaration(Declaration* decl);
+static bool parse_object_declaration(ObjectDecl* decl, bool is_param);
+static bool parse_type_declaration(Declaration* decl);
 static bool parse_integer_type_definition(IntType* int_type);
 static bool parse_enum_type_definition(EnumType* enum_type);
+static bool parse_subprogram_declaration(Declaration* decl);
+static bool parse_parameters(Declaration** params);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
 static Expression* parse_primary_expression(void);
 static Expression* parse_numeric_literal(void);
 /* VISIBILITY */
+static bool begin_region(void);
+static void end_region(void);
 static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
 static TypeDecl* find_visible_type_declaration(StringView name);
@@ -107,6 +115,7 @@ bool parse_package_spec(PackageSpec* package_spec)
     }
     next_token();
 
+    begin_region();
     bool done = false;
     while(!done) {
         switch(ctx.token.kind) {
@@ -128,6 +137,7 @@ bool parse_package_spec(PackageSpec* package_spec)
             }
         }
     }
+    end_region();
 
     // TODO: support optional trailing name
     if(!expect_token(TOKEN_SEMICOLON)) {
@@ -143,14 +153,21 @@ bool parse_basic_declaration(Declaration* decl)
 {
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
-            if(!parse_object_declaration(decl)) {
+            decl->kind = DECL_OBJECT;
+            if(!parse_object_declaration(&decl->u.object, /*is_param*/false)) {
                 return NULL;
             }
             break;
         case TOKEN_TYPE:
         case TOKEN_SUBTYPE:
             // TODO: incomplete and private type declarations
-            if(!parse_full_type_declaration(decl)) {
+            if(!parse_type_declaration(decl)) {
+                return NULL;
+            }
+            break;
+        case TOKEN_PROCEDURE:
+        case TOKEN_FUNCTION:
+            if(!parse_subprogram_declaration(decl)) {
                 return NULL;
             }
             break;
@@ -160,6 +177,10 @@ bool parse_basic_declaration(Declaration* decl)
             print_unexpected_token_error(&ctx.token);
             return NULL;
     }
+    if(!expect_token(TOKEN_SEMICOLON)) {
+        return NULL;
+    }
+    next_token();
     // TODO: recursive functions need their declaration pushed before body is done being defined.
     //   Most other declarations cannot be self-referential and so should not push their names until
     //   the declaration is done being parsed.
@@ -168,25 +189,43 @@ bool parse_basic_declaration(Declaration* decl)
 }
 
 static
-bool parse_object_declaration(Declaration* decl)
+bool parse_object_declaration(ObjectDecl* decl, bool is_param)
 {
-    decl->kind = DECL_OBJECT;
-    ObjectDecl* obj_decl = &decl->u.object;
     // TODO: support identifier_list
-    obj_decl->name = ctx.token.text;
+    decl->name = ctx.token.text;
     // TODO: print line number of previous definition
-    if(find_declaration_in_current_region(obj_decl->name) != NULL) {
-        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(obj_decl->name));
+    if(find_declaration_in_current_region(decl->name) != NULL) {
+        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(decl->name));
         return false;
     }
     next_token();
     if(!expect_token(TOKEN_COLON)) {
         return false;
     }
-
     next_token();
-    if(ctx.token.kind == TOKEN_CONSTANT) {
-        obj_decl->is_constant = true;
+
+    if(is_param) {
+        switch(ctx.token.kind) {
+            case TOKEN_IN:
+                decl->mode = PARAM_MODE_IN;
+                next_token();
+                break;
+            case TOKEN_OUT:
+                decl->mode = PARAM_MODE_OUT;
+                next_token();
+                break;
+            case TOKEN_IN_OUT:
+                decl->mode = PARAM_MODE_IN_OUT;
+                next_token();
+                break;
+            case TOKEN_ERROR:
+                return false;
+            default:
+                // No mode specified means 'in' mode
+                decl->mode = PARAM_MODE_IN;
+        }
+    } else if(ctx.token.kind == TOKEN_CONSTANT) {
+        decl->is_constant = true;
         next_token();
     }
 
@@ -198,11 +237,11 @@ bool parse_object_declaration(Declaration* decl)
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             return false;
         }
-        obj_decl->type = type_decl;
+        decl->type = type_decl;
         next_token();
-    } else if(obj_decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
+    } else if(decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
         // number_declaration
-        obj_decl->type = &universal_int_type;
+        decl->type = &universal_int_type;
     } else {
         print_unexpected_token_error(&ctx.token);
         return false;
@@ -210,21 +249,17 @@ bool parse_object_declaration(Declaration* decl)
 
     if(ctx.token.kind == TOKEN_ASSIGN) {
         next_token();
-        obj_decl->init_expr = parse_expression();
-        if(!obj_decl->init_expr) {
+        decl->init_expr = parse_expression();
+        if(!decl->init_expr) {
             return false;
         }
     }
 
-    if(!expect_token(TOKEN_SEMICOLON)) {
-        return false;
-    }
-    next_token();
     return true;
 }
 
 static
-bool parse_full_type_declaration(Declaration* decl)
+bool parse_type_declaration(Declaration* decl)
 {
     decl->kind = DECL_TYPE;
     TypeDecl* type_decl = &decl->u.type;
@@ -295,10 +330,6 @@ bool parse_full_type_declaration(Declaration* decl)
         }
     }
 
-    if(!expect_token(TOKEN_SEMICOLON)) {
-        return false;
-    }
-    next_token();
     return true;
 }
 
@@ -329,8 +360,8 @@ bool parse_enum_type_definition(EnumType* enum_type)
         return false;
     }
     enum_type->literal_count = literal_count;
-    enum_type->literals = calloc(enum_type->literal_count, sizeof(Expression));
-    for(uint32_t i = 0; i < enum_type->literal_count; ++i) {
+    enum_type->literals = calloc(literal_count, sizeof(Expression));
+    for(uint32_t i = 0; i < literal_count; ++i) {
         switch(ctx.token.kind) {
             case TOKEN_IDENT:
                 enum_type->literals[i].kind = EXPR_ENUM_LIT;
@@ -346,7 +377,7 @@ bool parse_enum_type_definition(EnumType* enum_type)
                 return false;
         }
         next_token();
-        if(i + 1 < enum_type->literal_count) {
+        if(i + 1 < literal_count) {
             if(!expect_token(TOKEN_COMMA)) {
                 return false;
             }
@@ -357,6 +388,79 @@ bool parse_enum_type_definition(EnumType* enum_type)
         return false;
     }
     next_token();
+    return true;
+}
+
+static
+bool parse_subprogram_declaration(Declaration* decl)
+{
+    decl->kind = (ctx.token.kind == TOKEN_FUNCTION) ? DECL_FUNCTION : DECL_PROCEDURE;
+    next_token();
+
+    if(ctx.token.kind == TOKEN_STRING_LITERAL) {
+        if(decl->kind != DECL_FUNCTION) {
+            print_parse_error("Overloaded operators must be functions");
+            return false;
+        }
+        // TODO: if string literal, check that it is one of the overloadable operators
+        decl->u.subprogram.is_operator = true;
+    } else if(!expect_token(TOKEN_IDENT)) {
+        return false;
+    }
+    decl->u.subprogram.name = ctx.token.text;
+    next_token();
+
+    begin_region();
+    if(ctx.token.kind == TOKEN_L_PAREN) {
+        if(!parse_parameters(&decl->u.subprogram.params)) {
+            return false;
+        }
+    }
+
+    if(decl->kind == DECL_FUNCTION) {
+        if(!expect_token(TOKEN_RETURN)) {
+            return false;
+        }
+        next_token();
+        // TODO: properly parse type_mark
+        TypeDecl* return_type_decl = find_visible_type_declaration(ctx.token.text);
+        if(!return_type_decl) {
+            print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
+            return false;
+        }
+        decl->u.subprogram.return_type = return_type_decl;
+        next_token();
+    }
+    end_region();
+
+    return true;
+}
+
+static
+bool parse_parameters(Declaration** params)
+{
+    next_token(); // Skip '('
+    Declaration* last_param = NULL;
+    while(ctx.token.kind != TOKEN_R_PAREN) {
+        // TODO: push object decls to symbol stack
+        if(last_param == NULL) {
+            *params = calloc(1, sizeof(Declaration));
+            last_param = *params;
+        } else {
+            last_param->next = calloc(1, sizeof(Declaration));
+            last_param = last_param->next;
+        }
+        if(!parse_object_declaration(&last_param->u.object, /*is_param*/true)) {
+            return false;
+        }
+        if(ctx.token.kind != TOKEN_R_PAREN) {
+            if(!expect_token(TOKEN_SEMICOLON)) {
+                return false;
+            }
+            next_token();
+        }
+    }
+    next_token(); // Skip ')'
     return true;
 }
 
@@ -571,16 +675,39 @@ Expression* parse_numeric_literal(void)
     return expr;
 }
 
+// TODO: have way to provide initial list of declarations (e.g. from a package spec or a function's param list)
+static
+bool begin_region(void)
+{
+    if(ctx.curr_region_idx >= cnt_of_array(ctx.region_stack)) {
+        print_parse_error("Too many nested regions (maximum is %u nested regions)", cnt_of_array(ctx.region_stack));
+        return false;
+    }
+    ++ctx.curr_region_idx;
+    memset(ctx.region_stack + ctx.curr_region_idx, 0, sizeof(ctx.region_stack[0]));
+    return true;
+}
+
+static
+void end_region(void)
+{
+    if(ctx.curr_region_idx == 0) {
+        print_parse_error("Attempted to exit top-level region");
+        exit(1);
+    }
+    --ctx.curr_region_idx;
+}
+
 static
 void push_declaration(Declaration* decl)
 {
-    if(ctx.top_decl) {
-        ctx.top_decl->next = decl;
+    Region* region = &ctx.region_stack[ctx.curr_region_idx];
+    if(region->last) {
+        region->last->next = decl;
     } else {
-        // First decl in the current region
-        ctx.decl_stack[ctx.curr_stack_idx] = decl;
+        region->first = decl;
     }
-    ctx.top_decl = decl;
+    region->last = decl;
 }
 
 // TODO: intern strings to make this faster
@@ -601,9 +728,9 @@ bool identifier_equal(const StringView* a, const StringView* b)
 static
 TypeDecl* find_visible_type_declaration(StringView name)
 {
-    for(int stack_idx = ctx.curr_stack_idx; stack_idx >= 0; --stack_idx) {
-        Declaration* decl_list = ctx.decl_stack[stack_idx];
-        for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
+    for(int stack_idx = ctx.curr_region_idx; stack_idx >= 0; --stack_idx) {
+        Region* region = &ctx.region_stack[stack_idx];
+        for(Declaration* decl = region->first; decl != NULL; decl = decl->next) {
             if(decl->kind == DECL_TYPE && identifier_equal(&decl->u.type.name, &name)) {
                 return &decl->u.type;
             }
@@ -615,8 +742,8 @@ TypeDecl* find_visible_type_declaration(StringView name)
 static
 Declaration* find_declaration_in_current_region(StringView name)
 {
-    Declaration* decl_list = ctx.decl_stack[ctx.curr_stack_idx];
-    for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
+    Region* region = &ctx.region_stack[ctx.curr_region_idx];
+    for(Declaration* decl = region->first; decl != NULL; decl = decl->next) {
         switch(decl->kind) {
             case DECL_TYPE:
                 if(identifier_equal(&decl->u.type.name, &name)) {
@@ -625,6 +752,12 @@ Declaration* find_declaration_in_current_region(StringView name)
                 break;
             case DECL_OBJECT:
                 if(identifier_equal(&decl->u.object.name, &name)) {
+                    return decl;
+                }
+                break;
+            case DECL_PROCEDURE:
+            case DECL_FUNCTION:
+                if(identifier_equal(&decl->u.subprogram.name, &name)) {
                     return decl;
                 }
                 break;
