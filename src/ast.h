@@ -164,7 +164,7 @@ typedef struct Declaration_ {
 
 typedef uint8_t ExprKind;
 enum {
-    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_ENUM_LIT, EXPR_STRING_LIT,
+    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_NAME, EXPR_STRING_LIT,
     EXPR_UNARY, EXPR_BINARY
 };
 
@@ -208,7 +208,7 @@ typedef struct Expression_ {
         // 4.2: Literals
         mpz_t int_lit;
         char char_lit;
-        StringView enum_lit;
+        StringView name;
         StringView string_lit;
         UnaryExpr unary;
         BinaryExpr binary;

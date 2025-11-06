@@ -364,8 +364,8 @@ bool parse_enum_type_definition(EnumType* enum_type)
     for(uint32_t i = 0; i < literal_count; ++i) {
         switch(ctx.token.kind) {
             case TOKEN_IDENT:
-                enum_type->literals[i].kind = EXPR_ENUM_LIT;
-                enum_type->literals[i].u.enum_lit = ctx.token.text;
+                enum_type->literals[i].kind = EXPR_NAME;
+                enum_type->literals[i].u.name = ctx.token.text;
                 break;
             case TOKEN_CHAR_LITERAL:
                 enum_type->literals[i].kind = EXPR_CHAR_LIT;
@@ -614,8 +614,8 @@ Expression* parse_primary_expression(void)
             break;
         case TOKEN_IDENT:
             expr = calloc(1, sizeof(Expression));
-            expr->kind = EXPR_ENUM_LIT;
-            expr->u.enum_lit = ctx.token.text;
+            expr->kind = EXPR_NAME;
+            expr->u.name = ctx.token.text;
             next_token();
             break;
         case TOKEN_L_PAREN:

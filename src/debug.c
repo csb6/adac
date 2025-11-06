@@ -163,8 +163,8 @@ void print_expression(const Expression* expr)
         case EXPR_CHAR_LIT:
             printf("'%c'", expr->u.char_lit);
             break;
-        case EXPR_ENUM_LIT:
-            printf("%.*s", SV(expr->u.enum_lit));
+        case EXPR_NAME:
+            printf("%.*s", SV(expr->u.name));
             break;
         case EXPR_STRING_LIT:
             printf("\"%.*s\"", SV(expr->u.string_lit));
