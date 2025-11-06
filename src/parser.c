@@ -73,6 +73,7 @@ static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
 static TypeDecl* find_visible_type_declaration(StringView name);
 /* UTILITIES */
+#define curr_region(ctx) ctx.region_stack[ctx.curr_region_idx]
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
 #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 static void next_token(void);
@@ -131,12 +132,10 @@ bool parse_package_spec(PackageSpec* package_spec)
                 if(!parse_basic_declaration(decl)) {
                     return false;
                 }
-                if(!package_spec->decls) {
-                    package_spec->decls = decl;
-                }
             }
         }
     }
+    package_spec->decls = curr_region(ctx).first;
     end_region();
 
     // TODO: support optional trailing name
@@ -684,7 +683,7 @@ bool begin_region(void)
         return false;
     }
     ++ctx.curr_region_idx;
-    memset(ctx.region_stack + ctx.curr_region_idx, 0, sizeof(ctx.region_stack[0]));
+    memset(&curr_region(ctx), 0, sizeof(ctx.region_stack[0]));
     return true;
 }
 
@@ -701,7 +700,7 @@ void end_region(void)
 static
 void push_declaration(Declaration* decl)
 {
-    Region* region = &ctx.region_stack[ctx.curr_region_idx];
+    Region* region = &curr_region(ctx);
     if(region->last) {
         region->last->next = decl;
     } else {
