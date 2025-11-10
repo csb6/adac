@@ -99,7 +99,7 @@ state_table = {
     },
     "STATE_GT_GTE_GB": {
         "CLASS_EQ": "TOKEN_GTE",
-        "CLASS_LT": "TOKEN_R_LABEL_BRACKET",
+        "CLASS_GT": "TOKEN_R_LABEL_BRACKET",
         "others": "TOKEN_GT"
     },
     "STATE_IN_IDENTIFIER": {
