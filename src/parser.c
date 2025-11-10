@@ -659,9 +659,23 @@ Expression* parse_numeric_literal(void)
 {
     char num_buffer[128];
 
-    if(ctx.token.u.int_lit.has_fraction) {
+    if(memchr(ctx.token.text.value, '.', ctx.token.text.len) != NULL) {
         print_parse_error("TODO: support non-integer numeric literals");
         return NULL;
+    }
+    int base = 10;
+    const char* hash_mark = memchr(ctx.token.text.value, '#', ctx.token.text.len);
+    if(hash_mark) {
+        base = 0;
+        for(const char* c = ctx.token.text.value; c != hash_mark; ++c) {
+            if(*c != '_') {
+                base = base * 10 + (*c - '0');
+            }
+        }
+        if(base < 1 || base > 16) {
+            print_parse_error("Numeric literal has invalid base Bases must be in range [1, 16)");
+            return NULL;
+        }
     }
 
     num_buffer[0] = '\0';
@@ -671,8 +685,8 @@ Expression* parse_numeric_literal(void)
     }
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
-    if(mpz_init_set_str(expr->u.int_lit, num_buffer, (int)ctx.token.u.int_lit.base) < 0) {
-        print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), ctx.token.u.int_lit.base);
+    if(mpz_init_set_str(expr->u.int_lit, num_buffer, base) < 0) {
+        print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), base);
         return NULL;
     }
     next_token();

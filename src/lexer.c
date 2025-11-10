@@ -16,25 +16,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "lexer.h"
-#include <ctype.h>
-#include <stdbool.h>
-#include <string.h>
+#include "token.h"
 #include "error.h"
+#include "lexer_table.c"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "keywords.c"
 #pragma GCC diagnostic pop
-
-#define set_simple_token(token_kind) \
-    token->kind = token_kind; \
-    token->text.value = curr; \
-    token->text.len = 1;
-
-static
-int is_graphic_character(char c)
-{
-    return c >= ' ' && c <= '~';
-}
+#include <string.h>
 
 static
 TokenKind lookahead(const char* input_start, const char* input_end, const char** curr)
@@ -44,372 +33,114 @@ TokenKind lookahead(const char* input_start, const char* input_end, const char**
     return next_token.kind;
 }
 
-static
-const char* lex_numeric_literal(const char* input_start, const char* input_end, const char* curr, Token* token)
-{
-    const char* token_start = curr;
-    ++curr;
-    while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
-        ++curr;
-    }
-    uint32_t num_base = 10;
-    bool has_fraction = false;
-    if(curr != input_end) {
-        if(*curr == '#') {
-            // Based literals
-            // TODO: there can be based literals with "decimal" points (sigh)
-            // TODO: allow substitution of '#' with '"' subject to rules in LRM 2.10
-            num_base = 0;
-            for(const char* b = token_start; b < curr; ++b) {
-                if(isdigit(*b)) {
-                    num_base = num_base * 10 + (*b - '0');
-                }
-            }
-            if(num_base < 2 || num_base > 16) {
-                error_print(input_start, curr, "Base of numeric literal must be in range [2, 16]");
-                return curr;
-            }
-            ++curr; // Skip over '#'
-            token_start = curr;
-            while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
-                ++curr;
-            }
-            if(curr == input_end || *curr != '#') {
-                error_print(input_start, curr, "Unexpected end of based literal");
-                return curr;
-            }
-            ++curr;
-        } else if(*curr == '.') {
-            // Decimal literals
-            has_fraction = true;
-            ++curr;
-            if(curr == input_end) {
-                error_print(input_start, curr, "Unexpected end of decimal literal");
-                return curr;
-            }
-            while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
-                ++curr;
-            }
-        }
-
-        if(curr != input_end && (*curr == 'e' || *curr == 'E')) {
-            // Exponents
-            ++curr;
-            if(curr == input_end) {
-                error_print(input_start, curr, "Unexpected end of exponent");
-                return curr;
-            }
-            if(*curr == '+' || *curr == '-') {
-                ++curr;
-                if(curr == input_end) {
-                    error_print(input_start, curr, "Unexpected end of exponent");
-                    return curr;
-                }
-            }
-            if(!isdigit(*curr)) {
-                error_print(input_start, curr, "Unexpected end of exponent");
-                return curr;
-            }
-            ++curr;
-            while(curr != input_end && (isdigit(*curr) || *curr == '_')) {
-                ++curr;
-            }
-        }
-    }
-    token->kind = TOKEN_NUM_LITERAL;
-    token->u.int_lit.base = (uint8_t)num_base;
-    token->u.int_lit.has_fraction = has_fraction;
-    token->text.value = token_start;
-    token->text.len = curr - token_start;
-    return curr;
-}
-
-static
-const char* lex_string_literal(const char* input_start, const char* input_end, const char* curr, Token* token)
-{
-    ++curr; // Skip '"'
-    if(curr == input_end) {
-        error_print(input_start, curr, "Unexpected end of string literal");
-        return curr;
-    }
-    const char* token_start = curr;
-    int found_closing_quote = 0;
-    while(curr != input_end && !found_closing_quote) {
-        if(*curr == '"') {
-            if(curr + 1 != input_end && curr[1] == '"') {
-                // Two double quotes inside a string literal are treated as one double quote (cursed)
-                curr += 2;
-            } else {
-                found_closing_quote = 1;
-            }
-        } else if(is_graphic_character(*curr)) {
-            ++curr;
-        } else {
-            error_print(input_start, curr, "Unexpected character: '%c'", *curr);
-            return curr;
-        }
-    }
-    if(!found_closing_quote) {
-        error_print(input_start, curr, "Missing closing quote for string literal");
-        return curr;
-    }
-    token->kind = TOKEN_STRING_LITERAL;
-    token->text.value = token_start;
-    token->text.len = curr - token_start;
-    ++curr; // Skip final '"'
-    return curr;
-}
-
-static
-const char* lex_identifier_or_keyword(const char* input_start, const char* input_end, const char* curr, Token* token)
-{
-    const char* token_start = curr;
-    ++curr;
-    while(curr != input_end && isalpha(*curr)) {
-        ++curr;
-    }
-    const struct keyword_token* keyword = is_keyword(token_start, curr - token_start);
-    if(keyword && (curr == input_end || !(isalnum(*curr) || *curr == '_'))) {
-        token->kind = keyword->kind;
-        const char* next;
-        switch(keyword->kind) {
-            case TOKEN_AND:
-                next = curr;
-                if(lookahead(input_start, input_end, &next) == TOKEN_THEN) {
-                    token->kind = TOKEN_AND_THEN;
-                    curr = next;
-                }
-                break;
-            case TOKEN_OR:
-                next = curr;
-                if(lookahead(input_start, input_end, &next) == TOKEN_ELSE) {
-                    token->kind = TOKEN_OR_ELSE;
-                    curr = next;
-                }
-                break;
-            case TOKEN_NOT:
-                next = curr;
-                if(lookahead(input_start, input_end, &next) == TOKEN_IN) {
-                    token->kind = TOKEN_NOT_IN;
-                    curr = next;
-                }
-                break;
-            case TOKEN_IN:
-                next = curr;
-                if(lookahead(input_start, input_end, &next) == TOKEN_OUT) {
-                    token->kind = TOKEN_IN_OUT;
-                    curr = next;
-                }
-                break;
-            default:
-                break;
-        }
-    } else {
-        token->kind = TOKEN_IDENT;
-        while(curr != input_end && (isalnum(*curr) || *curr == '_')) {
-            ++curr;
-        }
-    }
-    token->text.value = token_start;
-    token->text.len = curr - token_start;
-    return curr;
-}
-
-static
-const char* skip_comment(const char* curr, const char* input_end)
-{
-    curr += 2; // Skip over '--'
-    while(curr != input_end && *curr != '\n') {
-        ++curr;
-    }
-    return curr;
-}
-
 const char* lexer_parse_token(const char* input_start, const char* input_end, const char* curr, Token* token)
 {
     memset(token, 0, sizeof(*token));
-    token->kind = TOKEN_ERROR;
-    int done;
-    do {
-        done = 1;
-        // Skip leading whitespace
-        while(curr < input_end && isspace(*curr)) {
-            ++curr;
+    State state = STATE_START;
+    // Skip whitespace and comments
+    while(curr != input_end) {
+        Class class_ = class_table[(uint8_t)*curr];
+        state = skip_table[state - TOKEN_NUM_TOKEN_KINDS][class_];
+        if(state < TOKEN_NUM_TOKEN_KINDS) {
+            break;
         }
+        ++curr;
+    }
+    // Since comments start with "--", state machine will consume first "-", then halt
+    // if no second "-". Back up curr so we can parse the TOKEN_MINUS
+    if(state == TOKEN_MINUS) {
+        --curr;
+    }
 
-        if(curr == input_end) {
-            set_simple_token(TOKEN_EOF)
-            return curr;
+    state = STATE_START;
+    const char* token_start = curr;
+    while(curr != input_end && state >= TOKEN_NUM_TOKEN_KINDS) {
+        Class class_ = class_table[(uint8_t)*curr];
+        state = state_table[state - TOKEN_NUM_TOKEN_KINDS][class_];
+        curr += move_table[state];
+    }
+
+    if(curr == input_end) {
+        if(state == STATE_START) {
+            token->kind = TOKEN_EOF;
+        } else {
+            error_print(input_start, curr, "Unexpected end of file");
+            token->kind = TOKEN_ERROR;
         }
-
-        switch(*curr) {
-            case '&':
-                set_simple_token(TOKEN_AMP)
-                ++curr;
-                break;
-            case '(':
-                set_simple_token(TOKEN_L_PAREN)
-                ++curr;
-                break;
-            case ')':
-                set_simple_token(TOKEN_R_PAREN)
-                ++curr;
-                break;
-            case '+':
-                set_simple_token(TOKEN_PLUS)
-                ++curr;
-                break;
-            case ',':
-                set_simple_token(TOKEN_COMMA)
-                ++curr;
-                break;
-            case ';':
-                set_simple_token(TOKEN_SEMICOLON)
-                ++curr;
-                break;
-            case '!':
-            case '|':
-                set_simple_token(TOKEN_BAR)
-                ++curr;
-                break;
-            case '\'':
-                if(curr + 2 < input_end && curr[2] == '\'') {
-                    ++curr;
-                    if(is_graphic_character(*curr)) {
-                        set_simple_token(TOKEN_CHAR_LITERAL)
-                    } else {
-                        error_print(input_start, curr, "Character literal must be a graphical character");
+    } else {
+        token->kind = (TokenKind)state;
+        switch(token->kind) {
+            case TOKEN_IDENT: {
+                const struct keyword_token* keyword = is_keyword(token_start, curr - token_start);
+                if(keyword) {
+                    token->kind = keyword->kind;
+                    const char* next;
+                    switch(keyword->kind) {
+                        case TOKEN_AND:
+                            next = curr;
+                            if(lookahead(input_start, input_end, &next) == TOKEN_THEN) {
+                                token->kind = TOKEN_AND_THEN;
+                                curr = next;
+                            }
+                            break;
+                        case TOKEN_OR:
+                            next = curr;
+                            if(lookahead(input_start, input_end, &next) == TOKEN_ELSE) {
+                                token->kind = TOKEN_OR_ELSE;
+                                curr = next;
+                            }
+                            break;
+                        case TOKEN_NOT:
+                            next = curr;
+                            if(lookahead(input_start, input_end, &next) == TOKEN_IN) {
+                                token->kind = TOKEN_NOT_IN;
+                                curr = next;
+                            }
+                            break;
+                        case TOKEN_IN:
+                            next = curr;
+                            if(lookahead(input_start, input_end, &next) == TOKEN_OUT) {
+                                token->kind = TOKEN_IN_OUT;
+                                curr = next;
+                            }
+                            break;
+                        default:
+                            break;
                     }
-                    ++curr;
                 } else {
-                    set_simple_token(TOKEN_SINGLE_QUOTE)
+                    token->kind = TOKEN_IDENT;
                 }
-                ++curr;
+                token->text.value = token_start;
+                token->text.len = curr - token_start;
                 break;
-            case '"':
-                curr = lex_string_literal(input_start, input_end, curr, token);
+            }
+            case TOKEN_NUM_LITERAL:
+                token->text.value = token_start;
+                token->text.len = curr - token_start;
                 break;
-            case '*':
-                token->text.value = curr;
-                if(curr + 1 != input_end && curr[1] == '*') {
-                    token->kind = TOKEN_EXP;
-                    token->text.len = 2;
-                    ++curr;
-                } else {
-                    token->kind = TOKEN_MULT;
-                    token->text.len = 1;
-                }
-                ++curr;
+            case TOKEN_SINGLE_QUOTE:
+                token->text.value = token_start;
+                token->text.len = 1;
+                curr = token_start + 1;
                 break;
-            case '-':
-                if(curr + 1 != input_end && curr[1] == '-') {
-                    curr = skip_comment(curr, input_end);
-                    done = 0;
-                } else {
-                    set_simple_token(TOKEN_MINUS)
-                    ++curr;
-                }
+            case TOKEN_CHAR_LITERAL:
+                token->text.value = token_start + 1;
+                token->text.len = 1;
                 break;
-            case '.':
-                token->text.value = curr;
-                if(curr + 1 != input_end && curr[1] == '.') {
-                    token->kind = TOKEN_DOUBLE_DOT;
-                    token->text.len = 2;
-                    ++curr;
-                } else {
-                    token->kind = TOKEN_DOT;
-                    token->text.len = 1;
-                }
-                ++curr;
+            case TOKEN_STRING_LITERAL:
+                token->text.value = token_start + 1;
+                token->text.len = curr - token_start - 2;
                 break;
-            case '/':
-                token->text.value = curr;
-                if(curr + 1 != input_end && curr[1] == '=') {
-                    token->kind = TOKEN_NEQ;
-                    token->text.len = 2;
-                    ++curr;
-                } else {
-                    token->kind = TOKEN_DIVIDE;
-                    token->text.len = 1;
-                }
-                ++curr;
-                break;
-            case ':':
-                token->text.value = curr;
-                if(curr + 1 != input_end && curr[1] == '=') {
-                    token->kind = TOKEN_ASSIGN;
-                    token->text.len = 2;
-                    ++curr;
-                } else {
-                    token->kind = TOKEN_COLON;
-                    token->text.len = 1;
-                }
-                ++curr;
-                break;
-            case '<':
-                token->text.value = curr;
-                if(curr + 1 != input_end) {
-                    if(curr[1] == '=') {
-                        token->kind = TOKEN_LTE;
-                        token->text.len = 2;
-                        ++curr;
-                    } else if(curr[1] == '<') {
-                        token->kind = TOKEN_L_LABEL_BRACKET;
-                        token->text.len = 2;
-                        ++curr;
-                    } else if(curr[1] == '>') {
-                        token->kind = TOKEN_BOX;
-                        token->text.len = 2;
-                        ++curr;
-                    }
-                }
-                if(token->text.len != 2) {
-                    token->kind = TOKEN_LT;
-                    token->text.len = 1;
-                }
-                ++curr;
-                break;
-            case '=':
-                token->text.value = curr;
-                if(curr + 1 != input_end && curr[1] == '<') {
-                    token->kind = TOKEN_ARROW;
-                    token->text.len = 2;
-                    ++curr;
-                } else {
-                    token->kind = TOKEN_EQ;
-                    token->text.len = 1;
-                }
-                ++curr;
-                break;
-            case '>':
-                token->text.value = curr;
-                if(curr + 1 != input_end) {
-                    if(curr[1] == '=') {
-                        token->kind = TOKEN_GTE;
-                        token->text.len = 2;
-                        ++curr;
-                    } else if(curr[1] == '>') {
-                        token->kind = TOKEN_R_LABEL_BRACKET;
-                        token->text.len = 2;
-                        ++curr;
-                    }
-                }
-                if(token->text.len != 2) {
-                    token->kind = TOKEN_GT;
-                    token->text.len = 1;
-                }
-                ++curr;
+            case TOKEN_ERROR:
+                token->text.value = token_start;
+                token->text.len = curr - token_start;
+                error_print(input_start, curr, "Unexpected character: '%c'", *curr);
                 break;
             default:
-                if(isalpha(*curr)) {
-                    curr = lex_identifier_or_keyword(input_start, input_end, curr, token);
-                } else if(isdigit(*curr)) {
-                    curr = lex_numeric_literal(input_start, input_end, curr, token);
-                } else {
-                    error_print(input_start, curr, "Unexpected character: '%c'", *curr);
-                }
+                token->text.value = token_start;
+                token->text.len = curr - token_start;
+                break;
         }
-    } while(!done);
-
+    }
     return curr;
 }

@@ -57,12 +57,6 @@ enum {
 typedef struct {
     StringView text;
     TokenKind kind;
-    union {
-        struct {
-            uint8_t base;
-            bool has_fraction;
-        } int_lit;
-    } u;
 } Token;
 
 StringView token_to_str(const Token* token);
