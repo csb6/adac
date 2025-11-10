@@ -1,0 +1,198 @@
+# TODO: write a lexer generator that takes this as input and generates lexer tables and token.h
+
+type TokenKind is option
+  # Basic lexical elements
+  #  Single character elements
+  TOKEN_AMP | TOKEN_L_PAREN | TOKEN_R_PAREN | TOKEN_PLUS | TOKEN_COMMA | TOKEN_SEMICOLON | TOKEN_BAR
+| TOKEN_SINGLE_QUOTE | TOKEN_MULT | TOKEN_MINUS | TOKEN_DOT | TOKEN_DIVIDE | TOKEN_COLON
+| TOKEN_LT | TOKEN_EQ | TOKEN_GT
+  #  Multi-character elements
+| TOKEN_NEQ | TOKEN_GTE | TOKEN_LTE | TOKEN_ARROW | TOKEN_DOUBLE_DOT | TOKEN_EXP | TOKEN_ASSIGN | TOKEN_L_LABEL_BRACKET
+| TOKEN_R_LABEL_BRACKET | TOKEN_BOX | TOKEN_NOT_IN | TOKEN_AND_THEN | TOKEN_OR_ELSE
+  # Identifier
+| TOKEN_IDENT
+  # Literals
+| TOKEN_NUM_LITERAL | TOKEN_CHAR_LITERAL | TOKEN_STRING_LITERAL
+  # End of file
+| TOKEN_EOF
+  # Error
+| TOKEN_ERROR;
+  # Reserved words
+| TOKEN_ABORT | TOKEN_ABS | TOKEN_ACCEPT | TOKEN_ACCESS | TOKEN_ALL | TOKEN_AND | TOKEN_ARRAY
+| TOKEN_AT | TOKEN_BEGIN | TOKEN_BODY | TOKEN_CASE | TOKEN_CONSTANT | TOKEN_DECLARE | TOKEN_DELAY
+| TOKEN_DELTA | TOKEN_DIGITS | TOKEN_DO | TOKEN_ELSE | TOKEN_ELSIF | TOKEN_END | TOKEN_ENTRY
+| TOKEN_EXCEPTION | TOKEN_EXIT | TOKEN_FOR | TOKEN_FUNCTION | TOKEN_GENERIC | TOKEN_GOTO | TOKEN_IF
+| TOKEN_IN | TOKEN_IS | TOKEN_LIMITED | TOKEN_LOOP | TOKEN_MOD | TOKEN_NEW | TOKEN_NOT | TOKEN_NULL
+| TOKEN_OF | TOKEN_OR | TOKEN_OTHERS | TOKEN_OUT | TOKEN_IN_OUT | TOKEN_PACKAGE | TOKEN_PRAGMA | TOKEN_PRIVATE
+| TOKEN_PROCEDURE | TOKEN_RAISE | TOKEN_RANGE | TOKEN_RECORD | TOKEN_REM | TOKEN_RENAMES | TOKEN_RETURN
+| TOKEN_REVERSE | TOKEN_SELECT | TOKEN_SEPARATE | TOKEN_SUBTYPE | TOKEN_TASK | TOKEN_TERMINATE
+| TOKEN_THEN | TOKEN_TYPE | TOKEN_USE | TOKEN_WHEN | TOKEN_WHILE | TOKEN_WITH | TOKEN_XOR;
+
+# Tokens used in skip_table
+subtype SkipTokens is TokenKind option TOKEN_EOF | TOKEN_MINUS;
+
+skip_table: StateTable[SkipTokens] = {
+  START: {
+    whitespace: START,
+    '-': MINUS_OR_COMMENT,
+    others: TOKEN_EOF
+  },
+  MINUS_OR_COMMENT: {
+    '-': COMMENT,
+    others: TOKEN_MINUS
+  },
+  COMMENT: {
+    '\n': START,
+    others: COMMENT
+  }
+};
+
+# Tokens used in table
+subtype StateTokens is TokenKind range TOKEN_AMP .. TOKEN_ERROR;
+
+table: StateTable[StateTokens] = {
+  START: {
+    # Single character tokens
+    '&': TOKEN_AMP,
+    '(': TOKEN_L_PAREN,
+    ')': TOKEN_R_PAREN,
+    '+': TOKEN_PLUS,
+    ',': TOKEN_COMMA,
+    ';': TOKEN_SEMICOLON,
+    '|': TOKEN_BAR,
+    '-': TOKEN_MINUS,
+    # Fixed-length, multi character tokens
+    '*': TIMES_OR_EXP,
+    '..': DOT_OR_DOUBLE_DOT,
+    '/': DIVIDE_OR_NEQ,
+    ':': COLON_OR_ASSIGN,
+    '<': LT_LTE_LB_BOX,
+    '=': EQ_OR_ARROW,
+    '>': GT_GTE_GB,
+    # Complex tokens
+    'a'..'z' | 'A'..'Z': IN_IDENTIFIER,
+    '"': IN_STRING_LITERAL,
+    '\'': IN_CHAR_LITERAL_1,
+    '0'..'9': IN_NUM_LIT,
+    # Else
+    others: TOKEN_ERROR
+  },
+  TIMES_OR_EXP: {
+    '*': TOKEN_EXP,
+    others: TOKEN_MULT
+  },
+  DOT_OR_DOUBLE_DOT: {
+      '.': TOKEN_DOUBLE_DOT,
+      others: TOKEN_DOT
+  },
+  DIVIDE_ORNEQ: {
+      '=': TOKEN_NEQ,
+      others: TOKEN_DIVIDE
+  },
+  COLON_OR_ASSIGN: {
+      '=': TOKEN_ASSIGN,
+      others: TOKEN_COLON
+  },
+  LT_LTE_LB_BOX: {
+      '=': TOKEN_LTE,
+      '<': TOKEN_L_LABEL_BRACKET,
+      '>': TOKEN_BOX,
+      others: TOKEN_LT
+  },
+  EQ_OR_ARROW: {
+      '>': TOKEN_ARROW,
+      others: TOKEN_EQ
+  },
+  GT_GTE_GB: {
+      '=': TOKEN_GTE,
+      '>': TOKEN_R_LABEL_BRACKET,
+      others: TOKEN_GT
+  },
+  IN_IDENTIFIER: {
+      'a'..'z' | 'A'..'Z' | '0'..'9': IN_IDENTIFIER,
+      '_': IN_IDENT_USCORE,
+      others: TOKEN_IDENT
+  },
+  # Ensures only 1 underscore in a row
+  IN_IDENT_USCORE: {
+      'a'..'z' | 'A'..'Z' | '0'..'9': IN_IDENTIFIER,
+      '_': TOKEN_ERROR,
+      others: TOKEN_IDENT
+  },
+  IN_CHAR_LITERAL_1: {
+      # TODO: restrict to graphic_characters
+      others: IN_CHAR_LITERAL_2
+  },
+  IN_CHAR_LITERAL_2: {
+      '\'': TOKEN_CHAR_LITERAL,
+      others: TOKEN_SINGLE_QUOTE
+  },
+  IN_STRING_LITERAL: {
+      # TODO: restrict to graphic_characters
+      '"': IN_D_QUOTE,
+      others: IN_STRING_LITERAL
+  },
+  IN_D_QUOTE: {
+      '"': IN_STRING_LITERAL, # Escapes ''
+      others: TOKEN_STRING_LITERAL
+  },
+  IN_NUM_LIT: {
+      '0'..'9': IN_NUM_LIT,
+      '_': IN_NUM_USCORE,
+      '#': IN_BASED_1,
+      '.': IN_DECIMAL_1,
+      'e' | 'E': IN_EXP_1,
+      others: TOKEN_NUM_LITERAL
+  },
+  # Only one underscore in a row permitted
+  IN_NUM_USCORE: {
+      '0'..'9': IN_NUM_LIT,
+      others: TOKEN_ERROR
+  },
+  IN_BASED_1: {
+      '0'..'9' | 'a'..'f' | 'A'..'F': IN_BASED_1,
+      '_': IN_BASED_USCORE,
+      # TODO: support based decimal literals
+      '#': IN_BASED_2,
+      others: TOKEN_ERROR
+  },
+  # Only one underscore in a row permitted
+  IN_BASED_USCORE: {
+      '0'..'9' | 'a'..'f' | 'A'..'F': IN_BASED_1,
+      others: TOKEN_ERROR
+  },
+  IN_BASED_2: {
+      'e' | 'E': IN_EXP_1,
+      others: TOKEN_NUM_LITERAL
+  },
+  IN_DECIMAL_1: {
+      '0'..'9': IN_DECIMAL_2, # Require at least 1 digit after '.'
+      others: TOKEN_ERROR
+  },
+  IN_DECIMAL_2: {
+      '0'..'9': IN_DECIMAL_2,
+      '_': IN_DEC_USCORE,
+      'e' | 'E': IN_EXP_1,
+      others: TOKEN_NUM_LITERAL
+  },
+  # Ensures only one underscore in a row permitted
+  IN_DEC_USCORE: {
+      '0'..'9': IN_DECIMAL_2,
+      others: TOKEN_ERROR
+  },
+  IN_EXP_1: {
+      '+' | '-': IN_EXP_2,
+      '0'..'9': IN_EXP_3,
+      # TODO: support underscores in exponents
+      others: TOKEN_ERROR
+  },
+  # Ensures at least 1 digit is after '+'/'-'
+  IN_EXP_2: {
+      '0'..'9': IN_EXP_3,
+      others: TOKEN_ERROR
+  },
+  IN_EXP_3: {
+      '0'..'9': IN_EXP_3,
+      others: TOKEN_NUM_LITERAL
+  }
+};

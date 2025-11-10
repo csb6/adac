@@ -20,3 +20,6 @@ add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/error.c 
 target_include_directories(adac PRIVATE .)
 target_compile_options(adac PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
 target_link_libraries(adac PRIVATE mini-gmp)
+
+add_custom_target(gen_lexer
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/gen_lexer_table.py > ${CMAKE_SOURCE_DIR}/src/lexer_table.c)

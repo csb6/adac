@@ -196,7 +196,6 @@ state_table = {
         "CLASS_DIGIT": "STATE_IN_EXP_3",
         "others": "TOKEN_NUM_LITERAL"
     }
-    # TODO: based literals
 }
 
 move_table = {
