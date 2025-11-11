@@ -32,10 +32,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 typedef struct {
     Declaration* first; // linked list of decls
     Declaration* last; // Pointer to last node of decls
-} Region;
+} DeclList;
 
 typedef struct {
-    Region region_stack[32];
+    DeclList region_stack[32];
     uint8_t curr_region_idx;
     const char* curr;
     const char* input_start;
@@ -55,7 +55,7 @@ static ParseContext ctx;
 static bool parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
 static bool parse_basic_declaration(Declaration* decl);
-static bool parse_object_declaration(ObjectDecl* decl, bool is_param);
+static bool parse_object_declaration(Declaration* decl, bool is_param);
 static bool parse_type_declaration(Declaration* decl);
 static bool parse_integer_type_definition(IntType* int_type);
 static bool parse_enum_type_definition(EnumType* enum_type);
@@ -86,6 +86,7 @@ static bool count_enum_literals(uint32_t* literal_count);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 static bool identifier_equal(const StringView* a, const StringView* b);
+static void append_decl(DeclList* decl_list, Declaration* decl);
 
 PackageSpec* parser_parse(const char* input_start, const char* input_end)
 {
@@ -161,8 +162,7 @@ bool parse_basic_declaration(Declaration* decl)
 {
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
-            decl->kind = DECL_OBJECT;
-            if(!parse_object_declaration(&decl->u.object, /*is_param*/false)) {
+            if(!parse_object_declaration(decl, /*is_param*/false)) {
                 return NULL;
             }
             break;
@@ -197,13 +197,15 @@ bool parse_basic_declaration(Declaration* decl)
 }
 
 static
-bool parse_object_declaration(ObjectDecl* decl, bool is_param)
+bool parse_object_declaration(Declaration* decl, bool is_param)
 {
+    decl->kind = DECL_OBJECT;
+    ObjectDecl* obj_decl = &decl->u.object;
     // TODO: support identifier_list
-    decl->name = ctx.token.text;
+    obj_decl->name = ctx.token.text;
     // TODO: print line number of previous definition
-    if(find_declaration_in_current_region(decl->name) != NULL) {
-        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(decl->name));
+    if(find_declaration_in_current_region(obj_decl->name) != NULL) {
+        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(obj_decl->name));
         return false;
     }
     next_token();
@@ -215,25 +217,25 @@ bool parse_object_declaration(ObjectDecl* decl, bool is_param)
     if(is_param) {
         switch(ctx.token.kind) {
             case TOKEN_IN:
-                decl->mode = PARAM_MODE_IN;
+                obj_decl->mode = PARAM_MODE_IN;
                 next_token();
                 break;
             case TOKEN_OUT:
-                decl->mode = PARAM_MODE_OUT;
+                obj_decl->mode = PARAM_MODE_OUT;
                 next_token();
                 break;
             case TOKEN_IN_OUT:
-                decl->mode = PARAM_MODE_IN_OUT;
+                obj_decl->mode = PARAM_MODE_IN_OUT;
                 next_token();
                 break;
             case TOKEN_ERROR:
                 return false;
             default:
                 // No mode specified means 'in' mode
-                decl->mode = PARAM_MODE_IN;
+                obj_decl->mode = PARAM_MODE_IN;
         }
     } else if(ctx.token.kind == TOKEN_CONSTANT) {
-        decl->is_constant = true;
+        obj_decl->is_constant = true;
         next_token();
     }
 
@@ -245,11 +247,11 @@ bool parse_object_declaration(ObjectDecl* decl, bool is_param)
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             return false;
         }
-        decl->type = type_decl;
+        obj_decl->type = type_decl;
         next_token();
-    } else if(decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
+    } else if(obj_decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
         // number_declaration
-        decl->type = &universal_int_type;
+        obj_decl->type = &universal_int_type;
     } else {
         print_unexpected_token_error(&ctx.token);
         return false;
@@ -257,8 +259,8 @@ bool parse_object_declaration(ObjectDecl* decl, bool is_param)
 
     if(ctx.token.kind == TOKEN_ASSIGN) {
         next_token();
-        decl->init_expr = parse_expression();
-        if(!decl->init_expr) {
+        obj_decl->init_expr = parse_expression();
+        if(!obj_decl->init_expr) {
             return false;
         }
     }
@@ -457,17 +459,11 @@ static
 bool parse_parameters(Declaration** params)
 {
     next_token(); // Skip '('
-    Declaration* last_param = NULL;
+    DeclList decl_list = {0};
     while(ctx.token.kind != TOKEN_R_PAREN) {
         // TODO: push object decls to symbol stack
-        if(last_param == NULL) {
-            *params = calloc(1, sizeof(Declaration));
-            last_param = *params;
-        } else {
-            last_param->next = calloc(1, sizeof(Declaration));
-            last_param = last_param->next;
-        }
-        if(!parse_object_declaration(&last_param->u.object, /*is_param*/true)) {
+        Declaration* param = calloc(1, sizeof(Declaration));
+        if(!parse_object_declaration(param, /*is_param*/true)) {
             return false;
         }
         if(ctx.token.kind != TOKEN_R_PAREN) {
@@ -476,7 +472,9 @@ bool parse_parameters(Declaration** params)
             }
             next_token();
         }
+        append_decl(&decl_list, param);
     }
+    *params = decl_list.first;
     next_token(); // Skip ')'
     return true;
 }
@@ -761,13 +759,7 @@ void end_region(void)
 static
 void push_declaration(Declaration* decl)
 {
-    Region* region = &curr_region(ctx);
-    if(region->last) {
-        region->last->next = decl;
-    } else {
-        region->first = decl;
-    }
-    region->last = decl;
+    append_decl(&curr_region(ctx), decl);
 }
 
 // TODO: intern strings to make this faster
@@ -786,10 +778,21 @@ bool identifier_equal(const StringView* a, const StringView* b)
 }
 
 static
+void append_decl(DeclList* decl_list, Declaration* decl)
+{
+    if(decl_list->last) {
+        decl_list->last->next = decl;
+    } else {
+        decl_list->first = decl;
+    }
+    decl_list->last = decl;
+}
+
+static
 TypeDecl* find_visible_type_declaration(StringView name)
 {
     for(int stack_idx = ctx.curr_region_idx; stack_idx >= 0; --stack_idx) {
-        Region* region = &ctx.region_stack[stack_idx];
+        DeclList* region = &ctx.region_stack[stack_idx];
         for(Declaration* decl = region->first; decl != NULL; decl = decl->next) {
             if(decl->kind == DECL_TYPE && identifier_equal(&decl->u.type.name, &name)) {
                 return &decl->u.type;
@@ -802,7 +805,7 @@ TypeDecl* find_visible_type_declaration(StringView name)
 static
 Declaration* find_declaration_in_current_region(StringView name)
 {
-    Region* region = &ctx.region_stack[ctx.curr_region_idx];
+    DeclList* region = &ctx.region_stack[ctx.curr_region_idx];
     for(Declaration* decl = region->first; decl != NULL; decl = decl->next) {
         switch(decl->kind) {
             case DECL_TYPE:
