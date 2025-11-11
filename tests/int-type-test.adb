@@ -35,6 +35,14 @@ package IntTypeTest is
     function binary_function(a : CharType; b : Boolean := False) return Boolean;
     function modes(a : in CharType; b : in out CharType; c : out Boolean) return Boolean;
 
+    function "+"(a : BigInteger) return BigInteger;
     function "+"(a : BigInteger; b : BigInteger) return BigInteger;
+    -- function "+"(a : BigInteger; b : BigInteger; c : BigInteger) return BigInteger;
+    function "="(a : BigInteger; b : BigInteger) return Boolean;
+    -- function "="(a : BigInteger) return Boolean;
+    -- function "="(a : BigInteger; b : BigInteger; c : BigInteger) return Boolean;
+    function "abs"(a : BigInteger) return BigInteger;
+    -- function "abs"(a : BigInteger; b : BigInteger) return BigInteger;
+    function "mod"(a : BigInteger; b : BigInteger) return Boolean;
     -- procedure "+"(a : BigInteger; b : BigInteger);
 end inttypetest;

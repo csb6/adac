@@ -78,6 +78,10 @@ static TypeDecl* find_visible_type_declaration(StringView name);
 #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 static void next_token(void);
 static bool expect_token(TokenKind kind);
+static bool is_binary_op(TokenKind token);
+static bool is_unary_op(TokenKind token);
+static bool is_overloadable_op(TokenKind token);
+static bool check_op_arity(const Declaration* params, const Token* op_token);
 static bool count_enum_literals(uint32_t* literal_count);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
@@ -401,12 +405,17 @@ bool parse_subprogram_declaration(Declaration* decl)
     decl->kind = (ctx.token.kind == TOKEN_FUNCTION) ? DECL_FUNCTION : DECL_PROCEDURE;
     next_token();
 
+    Token op_token = {0};
     if(ctx.token.kind == TOKEN_STRING_LITERAL) {
         if(decl->kind != DECL_FUNCTION) {
             print_parse_error("Overloaded operators must be functions");
             return false;
         }
-        // TODO: if string literal, check that it is one of the overloadable operators
+        const char* token_end = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.token.text.value, &op_token);
+        if(token_end != ctx.token.text.value + ctx.token.text.len || !is_overloadable_op(op_token.kind)) {
+            print_parse_error("'%.*s' is not an overloadable operator", SV(ctx.token.text));
+            return false;
+        }
         decl->u.subprogram.is_operator = true;
     } else if(!expect_token(TOKEN_IDENT)) {
         return false;
@@ -419,6 +428,10 @@ bool parse_subprogram_declaration(Declaration* decl)
         if(!parse_parameters(&decl->u.subprogram.params)) {
             return false;
         }
+    }
+
+    if(decl->u.subprogram.is_operator && !check_op_arity(decl->u.subprogram.params, &op_token)) {
+        return false;
     }
 
     if(decl->kind == DECL_FUNCTION) {
@@ -468,45 +481,47 @@ bool parse_parameters(Declaration** params)
     return true;
 }
 
+typedef uint8_t OperatorFlags;
 enum {
     UNARY = 1,
-    BINARY = 1 << 1
+    BINARY = 1 << 1,
+    OVERLOADABLE = 1 << 2,
 };
 
 static const struct {
-    uint8_t kind; // Default of 0 means token is not an operator
+    OperatorFlags flags; // Default of 0 means token is not an operator
     // upper 3 bits: UnaryOperator (if any)
     // lower 5 bits: BinaryOperator (if any)
     uint8_t ops;
 } op_token_info[TOKEN_NUM_TOKEN_KINDS] = {
     // Logical operators
-    [TOKEN_AND]      = {BINARY, OP_AND},
+    [TOKEN_AND]      = {BINARY | OVERLOADABLE, OP_AND},
     [TOKEN_AND_THEN] = {BINARY, OP_AND_THEN},
-    [TOKEN_OR]       = {BINARY, OP_OR},
+    [TOKEN_OR]       = {BINARY | OVERLOADABLE, OP_OR},
     [TOKEN_OR_ELSE]  = {BINARY, OP_OR_ELSE},
-    [TOKEN_XOR]      = {BINARY, OP_XOR},
+    [TOKEN_XOR]      = {BINARY | OVERLOADABLE, OP_XOR},
     // Relational operators
-    [TOKEN_EQ]       = {BINARY, OP_EQ},
+    [TOKEN_EQ]       = {BINARY | OVERLOADABLE, OP_EQ},
     [TOKEN_NEQ]      = {BINARY, OP_NEQ},
-    [TOKEN_LT]       = {BINARY, OP_LT},
-    [TOKEN_LTE]      = {BINARY, OP_LTE},
-    [TOKEN_GT]       = {BINARY, OP_GT},
-    [TOKEN_GTE]      = {BINARY, OP_GTE},
+    [TOKEN_LT]       = {BINARY | OVERLOADABLE, OP_LT},
+    [TOKEN_LTE]      = {BINARY | OVERLOADABLE, OP_LTE},
+    [TOKEN_GT]       = {BINARY | OVERLOADABLE, OP_GT},
+    [TOKEN_GTE]      = {BINARY | OVERLOADABLE, OP_GTE},
     [TOKEN_IN]       = {BINARY, OP_IN},
     [TOKEN_NOT_IN]   = {BINARY, OP_NOT_IN},
     // Binary adding operators
-    [TOKEN_PLUS]     = {BINARY | UNARY, (OP_UNARY_PLUS << 5) | OP_PLUS},
-    [TOKEN_MINUS]    = {BINARY | UNARY, (OP_UNARY_MINUS << 5) | OP_MINUS},
-    [TOKEN_AMP]      = {BINARY, OP_AMP},
+    [TOKEN_PLUS]     = {BINARY | UNARY | OVERLOADABLE, (OP_UNARY_PLUS << 5) | OP_PLUS},
+    [TOKEN_MINUS]    = {BINARY | UNARY | OVERLOADABLE, (OP_UNARY_MINUS << 5) | OP_MINUS},
+    [TOKEN_AMP]      = {BINARY | OVERLOADABLE, OP_AMP},
     // Multiplying operators
-    [TOKEN_MULT]     = {BINARY, OP_MULT},
-    [TOKEN_DIVIDE]   = {BINARY, OP_DIVIDE},
-    [TOKEN_MOD]      = {BINARY, OP_MOD},
-    [TOKEN_REM]      = {BINARY, OP_REM},
+    [TOKEN_MULT]     = {BINARY | OVERLOADABLE, OP_MULT},
+    [TOKEN_DIVIDE]   = {BINARY | OVERLOADABLE, OP_DIVIDE},
+    [TOKEN_MOD]      = {BINARY | OVERLOADABLE, OP_MOD},
+    [TOKEN_REM]      = {BINARY | OVERLOADABLE, OP_REM},
     // Highest precedence operator
-    [TOKEN_EXP]      = {BINARY, OP_EXP},
-    [TOKEN_NOT]      = {UNARY, OP_NOT << 5},
-    [TOKEN_ABS]      = {UNARY, OP_ABS << 5},
+    [TOKEN_EXP]      = {BINARY | OVERLOADABLE, OP_EXP},
+    [TOKEN_NOT]      = {UNARY | OVERLOADABLE, OP_NOT << 5},
+    [TOKEN_ABS]      = {UNARY | OVERLOADABLE, OP_ABS << 5},
 };
 // BinaryOperator no longer fits in 5 bits; update precedence table layout
 STATIC_ASSERT(BINARY_OP_COUNT < 32);
@@ -554,13 +569,40 @@ static const uint8_t binary_prec[BINARY_OP_COUNT] = {
 static
 bool is_binary_op(TokenKind token)
 {
-    return token < cnt_of_array(op_token_info) && (op_token_info[token].kind & BINARY);
+    return token < cnt_of_array(op_token_info) && (op_token_info[token].flags & BINARY);
 }
 
 static
 bool is_unary_op(TokenKind token)
 {
-    return token < cnt_of_array(op_token_info) && (op_token_info[token].kind & UNARY);
+    return token < cnt_of_array(op_token_info) && (op_token_info[token].flags & UNARY);
+}
+
+static
+bool is_overloadable_op(TokenKind token)
+{
+    return token < cnt_of_array(op_token_info) && (op_token_info[token].flags & OVERLOADABLE);
+}
+
+// Assumes op_token->kind is either an unary or binary operator
+static
+bool check_op_arity(const Declaration* params, const Token* op_token)
+{
+    if(is_unary_op(op_token->kind)) {
+        if(is_binary_op(op_token->kind)) {
+            if(!params || (params->next && params->next->next)) {
+                print_parse_error("Overloaded operator '%.*s' must be an unary or binary function", SV(op_token->text));
+                return false;
+            }
+        } else if(!params || params->next) {
+            print_parse_error("Overloaded operator '%.*s' must be an unary function", SV(op_token->text));
+            return false;
+        }
+    } else if(!params || !params->next || params->next->next) {
+        print_parse_error("Overloaded operator '%.*s' must be a binary function", SV(op_token->text));
+        return false;
+    }
+    return true;
 }
 
 #define binary_op(token) (op_token_info[token].ops & 0x1F) // Bottom 5 bits
