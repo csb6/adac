@@ -496,23 +496,23 @@ static const struct {
 } op_token_info[TOKEN_NUM_TOKEN_KINDS] = {
     // Logical operators
     [TOKEN_AND]      = {BINARY | OVERLOADABLE, OP_AND},
-    [TOKEN_AND_THEN] = {BINARY, OP_AND_THEN},
+    [TOKEN_AND_THEN] = {BINARY,                OP_AND_THEN},
     [TOKEN_OR]       = {BINARY | OVERLOADABLE, OP_OR},
-    [TOKEN_OR_ELSE]  = {BINARY, OP_OR_ELSE},
+    [TOKEN_OR_ELSE]  = {BINARY,                OP_OR_ELSE},
     [TOKEN_XOR]      = {BINARY | OVERLOADABLE, OP_XOR},
     // Relational operators
     [TOKEN_EQ]       = {BINARY | OVERLOADABLE, OP_EQ},
-    [TOKEN_NEQ]      = {BINARY, OP_NEQ},
+    [TOKEN_NEQ]      = {BINARY,                OP_NEQ},
     [TOKEN_LT]       = {BINARY | OVERLOADABLE, OP_LT},
     [TOKEN_LTE]      = {BINARY | OVERLOADABLE, OP_LTE},
     [TOKEN_GT]       = {BINARY | OVERLOADABLE, OP_GT},
     [TOKEN_GTE]      = {BINARY | OVERLOADABLE, OP_GTE},
-    [TOKEN_IN]       = {BINARY, OP_IN},
-    [TOKEN_NOT_IN]   = {BINARY, OP_NOT_IN},
+    [TOKEN_IN]       = {BINARY,                OP_IN},
+    [TOKEN_NOT_IN]   = {BINARY,                OP_NOT_IN},
     // Binary adding operators
     [TOKEN_PLUS]     = {BINARY | UNARY | OVERLOADABLE, (OP_UNARY_PLUS << 5) | OP_PLUS},
     [TOKEN_MINUS]    = {BINARY | UNARY | OVERLOADABLE, (OP_UNARY_MINUS << 5) | OP_MINUS},
-    [TOKEN_AMP]      = {BINARY | OVERLOADABLE, OP_AMP},
+    [TOKEN_AMP]      = {BINARY | OVERLOADABLE,         OP_AMP},
     // Multiplying operators
     [TOKEN_MULT]     = {BINARY | OVERLOADABLE, OP_MULT},
     [TOKEN_DIVIDE]   = {BINARY | OVERLOADABLE, OP_DIVIDE},
@@ -520,8 +520,8 @@ static const struct {
     [TOKEN_REM]      = {BINARY | OVERLOADABLE, OP_REM},
     // Highest precedence operator
     [TOKEN_EXP]      = {BINARY | OVERLOADABLE, OP_EXP},
-    [TOKEN_NOT]      = {UNARY | OVERLOADABLE, OP_NOT << 5},
-    [TOKEN_ABS]      = {UNARY | OVERLOADABLE, OP_ABS << 5},
+    [TOKEN_NOT]      = {UNARY | OVERLOADABLE,  OP_NOT << 5},
+    [TOKEN_ABS]      = {UNARY | OVERLOADABLE,  OP_ABS << 5},
 };
 // BinaryOperator no longer fits in 5 bits; update precedence table layout
 STATIC_ASSERT(BINARY_OP_COUNT < 32);
