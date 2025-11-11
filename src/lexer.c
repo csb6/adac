@@ -114,19 +114,12 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 token->text.len = curr - token_start;
                 break;
             }
-            case TOKEN_NUM_LITERAL:
-                token->text.value = token_start;
-                token->text.len = curr - token_start;
-                break;
             case TOKEN_SINGLE_QUOTE:
                 token->text.value = token_start;
                 token->text.len = 1;
                 curr = token_start + 1;
                 break;
             case TOKEN_CHAR_LITERAL:
-                token->text.value = token_start + 1;
-                token->text.len = 1;
-                break;
             case TOKEN_STRING_LITERAL:
                 token->text.value = token_start + 1;
                 token->text.len = curr - token_start - 2;
