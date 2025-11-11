@@ -16,7 +16,7 @@ type TokenKind is option
   # End of file
 | TOKEN_EOF
   # Error
-| TOKEN_ERROR;
+| TOKEN_ERROR
   # Reserved words
 | TOKEN_ABORT | TOKEN_ABS | TOKEN_ACCEPT | TOKEN_ACCESS | TOKEN_ALL | TOKEN_AND | TOKEN_ARRAY
 | TOKEN_AT | TOKEN_BEGIN | TOKEN_BODY | TOKEN_CASE | TOKEN_CONSTANT | TOKEN_DECLARE | TOKEN_DELAY
@@ -63,7 +63,7 @@ table: StateTable[StateTokens] = {
     '-': TOKEN_MINUS,
     # Fixed-length, multi character tokens
     '*': TIMES_OR_EXP,
-    '..': DOT_OR_DOUBLE_DOT,
+    '.': DOT_OR_DOUBLE_DOT,
     '/': DIVIDE_OR_NEQ,
     ':': COLON_OR_ASSIGN,
     '<': LT_LTE_LB_BOX,
@@ -85,7 +85,7 @@ table: StateTable[StateTokens] = {
       '.': TOKEN_DOUBLE_DOT,
       others: TOKEN_DOT
   },
-  DIVIDE_ORNEQ: {
+  DIVIDE_OR_NEQ: {
       '=': TOKEN_NEQ,
       others: TOKEN_DIVIDE
   },
