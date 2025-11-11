@@ -673,7 +673,7 @@ Expression* parse_numeric_literal(void)
             }
         }
         if(base < 1 || base > 16) {
-            print_parse_error("Numeric literal has invalid base Bases must be in range [1, 16)");
+            print_parse_error("Numeric literal has invalid base (%d). Bases must be in range [1, 16]", base);
             return NULL;
         }
     }
