@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ADA_ERROR_H
 
 void error_set_source_file_path(const char* path);
-int error_get_return_status(void);
 void error_print(const char* text_start, const char* curr, const char* message, ...);
 
 #endif /* ADA_ERROR_H */

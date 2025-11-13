@@ -20,17 +20,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdarg.h>
 
-static int error_status = 0;
 static const char* source_file_path = NULL;
 
 void error_set_source_file_path(const char* path)
 {
     source_file_path = path;
-}
-
-int error_get_return_status(void)
-{
-    return error_status;
 }
 
 void error_print(const char* text_start, const char* curr, const char* message, ...)
@@ -51,5 +45,4 @@ void error_print(const char* text_start, const char* curr, const char* message, 
     vfprintf(stderr, message, args);
     fputc('\n', stderr);
     va_end(args);
-    error_status = 1;
 }

@@ -83,5 +83,5 @@ int main(int argc, char** argv)
     }
     close(fd);
 
-    return error_get_return_status();
+    return 0;
 }

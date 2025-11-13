@@ -52,22 +52,22 @@ TypeDecl universal_int_type = {
 static ParseContext ctx;
 
 /* PACKAGE */
-static bool parse_package_spec(PackageSpec* package_spec);
+static void parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
-static bool parse_basic_declaration(Declaration* decl);
-static bool parse_object_declaration(Declaration* decl, bool is_param);
-static bool parse_type_declaration(Declaration* decl);
-static bool parse_integer_type_definition(IntType* int_type);
-static bool parse_enum_type_definition(EnumType* enum_type);
-static bool parse_subprogram_declaration(Declaration* decl);
-static bool parse_parameters(Declaration** params);
+static void parse_basic_declaration(Declaration* decl);
+static void parse_object_declaration(Declaration* decl, bool is_param);
+static void parse_type_declaration(Declaration* decl);
+static void parse_integer_type_definition(IntType* int_type);
+static void parse_enum_type_definition(EnumType* enum_type);
+static void parse_subprogram_declaration(Declaration* decl);
+static void parse_parameters(Declaration** params);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
 static Expression* parse_primary_expression(void);
 static Expression* parse_numeric_literal(void);
 /* VISIBILITY */
-static bool begin_region(void);
+static void begin_region(void);
 static void end_region(void);
 static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
@@ -77,12 +77,12 @@ static TypeDecl* find_visible_type_declaration(StringView name);
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
 #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 static void next_token(void);
-static bool expect_token(TokenKind kind);
+static void expect_token(TokenKind kind);
 static bool is_binary_op(TokenKind token);
 static bool is_unary_op(TokenKind token);
 static bool is_overloadable_op(TokenKind token);
-static bool check_op_arity(const Declaration* params, const Token* op_token);
-static bool count_enum_literals(uint32_t* literal_count);
+static void check_op_arity(const Declaration* params, const Token* op_token);
+static uint32_t count_enum_literals(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 static bool identifier_equal(const StringView* a, const StringView* b);
@@ -97,107 +97,80 @@ PackageSpec* parser_parse(const char* input_start, const char* input_end)
     ctx.input_end = input_end;
 
     next_token();
-    if(!parse_package_spec(package_spec)) {
-        return NULL;
-    }
+    parse_package_spec(package_spec);
     return package_spec;
 }
 
 static
-bool parse_package_spec(PackageSpec* package_spec)
+void parse_package_spec(PackageSpec* package_spec)
 {
-    if(!expect_token(TOKEN_PACKAGE)) {
-        return false;
-    }
+    expect_token(TOKEN_PACKAGE);
     next_token();
 
-    if(!expect_token(TOKEN_IDENT)) {
-        return false;
-    }
+    expect_token(TOKEN_IDENT);
     package_spec->name = ctx.token.text;
     next_token();
 
-    if(!expect_token(TOKEN_IS)) {
-        return false;
-    }
+    expect_token(TOKEN_IS);
     next_token();
 
     begin_region();
     while(ctx.token.kind != TOKEN_END) {
-        switch(ctx.token.kind) {
-            case TOKEN_ERROR:
-                return false;
-            default: {
-                Declaration* decl = calloc(1, sizeof(Declaration));
-                // TODO: parse representation_clause/use_clause here too
-                if(!parse_basic_declaration(decl)) {
-                    return false;
-                }
-            }
-        }
+        Declaration* decl = calloc(1, sizeof(Declaration));
+        // TODO: parse representation_clause/use_clause here too
+        parse_basic_declaration(decl);
     }
     next_token(); // Skip 'end'
 
     if(ctx.token.kind == TOKEN_IDENT) {
         if(!identifier_equal(&package_spec->name, &ctx.token.text)) {
             print_parse_error("Closing identifier does not match package specification name (%.*s)", SV(package_spec->name));
-            return false;
+            exit(1);
         }
         next_token();
     }
 
-    if(!expect_token(TOKEN_SEMICOLON)) {
-        return false;
-    }
+    expect_token(TOKEN_SEMICOLON);
     next_token();
 
     package_spec->decls = curr_region(ctx).first;
     end_region();
 
-    return expect_token(TOKEN_EOF);
+    expect_token(TOKEN_EOF);
 }
 
 static
-bool parse_basic_declaration(Declaration* decl)
+void parse_basic_declaration(Declaration* decl)
 {
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
-            if(!parse_object_declaration(decl, /*is_param*/false)) {
-                return NULL;
-            }
+            parse_object_declaration(decl, /*is_param*/false);
             break;
         case TOKEN_TYPE:
         case TOKEN_SUBTYPE:
             // TODO: incomplete and private type declarations
-            if(!parse_type_declaration(decl)) {
-                return NULL;
-            }
+            parse_type_declaration(decl);
             break;
         case TOKEN_PROCEDURE:
         case TOKEN_FUNCTION:
-            if(!parse_subprogram_declaration(decl)) {
-                return NULL;
-            }
+            parse_subprogram_declaration(decl);
             break;
-        case TOKEN_ERROR:
-            return NULL;
         default:
-            print_unexpected_token_error(&ctx.token);
-            return NULL;
+            print_unexpected_token_error(&ctx.token); /* fall through */
+        case TOKEN_ERROR:
+            exit(1);
     }
-    if(!expect_token(TOKEN_SEMICOLON)) {
-        return NULL;
-    }
+    expect_token(TOKEN_SEMICOLON);
     next_token();
+
     // TODO: recursive functions need their declaration pushed before body is done being defined.
     //   Most other declarations cannot be self-referential and so should not push their names until
     //   the declaration is done being parsed.
     push_declaration(decl);
-    return decl;
 }
 
 static
-bool parse_object_declaration(Declaration* decl, bool is_param)
+void parse_object_declaration(Declaration* decl, bool is_param)
 {
     decl->kind = DECL_OBJECT;
     ObjectDecl* obj_decl = &decl->u.object;
@@ -206,12 +179,11 @@ bool parse_object_declaration(Declaration* decl, bool is_param)
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(obj_decl->name) != NULL) {
         print_parse_error("Redefinition of '%.*s' within same declarative region", SV(obj_decl->name));
-        return false;
+        exit(1);
     }
     next_token();
-    if(!expect_token(TOKEN_COLON)) {
-        return false;
-    }
+
+    expect_token(TOKEN_COLON);
     next_token();
 
     if(is_param) {
@@ -229,7 +201,7 @@ bool parse_object_declaration(Declaration* decl, bool is_param)
                 next_token();
                 break;
             case TOKEN_ERROR:
-                return false;
+                exit(1);
             default:
                 // No mode specified means 'in' mode
                 obj_decl->mode = PARAM_MODE_IN;
@@ -245,7 +217,7 @@ bool parse_object_declaration(Declaration* decl, bool is_param)
         TypeDecl* type_decl = find_visible_type_declaration(ctx.token.text);
         if(!type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
-            return false;
+            exit(1);
         }
         obj_decl->type = type_decl;
         next_token();
@@ -254,51 +226,43 @@ bool parse_object_declaration(Declaration* decl, bool is_param)
         obj_decl->type = &universal_int_type;
     } else {
         print_unexpected_token_error(&ctx.token);
-        return false;
+        exit(1);
     }
 
     if(ctx.token.kind == TOKEN_ASSIGN) {
         next_token();
         obj_decl->init_expr = parse_expression();
-        if(!obj_decl->init_expr) {
-            return false;
-        }
     }
-
-    return true;
 }
 
 static
-bool parse_type_declaration(Declaration* decl)
+void parse_type_declaration(Declaration* decl)
 {
     decl->kind = DECL_TYPE;
     TypeDecl* type_decl = &decl->u.type;
     bool is_subtype = ctx.token.kind == TOKEN_SUBTYPE;
     next_token(); // Skip 'type'/'subtype' keyword
-    if(!expect_token(TOKEN_IDENT)) {
-        return false;
-    }
+
+    expect_token(TOKEN_IDENT);
     type_decl->name = ctx.token.text;
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(type_decl->name) != NULL) {
         print_parse_error("Redefinition of '%.*s' within same declarative region", SV(type_decl->name));
-        return false;
+        exit(1);
     }
     next_token();
+
     // TODO: discriminant_part
-    if(!expect_token(TOKEN_IS)) {
-        return false;
-    }
+    expect_token(TOKEN_IS);
     next_token();
+
     if(is_subtype) {
         // TODO: properly parse this as a subtype_indication
-        if(!expect_token(TOKEN_IDENT)) {
-            return false;
-        }
+        expect_token(TOKEN_IDENT);
         TypeDecl* base_type_decl = find_visible_type_declaration(ctx.token.text);
         if(!base_type_decl) {
             print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
-            return false;
+            exit(1);
         }
         type_decl->kind = TYPE_SUBTYPE;
         type_decl->u.subtype.base = base_type_decl;
@@ -307,68 +271,50 @@ bool parse_type_declaration(Declaration* decl)
         switch(ctx.token.kind) {
             case TOKEN_RANGE:
                 type_decl->kind = TYPE_INTEGER;
-                if(!parse_integer_type_definition(&type_decl->u.int_)) {
-                    return false;
-                }
+                parse_integer_type_definition(&type_decl->u.int_);
                 break;
             case TOKEN_L_PAREN:
                 type_decl->kind = TYPE_ENUM;
-                if(!parse_enum_type_definition(&type_decl->u.enum_)) {
-                    return false;
-                }
+                parse_enum_type_definition(&type_decl->u.enum_);
                 break;
             case TOKEN_NEW:
                 next_token();
                 // TODO: properly parse this as a subtype_indication
-                if(!expect_token(TOKEN_IDENT)) {
-                    return false;
-                }
+                expect_token(TOKEN_IDENT);
                 TypeDecl* base_type_decl = find_visible_type_declaration(ctx.token.text);
                 if(!base_type_decl) {
                     print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
-                    return false;
+                    exit(1);
                 }
                 type_decl->kind = TYPE_DERIVED;
                 type_decl->u.subtype.base = base_type_decl;
                 next_token();
                 break;
-            case TOKEN_ERROR:
-                return false;
             default:
-                print_unexpected_token_error(&ctx.token);
-                return false;
+                print_unexpected_token_error(&ctx.token); /* fall through */
+            case TOKEN_ERROR:
+                exit(1);
         }
     }
-
-    return true;
 }
 
 static
-bool parse_integer_type_definition(IntType* int_type)
+void parse_integer_type_definition(IntType* int_type)
 {
     next_token(); // Skip 'range' keyword
     int_type->range.lower_bound = parse_expression();
-    if(!int_type->range.lower_bound) {
-        return false;
-    }
 
-    if(!expect_token(TOKEN_DOUBLE_DOT)) {
-        return false;
-    }
+    expect_token(TOKEN_DOUBLE_DOT);
     next_token();
 
     int_type->range.upper_bound = parse_expression();
-    return int_type->range.upper_bound != NULL;
 }
 
 static
-bool parse_enum_type_definition(EnumType* enum_type)
+void parse_enum_type_definition(EnumType* enum_type)
 {
     next_token(); // Skip '('
-    uint32_t literal_count = 0;
-    if(!count_enum_literals(&literal_count)) {
-        return false;
-    }
+    uint32_t literal_count = count_enum_literals();
     enum_type->literal_count = literal_count;
     enum_type->literals = calloc(literal_count, sizeof(Expression));
     for(uint32_t i = 0; i < literal_count; ++i) {
@@ -384,25 +330,20 @@ bool parse_enum_type_definition(EnumType* enum_type)
             default:
                 // Should be unreachable since count_enum_literals() succeeded
                 print_unexpected_token_error(&ctx.token);
-                return false;
+                exit(1);
         }
         next_token();
-        if(i + 1 < literal_count) {
-            if(!expect_token(TOKEN_COMMA)) {
-                return false;
-            }
+        if(i < literal_count - 1) {
+            expect_token(TOKEN_COMMA);
             next_token();
         }
     }
-    if(!expect_token(TOKEN_R_PAREN)) {
-        return false;
-    }
+    expect_token(TOKEN_R_PAREN);
     next_token();
-    return true;
 }
 
 static
-bool parse_subprogram_declaration(Declaration* decl)
+void parse_subprogram_declaration(Declaration* decl)
 {
     decl->kind = (ctx.token.kind == TOKEN_FUNCTION) ? DECL_FUNCTION : DECL_PROCEDURE;
     next_token();
@@ -411,16 +352,16 @@ bool parse_subprogram_declaration(Declaration* decl)
     if(ctx.token.kind == TOKEN_STRING_LITERAL) {
         if(decl->kind != DECL_FUNCTION) {
             print_parse_error("Overloaded operators must be functions");
-            return false;
+            exit(1);
         }
         const char* token_end = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.token.text.value, &op_token);
         if(token_end != ctx.token.text.value + ctx.token.text.len || !is_overloadable_op(op_token.kind)) {
             print_parse_error("'%.*s' is not an overloadable operator", SV(ctx.token.text));
-            return false;
+            exit(1);
         }
         decl->u.subprogram.is_operator = true;
-    } else if(!expect_token(TOKEN_IDENT)) {
-        return false;
+    } else {
+        expect_token(TOKEN_IDENT);
     }
     // TODO: check if is an overload, if so if it is permissable
     decl->u.subprogram.name = ctx.token.text;
@@ -433,55 +374,44 @@ bool parse_subprogram_declaration(Declaration* decl)
     //  function name, then push to outer scope?)
     push_declaration(decl);
     if(ctx.token.kind == TOKEN_L_PAREN) {
-        if(!parse_parameters(&decl->u.subprogram.params)) {
-            return false;
-        }
+        parse_parameters(&decl->u.subprogram.params);
     }
 
-    if(decl->u.subprogram.is_operator && !check_op_arity(decl->u.subprogram.params, &op_token)) {
-        return false;
+    if(decl->u.subprogram.is_operator) {
+        check_op_arity(decl->u.subprogram.params, &op_token);
     }
 
     if(decl->kind == DECL_FUNCTION) {
-        if(!expect_token(TOKEN_RETURN)) {
-            return false;
-        }
+        expect_token(TOKEN_RETURN);
         next_token();
         // TODO: properly parse type_mark
         TypeDecl* return_type_decl = find_visible_type_declaration(ctx.token.text);
         if(!return_type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
-            return false;
+            exit(1);
         }
         decl->u.subprogram.return_type = return_type_decl;
         next_token();
     }
     end_region();
-
-    return true;
 }
 
 static
-bool parse_parameters(Declaration** params)
+void parse_parameters(Declaration** params)
 {
     next_token(); // Skip '('
     DeclList decl_list = {0};
     while(ctx.token.kind != TOKEN_R_PAREN) {
         Declaration* param = calloc(1, sizeof(Declaration));
-        if(!parse_object_declaration(param, /*is_param*/true)) {
-            return false;
-        }
+        parse_object_declaration(param, /*is_param*/true);
         if(ctx.token.kind != TOKEN_R_PAREN) {
-            if(!expect_token(TOKEN_SEMICOLON)) {
-                return false;
-            }
+            expect_token(TOKEN_SEMICOLON);
             next_token();
         }
         append_decl(&decl_list, param);
         *params = decl_list.first;
     }
     next_token(); // Skip ')'
-    return true;
 }
 
 typedef uint8_t OperatorFlags;
@@ -589,23 +519,22 @@ bool is_overloadable_op(TokenKind token)
 
 // Assumes op_token->kind is either an unary or binary operator
 static
-bool check_op_arity(const Declaration* params, const Token* op_token)
+void check_op_arity(const Declaration* params, const Token* op_token)
 {
     if(is_unary_op(op_token->kind)) {
         if(is_binary_op(op_token->kind)) {
             if(!params || (params->next && params->next->next)) {
                 print_parse_error("Overloaded operator '%.*s' must be an unary or binary function", SV(op_token->text));
-                return false;
+                exit(1);
             }
         } else if(!params || params->next) {
             print_parse_error("Overloaded operator '%.*s' must be an unary function", SV(op_token->text));
-            return false;
+            exit(1);
         }
     } else if(!params || !params->next || params->next->next) {
         print_parse_error("Overloaded operator '%.*s' must be a binary function", SV(op_token->text));
-        return false;
+        exit(1);
     }
-    return true;
 }
 
 #define binary_op(token) (op_token_info[token].ops & 0x1F) // Bottom 5 bits
@@ -621,16 +550,10 @@ static
 Expression* parse_expression_1(uint8_t min_precedence)
 {
     Expression* left = parse_primary_expression();
-    if(!left) {
-        return NULL;
-    }
     while(is_binary_op(ctx.token.kind) && binary_prec[binary_op(ctx.token.kind)] >= min_precedence) {
         BinaryOperator op = binary_op(ctx.token.kind);
         next_token();
         Expression* right = parse_expression_1(binary_prec[op] + 1);
-        if(!right) {
-            return NULL;
-        }
         Expression* expr = calloc(1, sizeof(Expression));
         expr->kind = EXPR_BINARY;
         expr->u.binary.left = left;
@@ -670,16 +593,11 @@ Expression* parse_primary_expression(void)
         case TOKEN_L_PAREN:
             next_token();
             expr = parse_expression();
-            if(expr) {
-                if(!expect_token(TOKEN_R_PAREN)) {
-                    expr = NULL;
-                } else {
-                    next_token(); // Skip ')'
-                }
-            }
+            expect_token(TOKEN_R_PAREN);
+            next_token();
             break;
         case TOKEN_ERROR:
-            break;
+            exit(1);
         default:
             if(is_unary_op(ctx.token.kind)) {
                 UnaryOperator op = unary_op(ctx.token.kind);
@@ -693,6 +611,7 @@ Expression* parse_primary_expression(void)
                 }
             } else {
                 print_unexpected_token_error(&ctx.token);
+                exit(1);
             }
     }
     return expr;
@@ -706,7 +625,7 @@ Expression* parse_numeric_literal(void)
 
     if(memchr(ctx.token.text.value, '.', ctx.token.text.len) != NULL) {
         print_parse_error("TODO: support non-integer numeric literals");
-        return NULL;
+        exit(1);
     }
     int base = 10;
     const char* hash_mark = memchr(ctx.token.text.value, '#', ctx.token.text.len);
@@ -719,20 +638,20 @@ Expression* parse_numeric_literal(void)
         }
         if(base < 1 || base > 16) {
             print_parse_error("Numeric literal has invalid base (%d). Bases must be in range [1, 16]", base);
-            return NULL;
+            exit(1);
         }
     }
 
     num_buffer[0] = '\0';
     if(!prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer))) {
         print_parse_error("Numeric literal is too long to be processed (max supported is 127 characters)");
-        return NULL;
+        exit(1);
     }
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
     if(mpz_init_set_str(expr->u.int_lit, num_buffer, base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), base);
-        return NULL;
+        exit(1);
     }
     next_token();
     return expr;
@@ -740,15 +659,14 @@ Expression* parse_numeric_literal(void)
 
 // TODO: have way to provide initial list of declarations (e.g. from a package spec or a function's param list)
 static
-bool begin_region(void)
+void begin_region(void)
 {
     if(ctx.curr_region_idx + 1 >= cnt_of_array(ctx.region_stack)) {
         print_parse_error("Too many nested regions (maximum is %u nested regions)", cnt_of_array(ctx.region_stack));
-        return false;
+        exit(1);
     }
     ++ctx.curr_region_idx;
     memset(&curr_region(ctx), 0, sizeof(ctx.region_stack[0]));
-    return true;
 }
 
 static
@@ -854,44 +772,43 @@ void next_token(void)
 }
 
 static
-bool expect_token(TokenKind kind)
+void expect_token(TokenKind kind)
 {
     if(ctx.token.kind == TOKEN_ERROR) {
-        return false;
+        exit(1);
     }
     if(ctx.token.kind != kind) {
         print_unexpected_token_error(&ctx.token);
-        return false;
+        exit(1);
     }
-    return true;
 }
 
 static
-bool count_enum_literals(uint32_t* literal_count)
+uint32_t count_enum_literals(void)
 {
+    uint32_t literal_count = 0;
     Token token = ctx.token;
     const char* curr = ctx.curr;
     while(token.kind != TOKEN_R_PAREN) {
         switch(token.kind) {
             case TOKEN_IDENT:
             case TOKEN_CHAR_LITERAL:
-                if(*literal_count == UINT32_MAX) {
+                if(literal_count == UINT32_MAX) {
                     error_print(ctx.input_start, curr, "Enumeration type has too many literals to be processed (max supported is 2**32-1 literals)");
-                    return false;
+                    exit(1);
                 }
-                ++*literal_count;
+                ++literal_count;
                 break;
             case TOKEN_COMMA:
                 break;
-            case TOKEN_ERROR:
-                return false;
             default:
-                print_unexpected_token_error(&token);
-                return false;
+                print_unexpected_token_error(&token); /* fall through */
+            case TOKEN_ERROR:
+                exit(1);
         }
         curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
     }
-    return true;
+    return literal_count;
 }
 
 static
