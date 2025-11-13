@@ -422,10 +422,16 @@ bool parse_subprogram_declaration(Declaration* decl)
     } else if(!expect_token(TOKEN_IDENT)) {
         return false;
     }
+    // TODO: check if is an overload, if so if it is permissable
     decl->u.subprogram.name = ctx.token.text;
     next_token();
 
     begin_region();
+    // TODO: pushing function decl to its own body's region will mess things up. When symbols in the body
+    //  are pushed, they will be chained to the end of the decl (i.e. they will show up in the scope the function
+    //  was declared in when the function as a whole is pushed). Maybe can temporarily push (so params see their
+    //  function name, then push to outer scope?)
+    push_declaration(decl);
     if(ctx.token.kind == TOKEN_L_PAREN) {
         if(!parse_parameters(&decl->u.subprogram.params)) {
             return false;
@@ -461,7 +467,6 @@ bool parse_parameters(Declaration** params)
     next_token(); // Skip '('
     DeclList decl_list = {0};
     while(ctx.token.kind != TOKEN_R_PAREN) {
-        // TODO: push object decls to symbol stack
         Declaration* param = calloc(1, sizeof(Declaration));
         if(!parse_object_declaration(param, /*is_param*/true)) {
             return false;
@@ -473,8 +478,8 @@ bool parse_parameters(Declaration** params)
             next_token();
         }
         append_decl(&decl_list, param);
+        *params = decl_list.first;
     }
-    *params = decl_list.first;
     next_token(); // Skip ')'
     return true;
 }
@@ -803,10 +808,9 @@ TypeDecl* find_visible_type_declaration(StringView name)
 }
 
 static
-Declaration* find_declaration_in_current_region(StringView name)
+Declaration* find_declaration(Declaration* decl_list, StringView name)
 {
-    DeclList* region = &ctx.region_stack[ctx.curr_region_idx];
-    for(Declaration* decl = region->first; decl != NULL; decl = decl->next) {
+    for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
         switch(decl->kind) {
             case DECL_TYPE:
                 if(identifier_equal(&decl->u.type.name, &name)) {
@@ -819,16 +823,28 @@ Declaration* find_declaration_in_current_region(StringView name)
                 }
                 break;
             case DECL_PROCEDURE:
-            case DECL_FUNCTION:
+            case DECL_FUNCTION: {
                 if(identifier_equal(&decl->u.subprogram.name, &name)) {
                     return decl;
                 }
+                Declaration* match = find_declaration(decl->u.subprogram.params, name);
+                if(match) {
+                    return match;
+                }
                 break;
+            }
             default:
                 assert(false && "Unhandled declaration type");
         }
     }
     return NULL;
+}
+
+static
+Declaration* find_declaration_in_current_region(StringView name)
+{
+    DeclList* region = &ctx.region_stack[ctx.curr_region_idx];
+    return find_declaration(region->first, name);
 }
 
 static

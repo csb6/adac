@@ -43,6 +43,6 @@ package IntTypeTest is
     -- function "="(a : BigInteger; b : BigInteger; c : BigInteger) return Boolean;
     function "abs"(a : BigInteger) return BigInteger;
     -- function "abs"(a : BigInteger; b : BigInteger) return BigInteger;
-    function "mod"(a : BigInteger; b : BigInteger) return Boolean;
+    -- function "mod"(a : BigInteger; a : BigInteger) return Boolean;
     -- procedure "+"(a : BigInteger; b : BigInteger);
 end inttypetest;
