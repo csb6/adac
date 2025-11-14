@@ -368,11 +368,6 @@ void parse_subprogram_declaration(Declaration* decl)
     next_token();
 
     begin_region();
-    // TODO: pushing function decl to its own body's region will mess things up. When symbols in the body
-    //  are pushed, they will be chained to the end of the decl (i.e. they will show up in the scope the function
-    //  was declared in when the function as a whole is pushed). Maybe can temporarily push (so params see their
-    //  function name, then push to outer scope?)
-    push_declaration(decl);
     if(ctx.token.kind == TOKEN_L_PAREN) {
         parse_parameters(&decl->u.subprogram.params);
     }
