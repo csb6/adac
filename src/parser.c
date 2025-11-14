@@ -603,12 +603,10 @@ Expression* parse_primary_expression(void)
                 UnaryOperator op = unary_op(ctx.token.kind);
                 next_token();
                 Expression* right = parse_expression_1(unary_prec[op]);
-                if(right) {
-                    expr = calloc(1, sizeof(Expression));
-                    expr->kind = EXPR_UNARY;
-                    expr->u.unary.op = op;
-                    expr->u.unary.right = right;
-                }
+                expr = calloc(1, sizeof(Expression));
+                expr->kind = EXPR_UNARY;
+                expr->u.unary.op = op;
+                expr->u.unary.right = right;
             } else {
                 print_unexpected_token_error(&ctx.token);
                 exit(1);
