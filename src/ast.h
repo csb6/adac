@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 struct Declaration_;
 struct TypeDecl_;
 struct Type_;
+struct Statement_;
 struct Expression_;
 
 /* PACKAGES */
@@ -147,6 +148,7 @@ typedef struct SubprogramDecl_ {
     StringView name;
     TypeDecl* return_type; // NULL for procedures
     struct Declaration_* decls; // Parameters are the first param_count decls
+    struct Statement_* stmts;
     uint8_t param_count;
     bool is_operator;
 } SubprogramDecl;
@@ -160,6 +162,33 @@ typedef struct Declaration_ {
     } u;
     struct Declaration_* next;
 } Declaration;
+
+/* STATEMENTS */
+
+typedef uint8_t StmtKind;
+enum {
+    STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
+    STMT_ABORT, STMT_RAISE
+};
+
+typedef struct AssignStmt_ {
+    ObjectDecl* dest; // TODO: array/record components
+    struct Expression_* expr;
+} AssignStmt;
+
+typedef struct CallStmt_ {
+    SubprogramDecl* subprogram;
+    struct Expression_** args; // array of Expression*
+} CallStmt;
+
+typedef struct Statement_ {
+    StmtKind kind;
+    union {
+        AssignStmt assign;
+        CallStmt call;
+    } u;
+    struct Statement_* next;
+} Statement;
 
 /* EXPRESSIONS */
 

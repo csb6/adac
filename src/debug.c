@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 static void print_declaration(const Declaration* decl, uint8_t indent_level);
 static void print_subprogram_decl(const Declaration* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
+static void print_statement(const Statement* stmt);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
@@ -89,6 +90,12 @@ void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
         while(inner_decl) {
             print_declaration(inner_decl, indent_level + 1);
             inner_decl = inner_decl->next;
+        }
+        print_indent(indent_level);
+        printf("begin\n");
+        for(const Statement* stmt = decl->u.subprogram.stmts; stmt != NULL; stmt = stmt->next) {
+            print_indent(indent_level+1);
+            print_statement(stmt);
         }
         print_indent(indent_level);
         printf("end %.*s", SV(decl->u.subprogram.name));
@@ -176,6 +183,34 @@ void print_type_decl(const TypeDecl* type_decl)
         default:
             printf("Unhandled type");
     }
+}
+
+static
+void print_statement(const Statement* stmt)
+{
+    switch(stmt->kind) {
+        case STMT_NULL:
+            printf("null");
+            break;
+        case STMT_ASSIGN:
+            printf("%.*s := ", SV(stmt->u.assign.dest->name));
+            print_expression(stmt->u.assign.expr);
+            break;
+        case STMT_CALL:
+            printf("%.*s", SV(stmt->u.call.subprogram->name));
+            if(stmt->u.call.subprogram->param_count > 0) {
+                putchar('(');
+                for(uint8_t i = 0; i < stmt->u.call.subprogram->param_count; ++i) {
+                    print_expression(stmt->u.call.args[i]);
+                    printf(", ");
+                }
+                putchar(')');
+            }
+            break;
+        default:
+            printf("Unhandled statement");
+    }
+    printf(";\n");
 }
 
 static

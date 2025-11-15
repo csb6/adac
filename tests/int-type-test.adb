@@ -50,11 +50,16 @@ package IntTypeTest is
         a : Boolean := False;
         b : CharType := 'b';
     begin
+        foo;
+        zeroary_procedure;
+        unary_procedure('u');
+        binary_procedure('a', c);
     end;
 
     procedure bar is
         a : DistinctBoolean := True;
         b : CharType := 'c';
     begin
+        null;
     end bar;
 end inttypetest;
