@@ -54,13 +54,14 @@ static ParseContext ctx;
 /* PACKAGE */
 static void parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
-static void parse_basic_declaration(Declaration* decl);
+static void parse_basic_declaration(void);
 static void parse_object_declaration(Declaration* decl, bool is_param);
 static void parse_type_declaration(Declaration* decl);
 static void parse_integer_type_definition(IntType* int_type);
 static void parse_enum_type_definition(EnumType* enum_type);
 static void parse_subprogram_declaration(Declaration* decl);
-static void parse_parameters(Declaration** params);
+static uint8_t parse_parameters(void);
+static void parse_subprogram_body(Declaration* decl);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
@@ -81,7 +82,7 @@ static void expect_token(TokenKind kind);
 static bool is_binary_op(TokenKind token);
 static bool is_unary_op(TokenKind token);
 static bool is_overloadable_op(TokenKind token);
-static void check_op_arity(const Declaration* params, const Token* op_token);
+static void check_op_arity(const Token* op_token, uint8_t param_count);
 static uint32_t count_enum_literals(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
@@ -116,9 +117,7 @@ void parse_package_spec(PackageSpec* package_spec)
 
     begin_region();
     while(ctx.token.kind != TOKEN_END) {
-        Declaration* decl = calloc(1, sizeof(Declaration));
-        // TODO: parse representation_clause/use_clause here too
-        parse_basic_declaration(decl);
+        parse_basic_declaration();
     }
     next_token(); // Skip 'end'
 
@@ -140,8 +139,10 @@ void parse_package_spec(PackageSpec* package_spec)
 }
 
 static
-void parse_basic_declaration(Declaration* decl)
+void parse_basic_declaration(void)
 {
+    // TODO: parse representation_clause/use_clause here too
+    Declaration* decl = calloc(1, sizeof(Declaration));
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
             parse_object_declaration(decl, /*is_param*/false);
@@ -162,11 +163,6 @@ void parse_basic_declaration(Declaration* decl)
     }
     expect_token(TOKEN_SEMICOLON);
     next_token();
-
-    // TODO: recursive functions need their declaration pushed before body is done being defined.
-    //   Most other declarations cannot be self-referential and so should not push their names until
-    //   the declaration is done being parsed.
-    push_declaration(decl);
 }
 
 static
@@ -233,6 +229,7 @@ void parse_object_declaration(Declaration* decl, bool is_param)
         next_token();
         obj_decl->init_expr = parse_expression();
     }
+    push_declaration(decl);
 }
 
 static
@@ -296,6 +293,7 @@ void parse_type_declaration(Declaration* decl)
                 exit(1);
         }
     }
+    push_declaration(decl);
 }
 
 static
@@ -365,15 +363,17 @@ void parse_subprogram_declaration(Declaration* decl)
     }
     // TODO: check if is an overload, if so if it is permissable
     decl->u.subprogram.name = ctx.token.text;
+    push_declaration(decl);
     next_token();
 
     begin_region();
     if(ctx.token.kind == TOKEN_L_PAREN) {
-        parse_parameters(&decl->u.subprogram.params);
+        decl->u.subprogram.param_count = parse_parameters();
+        decl->u.subprogram.decls = curr_region(ctx).first;
     }
 
     if(decl->u.subprogram.is_operator) {
-        check_op_arity(decl->u.subprogram.params, &op_token);
+        check_op_arity(&op_token, decl->u.subprogram.param_count);
     }
 
     if(decl->kind == DECL_FUNCTION) {
@@ -388,14 +388,50 @@ void parse_subprogram_declaration(Declaration* decl)
         decl->u.subprogram.return_type = return_type_decl;
         next_token();
     }
+
+    if(ctx.token.kind == TOKEN_IS) {
+        parse_subprogram_body(decl);
+    }
     end_region();
 }
 
 static
-void parse_parameters(Declaration** params)
+void parse_subprogram_body(Declaration* decl)
+{
+    next_token(); // Skip 'is'
+
+    // Declarative part
+    // TODO: in semantic analysis phase, ensure no basic_declarative_items come after the first later_declarative_item
+    while(ctx.token.kind != TOKEN_BEGIN) {
+        parse_basic_declaration();
+    }
+    if(decl->u.subprogram.param_count == 0) {
+        // Params and decls are in same list, so if no params then the first element will be the first decl (if any)
+        decl->u.subprogram.decls = curr_region(ctx).first;
+    }
+
+    next_token(); // Skip 'begin'
+
+    // TODO: statements
+    // TODO: exception handlers
+
+    expect_token(TOKEN_END);
+    next_token();
+
+    if(ctx.token.kind == TOKEN_IDENT) {
+        if(!identifier_equal(&ctx.token.text, &decl->u.subprogram.name)) {
+            print_parse_error("Closing identifier does not match subprogram name (%.*s)", SV(decl->u.subprogram.name));
+            exit(1);
+        }
+        next_token();
+    }
+}
+
+static
+uint8_t parse_parameters(void)
 {
     next_token(); // Skip '('
-    DeclList decl_list = {0};
+    uint8_t param_count = 0;
     while(ctx.token.kind != TOKEN_R_PAREN) {
         Declaration* param = calloc(1, sizeof(Declaration));
         parse_object_declaration(param, /*is_param*/true);
@@ -403,10 +439,10 @@ void parse_parameters(Declaration** params)
             expect_token(TOKEN_SEMICOLON);
             next_token();
         }
-        append_decl(&decl_list, param);
-        *params = decl_list.first;
+        ++param_count;
     }
     next_token(); // Skip ')'
+    return param_count;
 }
 
 typedef uint8_t OperatorFlags;
@@ -514,19 +550,19 @@ bool is_overloadable_op(TokenKind token)
 
 // Assumes op_token->kind is either an unary or binary operator
 static
-void check_op_arity(const Declaration* params, const Token* op_token)
+void check_op_arity(const Token* op_token, uint8_t param_count)
 {
     if(is_unary_op(op_token->kind)) {
         if(is_binary_op(op_token->kind)) {
-            if(!params || (params->next && params->next->next)) {
+            if(param_count != 1 && param_count != 2) {
                 print_parse_error("Overloaded operator '%.*s' must be an unary or binary function", SV(op_token->text));
                 exit(1);
             }
-        } else if(!params || params->next) {
+        } else if(param_count != 1) {
             print_parse_error("Overloaded operator '%.*s' must be an unary function", SV(op_token->text));
             exit(1);
         }
-    } else if(!params || !params->next || params->next->next) {
+    } else if(param_count != 2) {
         print_parse_error("Overloaded operator '%.*s' must be a binary function", SV(op_token->text));
         exit(1);
     }
@@ -737,10 +773,6 @@ Declaration* find_declaration(Declaration* decl_list, StringView name)
             case DECL_FUNCTION: {
                 if(identifier_equal(&decl->u.subprogram.name, &name)) {
                     return decl;
-                }
-                Declaration* match = find_declaration(decl->u.subprogram.params, name);
-                if(match) {
-                    return match;
                 }
                 break;
             }

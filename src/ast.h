@@ -146,7 +146,8 @@ typedef struct ObjectDecl_ {
 typedef struct SubprogramDecl_ {
     StringView name;
     TypeDecl* return_type; // NULL for procedures
-    struct Declaration_* params; // all are ObjectDecls
+    struct Declaration_* decls; // Parameters are the first param_count decls
+    uint8_t param_count;
     bool is_operator;
 } SubprogramDecl;
 

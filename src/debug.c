@@ -26,7 +26,7 @@ static void print_type_decl(const TypeDecl* type);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
-static void print_params(const Declaration* params);
+static void print_params(const Declaration* params, uint8_t param_count);
 static const char* param_mode_str(ParamMode mode);
 
 void print_package_spec(const PackageSpec* package_spec)
@@ -64,12 +64,12 @@ void print_declaration(const Declaration* decl)
         case DECL_FUNCTION:
             printf("Function declaration (name: %.*s, return type: %.*s, parameters: ",
                    SV(decl->u.subprogram.name), SV(decl->u.subprogram.return_type->name));
-            print_params(decl->u.subprogram.params);
+            print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
             putchar(')');
             break;
         case DECL_PROCEDURE:
             printf("Procedure declaration (name: %.*s, parameters: ", SV(decl->u.subprogram.name));
-            print_params(decl->u.subprogram.params);
+            print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
             putchar(')');
             break;
         default:
@@ -78,11 +78,12 @@ void print_declaration(const Declaration* decl)
 }
 
 static
-void print_params(const Declaration* params)
+void print_params(const Declaration* params, uint8_t param_count)
 {
     putchar('(');
-    for(const Declaration* decl = params; decl != NULL; decl = decl->next) {
-        assert(params->kind == DECL_OBJECT);
+    const Declaration* decl = params;
+    for(uint8_t i = 0; i < param_count; ++i) {
+        assert(decl->kind == DECL_OBJECT);
         const ObjectDecl* param = &decl->u.object;
         printf("%.*s : %s %.*s", SV(param->name), param_mode_str(param->mode), SV(param->type->name));
         if(param->init_expr) {
@@ -90,6 +91,7 @@ void print_params(const Declaration* params)
             print_expression(param->init_expr);
         }
         printf("; ");
+        decl = decl->next;
     }
     putchar(')');
 }

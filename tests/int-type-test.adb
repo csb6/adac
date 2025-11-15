@@ -45,4 +45,16 @@ package IntTypeTest is
     -- function "abs"(a : BigInteger; b : BigInteger) return BigInteger;
     -- function "mod"(a : BigInteger; a : BigInteger) return Boolean;
     -- procedure "+"(a : BigInteger; b : BigInteger);
+
+    procedure foo is
+        a : Boolean := False;
+        b : CharType := 'b';
+    begin
+    end;
+
+    procedure bar is
+        a : Boolean := False;
+        b : CharType := 'b';
+    begin
+    end bar;
 end inttypetest;
