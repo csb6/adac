@@ -21,36 +21,36 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include "ast.h"
 
-static void print_declaration(const Declaration* decl);
+static void print_declaration(const Declaration* decl, uint8_t indent_level);
+static void print_subprogram_decl(const Declaration* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
 static void print_params(const Declaration* params, uint8_t param_count);
 static const char* param_mode_str(ParamMode mode);
+static void print_indent(uint8_t size);
 
 void print_package_spec(const PackageSpec* package_spec)
 {
-    printf("Package: %.*s\n", SV(package_spec->name));
-    printf("Declarations:\n");
+    printf("package %.*s is\n", SV(package_spec->name));
     for(const Declaration* decl = package_spec->decls; decl != NULL; decl = decl->next) {
-        printf("  ");
-        print_declaration(decl);
-        putchar('\n');
+        print_declaration(decl, 1);
     }
+    printf("end %.*s;\n", SV(package_spec->name));
 }
 
 static
-void print_declaration(const Declaration* decl)
+void print_declaration(const Declaration* decl, uint8_t indent_level)
 {
     switch(decl->kind) {
         case DECL_TYPE:
-            printf("Type declaration (name: %.*s, type: ", SV(decl->u.type.name));
+            print_indent(indent_level);
             print_type_decl(&decl->u.type);
-            putchar(')');
             break;
         case DECL_OBJECT:
-            printf("Object declaration (%.*s: ", SV(decl->u.object.name));
+            print_indent(indent_level);
+            printf("%.*s : ", SV(decl->u.object.name));
             if(decl->u.object.is_constant) {
                 printf("constant ");
             }
@@ -59,21 +59,39 @@ void print_declaration(const Declaration* decl)
                 printf(" := ");
                 print_expression(decl->u.object.init_expr);
             }
-            putchar(')');
             break;
         case DECL_FUNCTION:
-            printf("Function declaration (name: %.*s, return type: %.*s, parameters: ",
-                   SV(decl->u.subprogram.name), SV(decl->u.subprogram.return_type->name));
-            print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
-            putchar(')');
-            break;
         case DECL_PROCEDURE:
-            printf("Procedure declaration (name: %.*s, parameters: ", SV(decl->u.subprogram.name));
-            print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
-            putchar(')');
+            print_subprogram_decl(decl, indent_level);
             break;
         default:
             printf("Unknown declaration");
+    }
+    printf(";\n");
+}
+
+static
+void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
+{
+    print_indent(indent_level);
+    printf("%s %.*s", decl->kind == DECL_FUNCTION ? "function" : "procedure", SV(decl->u.subprogram.name));
+    print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
+    if(decl->kind == DECL_FUNCTION) {
+        printf(" return %.*s", SV(decl->u.subprogram.return_type->name));
+    }
+
+    Declaration* inner_decl = decl->u.subprogram.decls;
+    for(uint8_t i = 0; i < decl->u.subprogram.param_count; ++i) {
+        inner_decl = inner_decl->next;
+    }
+    if(inner_decl) {
+        printf(" is\n");
+        while(inner_decl) {
+            print_declaration(inner_decl, indent_level + 1);
+            inner_decl = inner_decl->next;
+        }
+        print_indent(indent_level);
+        printf("end %.*s", SV(decl->u.subprogram.name));
     }
 }
 
@@ -117,8 +135,17 @@ const char* param_mode_str(ParamMode mode)
 }
 
 static
+void print_indent(uint8_t size)
+{
+    for(uint8_t i = 0; i < size; ++i) {
+        printf("  ");
+    }
+}
+
+static
 void print_type_decl(const TypeDecl* type_decl)
 {
+    printf("%s %.*s is ", type_decl->kind == TYPE_SUBTYPE ? "subtype" : "type", SV(type_decl->name));
     switch(type_decl->kind) {
         case TYPE_PLACEHOLDER:
             printf("%.*s (placeholder)", SV(type_decl->u.placeholder_name));
@@ -127,14 +154,13 @@ void print_type_decl(const TypeDecl* type_decl)
             printf("universal integer");
             break;
         case TYPE_INTEGER:
-            printf("integer (range: [");
+            printf("range ");
             print_expression(type_decl->u.int_.range.lower_bound);
-            printf(", ");
+            printf(" .. ");
             print_expression(type_decl->u.int_.range.upper_bound);
-            printf("])");
             break;
         case TYPE_ENUM:
-            printf("enum type (");
+            putchar('(');
             for(uint32_t i = 0; i < type_decl->u.enum_.literal_count; ++i) {
                 print_expression(type_decl->u.enum_.literals + i);
                 putchar(' ');
@@ -142,10 +168,10 @@ void print_type_decl(const TypeDecl* type_decl)
             putchar(')');
             break;
         case TYPE_SUBTYPE:
-            printf("subtype (base: %.*s)", SV(type_decl->u.subtype.base->name));
+            printf("%.*s", SV(type_decl->u.subtype.base->name));
             break;
         case TYPE_DERIVED:
-            printf("derived (base: %.*s)", SV(type_decl->u.subtype.base->name));
+            printf("new %.*s", SV(type_decl->u.subtype.base->name));
             break;
         default:
             printf("Unhandled type");

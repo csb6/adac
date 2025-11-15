@@ -53,8 +53,8 @@ package IntTypeTest is
     end;
 
     procedure bar is
-        a : Boolean := False;
-        b : CharType := 'b';
+        a : DistinctBoolean := True;
+        b : CharType := 'c';
     begin
     end bar;
 end inttypetest;
