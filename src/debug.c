@@ -24,7 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 static void print_declaration(const Declaration* decl, uint8_t indent_level);
 static void print_subprogram_decl(const Declaration* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
-static void print_statement(const Statement* stmt);
+static void print_statement(const Statement* stmt, uint8_t indent_level);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
@@ -88,14 +88,13 @@ void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
     if(inner_decl) {
         printf(" is\n");
         while(inner_decl) {
-            print_declaration(inner_decl, indent_level + 1);
+            print_declaration(inner_decl, indent_level+1);
             inner_decl = inner_decl->next;
         }
         print_indent(indent_level);
         printf("begin\n");
         for(const Statement* stmt = decl->u.subprogram.stmts; stmt != NULL; stmt = stmt->next) {
-            print_indent(indent_level+1);
-            print_statement(stmt);
+            print_statement(stmt, indent_level+1);
         }
         print_indent(indent_level);
         printf("end %.*s", SV(decl->u.subprogram.name));
@@ -186,8 +185,9 @@ void print_type_decl(const TypeDecl* type_decl)
 }
 
 static
-void print_statement(const Statement* stmt)
+void print_statement(const Statement* stmt, uint8_t indent_level)
 {
+    print_indent(indent_level);
     switch(stmt->kind) {
         case STMT_NULL:
             printf("null");
@@ -213,6 +213,19 @@ void print_statement(const Statement* stmt)
                 }
                 putchar(')');
             }
+            break;
+        case STMT_BLOCK:
+            printf("declare\n");
+            for(const Declaration* decl = stmt->u.block.decls; decl != NULL; decl = decl->next) {
+                print_declaration(decl, indent_level+1);
+            }
+            print_indent(indent_level);
+            printf("begin\n");
+            for(const Statement* s = stmt->u.block.stmts; s != NULL; s = s->next) {
+                print_statement(s, indent_level+1);
+            }
+            print_indent(indent_level);
+            printf("end");
             break;
         default:
             printf("Unhandled statement");

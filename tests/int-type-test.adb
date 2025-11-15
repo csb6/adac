@@ -60,8 +60,14 @@ package IntTypeTest is
     procedure bar is
         a : DistinctBoolean := True;
         b : CharType := 'c';
+        -- a : Boolean := True;
     begin
         null;
+        declare
+            a : Boolean := True;
+        begin
+            null;
+        end;
         return 1 + 1;
     end bar;
 end inttypetest;

@@ -71,6 +71,7 @@ static void parse_subprogram_body(Declaration* decl);
 static Statement* parse_statement(void);
 static void parse_assign_statement(Statement* stmt, StringView name);
 static void parse_procedure_call_statement(Statement* stmt, StringView name);
+static void parse_block_statement(Statement* stmt);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
@@ -495,6 +496,10 @@ Statement* parse_statement(void)
             }
             break;
         }
+        case TOKEN_BEGIN:
+        case TOKEN_DECLARE:
+            parse_block_statement(stmt);
+            break;
         default:
             print_unexpected_token_error(&ctx.token);
         case TOKEN_ERROR:
@@ -580,6 +585,35 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
     stmt->kind = STMT_CALL;
     stmt->u.call.subprogram = subprogram;
     stmt->u.call.args = args;
+}
+
+static
+void parse_block_statement(Statement* stmt)
+{
+    stmt->kind = STMT_BLOCK;
+    begin_region();
+    if(ctx.token.kind == TOKEN_DECLARE) {
+        next_token();
+        while(ctx.token.kind != TOKEN_BEGIN) {
+           parse_basic_declaration();
+        }
+        stmt->u.block.decls = curr_region(ctx).first;
+    }
+
+    expect_token(TOKEN_BEGIN);
+    next_token();
+    StmtList stmt_list = {0};
+    while(ctx.token.kind != TOKEN_END && ctx.token.kind != TOKEN_EXCEPTION) {
+        append_stmt(&stmt_list, parse_statement());
+    }
+    stmt->u.block.stmts = stmt_list.first;
+
+    // TODO: exception handlers
+
+    expect_token(TOKEN_END);
+    next_token();
+
+    end_region();
 }
 
 typedef uint8_t OperatorFlags;

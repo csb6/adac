@@ -168,7 +168,7 @@ typedef struct Declaration_ {
 typedef uint8_t StmtKind;
 enum {
     STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
-    STMT_ABORT, STMT_RAISE
+    STMT_ABORT, STMT_RAISE, STMT_BLOCK
 };
 
 typedef struct AssignStmt_ {
@@ -185,12 +185,18 @@ typedef struct ReturnStmt_ {
     struct Expression_* expr;
 } ReturnStmt;
 
+typedef struct BlockStmt_ {
+    struct Declaration_* decls;
+    struct Statement_* stmts;
+} BlockStmt;
+
 typedef struct Statement_ {
     StmtKind kind;
     union {
         AssignStmt assign;
         CallStmt call;
         ReturnStmt return_;
+        BlockStmt block;
     } u;
     struct Statement_* next;
 } Statement;
