@@ -215,11 +215,13 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             }
             break;
         case STMT_BLOCK:
-            printf("declare\n");
-            for(const Declaration* decl = stmt->u.block.decls; decl != NULL; decl = decl->next) {
-                print_declaration(decl, indent_level+1);
+            if(stmt->u.block.decls) {
+                printf("declare\n");
+                for(const Declaration* decl = stmt->u.block.decls; decl != NULL; decl = decl->next) {
+                    print_declaration(decl, indent_level+1);
+                }
+                print_indent(indent_level);
             }
-            print_indent(indent_level);
             printf("begin\n");
             for(const Statement* s = stmt->u.block.stmts; s != NULL; s = s->next) {
                 print_statement(s, indent_level+1);

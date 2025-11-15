@@ -68,6 +68,9 @@ package IntTypeTest is
         begin
             null;
         end;
+        begin
+            b := False;
+        end;
         return 1 + 1;
     end bar;
 end inttypetest;
