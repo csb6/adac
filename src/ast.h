@@ -181,11 +181,16 @@ typedef struct CallStmt_ {
     struct Expression_** args; // array of Expression*
 } CallStmt;
 
+typedef struct ReturnStmt_ {
+    struct Expression_* expr;
+} ReturnStmt;
+
 typedef struct Statement_ {
     StmtKind kind;
     union {
         AssignStmt assign;
         CallStmt call;
+        ReturnStmt return_;
     } u;
     struct Statement_* next;
 } Statement;

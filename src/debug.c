@@ -196,6 +196,13 @@ void print_statement(const Statement* stmt)
             printf("%.*s := ", SV(stmt->u.assign.dest->name));
             print_expression(stmt->u.assign.expr);
             break;
+        case STMT_RETURN:
+            printf("return");
+            if(stmt->u.return_.expr) {
+                putchar(' ');
+                print_expression(stmt->u.return_.expr);
+            }
+            break;
         case STMT_CALL:
             printf("%.*s", SV(stmt->u.call.subprogram->name));
             if(stmt->u.call.subprogram->param_count > 0) {

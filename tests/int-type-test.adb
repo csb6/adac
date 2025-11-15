@@ -54,6 +54,7 @@ package IntTypeTest is
         zeroary_procedure;
         unary_procedure('u');
         binary_procedure('a', c);
+        return;
     end;
 
     procedure bar is
@@ -61,5 +62,6 @@ package IntTypeTest is
         b : CharType := 'c';
     begin
         null;
+        return 1 + 1;
     end bar;
 end inttypetest;

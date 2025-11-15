@@ -468,6 +468,14 @@ Statement* parse_statement(void)
             stmt->kind = STMT_NULL;
             next_token();
             break;
+        case TOKEN_RETURN:
+            // TODO: check if this function returns a value (maybe do in semantic analysis phase instead?)
+            stmt->kind = STMT_RETURN;
+            next_token();
+            if(ctx.token.kind != TOKEN_SEMICOLON) {
+                stmt->u.return_.expr = parse_expression();
+            }
+            break;
         case TOKEN_IDENT: {
             // TODO: properly parse array/record components (and maybe .all?) See LRM chapter 4.1
             StringView name = ctx.token.text;
