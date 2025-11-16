@@ -1,7 +1,7 @@
 # Ada compiler
 
 My attempt to make a compiler for enough of the Ada '83 programming language to compile an early version
-of the GNAT Ada compiler into C, enabling GNAT to be bootstrapped on any platform with a C compiler.
+of the GNAT Ada compiler, enabling GNAT to be bootstrapped.
 
 GNAT is part of GCC and is written in Ada, which causes bootstrapping issues
 when compiling GCC from source code. It means that a prebuilt binary of GNAT (built
@@ -11,13 +11,15 @@ GNAT from source.
 
 ## Progress
 
-- The lexer is largely complete, although it is DOES NOT currently support:
+- The lexer is largely complete, although it is does not currently support:
   - Based literals with points
   - Substitution of '#' with '"' within based literals
 
 - The parser is in the early stages. It currently supports:
   - Integer, enumeration, subtype, and derived type definitions (although no constraints are supported besides ranges on integer types)
   - Object (and constant) declarations
+  - Subprogram declarations and bodies
+  - Null, assignment, procedure call, return, block, and if statements
   - Binary/unary expressions
   - Integer, string, and character literals
   - Some checking for redefinitions of names within same region
@@ -36,7 +38,7 @@ into an object file so that GNAT can be built and linked with GCC.
 
 Since CMake itself requires a C++ compiler to bootstrap, it is also possible to build using a manual compiler
 invocation. Reference the CMakeLists.txt files to see the source files needed. It should be as simple as passing
-all of the .c files (except `keywords.c`) into the compiler driver.
+all of the .c files (except `keywords.c` and `lexer_table.c`) into the compiler driver.
 
 Note: [`gperf`](https://www.gnu.org/software/gperf/) is not a compile-time or runtime dependency because the output of gperf (`keywords.c`) is checked into
 the source tree. To regenerate `keywords.c`, you can run the `gen_keyword_hash` custom command (e.g. `ninja gen_keyword_hash`)
@@ -48,7 +50,7 @@ The build produces a standalone executable `adac` that can then be run:
 
     adac path_to_ada_source_file
 
-Currently, this simply parses the given file, emitting error messages if any are encountered.
+Currently, this simply parses the given file, emitting error messages if any are encountered, and pretty prints the parse tree.
 
 ## Useful links
 
