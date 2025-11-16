@@ -85,7 +85,8 @@ void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
     for(uint8_t i = 0; i < decl->u.subprogram.param_count; ++i) {
         inner_decl = inner_decl->next;
     }
-    if(inner_decl) {
+    // Only print body if it exists
+    if(inner_decl || decl->u.subprogram.stmts) {
         printf(" is\n");
         while(inner_decl) {
             print_declaration(inner_decl, indent_level+1);

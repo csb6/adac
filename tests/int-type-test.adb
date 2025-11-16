@@ -49,6 +49,10 @@ package IntTypeTest is
     procedure foo is
         a : Boolean := False;
         b : CharType := 'b';
+        procedure inner is
+        begin
+            null;
+        end;
     begin
         foo;
         zeroary_procedure;
