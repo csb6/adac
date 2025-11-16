@@ -60,5 +60,6 @@ typedef struct {
 } Token;
 
 StringView token_to_str(const Token* token);
+const char* token_kind_to_str(TokenKind kind);
 
 #endif /* ADA_TOKEN_H */

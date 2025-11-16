@@ -1036,6 +1036,7 @@ void expect_token(TokenKind kind)
     }
     if(ctx.token.kind != kind) {
         print_unexpected_token_error(&ctx.token);
+        print_parse_error("Expected token: '%s'", token_kind_to_str(kind));
         exit(1);
     }
 }
