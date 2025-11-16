@@ -72,14 +72,9 @@ typedef struct {
     uint32_t literal_count;
 } EnumType;
 
-typedef struct {
-    struct Expression_* lower_bound;
-    struct Expression_* upper_bound; // inclusive
-} IntRange;
-
 // 3.5.4: Integer Types
 typedef struct {
-    IntRange range;
+    struct Expression_* range; // Must be a BinaryExpr with OP_RANGE
 } IntType;
 
 // 3.6: Array types
@@ -245,6 +240,8 @@ enum {
     OP_MULT, OP_DIVIDE, OP_MOD, OP_REM,
     // Highest precedence operator
     OP_EXP,
+    // Note: not truly operators, but for convenience when parsing we act as if they are
+    OP_RANGE,
 
     BINARY_OP_COUNT
 };

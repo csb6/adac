@@ -161,9 +161,7 @@ void print_type_decl(const TypeDecl* type_decl)
             break;
         case TYPE_INTEGER:
             printf("range ");
-            print_expression(type_decl->u.int_.range.lower_bound);
-            printf(" .. ");
-            print_expression(type_decl->u.int_.range.upper_bound);
+            print_expression(type_decl->u.int_.range);
             break;
         case TYPE_ENUM:
             putchar('(');
@@ -364,7 +362,9 @@ static const char* const binary_op_str[BINARY_OP_COUNT] = {
     [OP_MOD]      = "mod",
     [OP_REM]      = "rem",
     // Highest precedence operator
-    [OP_EXP]      = "**"
+    [OP_EXP]      = "**",
+    // Pseudo-operator
+    [OP_RANGE]    = "..",
 };
 
 static

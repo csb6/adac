@@ -320,12 +320,11 @@ static
 void parse_integer_type_definition(IntType* int_type)
 {
     next_token(); // Skip 'range' keyword
-    int_type->range.lower_bound = parse_expression();
-
-    expect_token(TOKEN_DOUBLE_DOT);
-    next_token();
-
-    int_type->range.upper_bound = parse_expression();
+    int_type->range = parse_expression();
+    if(int_type->range->kind != EXPR_BINARY || int_type->range->u.binary.op != OP_RANGE) {
+        print_parse_error("Unexpected expression: integer type must be defined by a range");
+        error_exit();
+    }
 }
 
 static
@@ -751,6 +750,8 @@ static const struct {
     [TOKEN_EXP]      = {BINARY | OVERLOADABLE, OP_EXP},
     [TOKEN_NOT]      = {UNARY | OVERLOADABLE,  OP_NOT << 5},
     [TOKEN_ABS]      = {UNARY | OVERLOADABLE,  OP_ABS << 5},
+    // Pseudo-operator
+    [TOKEN_DOUBLE_DOT] = {BINARY, OP_RANGE},
 };
 // BinaryOperator no longer fits in 5 bits; update precedence table layout
 STATIC_ASSERT(BINARY_OP_COUNT < 32);
@@ -759,40 +760,42 @@ STATIC_ASSERT(UNARY_OP_COUNT < 8);
 
 static const uint8_t unary_prec[UNARY_OP_COUNT] = {
     // Unary adding operators
-    [OP_UNARY_PLUS]  = 4,
-    [OP_UNARY_MINUS] = 4,
+    [OP_UNARY_PLUS]  = 5,
+    [OP_UNARY_MINUS] = 5,
     // Highest precedence operators
-    [OP_ABS]         = 6,
-    [OP_NOT]         = 6
+    [OP_ABS]         = 7,
+    [OP_NOT]         = 7
 };
 
 static const uint8_t binary_prec[BINARY_OP_COUNT] = {
+    // Pseudo-operators
+    [OP_RANGE]    = 1,
     // Logical operators
-    [OP_AND]      = 1,
-    [OP_AND_THEN] = 1,
-    [OP_OR]       = 1,
-    [OP_OR_ELSE]  = 1,
-    [OP_XOR]      = 1,
+    [OP_AND]      = 2,
+    [OP_AND_THEN] = 2,
+    [OP_OR]       = 2,
+    [OP_OR_ELSE]  = 2,
+    [OP_XOR]      = 2,
     // Relational operators
-    [OP_EQ]       = 2,
-    [OP_NEQ]      = 2,
-    [OP_LT]       = 2,
-    [OP_LTE]      = 2,
-    [OP_GT]       = 2,
-    [OP_GTE]      = 2,
-    [OP_IN]       = 2,
-    [OP_NOT_IN]   = 2,
+    [OP_EQ]       = 3,
+    [OP_NEQ]      = 3,
+    [OP_LT]       = 3,
+    [OP_LTE]      = 3,
+    [OP_GT]       = 3,
+    [OP_GTE]      = 3,
+    [OP_IN]       = 3,
+    [OP_NOT_IN]   = 3,
     // Binary adding operators
-    [OP_PLUS]     = 3,
-    [OP_MINUS]    = 3,
-    [OP_AMP]      = 3,
+    [OP_PLUS]     = 4,
+    [OP_MINUS]    = 4,
+    [OP_AMP]      = 4,
     // Multiplying operators
-    [OP_MULT]     = 5,
-    [OP_DIVIDE]   = 5,
-    [OP_MOD]      = 5,
-    [OP_REM]      = 5,
+    [OP_MULT]     = 6,
+    [OP_DIVIDE]   = 6,
+    [OP_MOD]      = 6,
+    [OP_REM]      = 6,
     // Highest precedence operator
-    [OP_EXP]      = 6
+    [OP_EXP]      = 7,
 };
 
 static
