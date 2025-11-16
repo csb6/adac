@@ -229,6 +229,37 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             print_indent(indent_level);
             printf("end");
             break;
+        case STMT_IF:
+            printf("if ");
+            print_expression(stmt->u.if_.condition);
+            printf(" then\n");
+            for(const Statement* s = stmt->u.if_.stmts; s != NULL; s = s->next) {
+                print_statement(s, indent_level+1);
+            }
+            const Statement* block = stmt->u.if_.else_;
+            while(block) {
+                if(block->kind == STMT_IF) {
+                    print_indent(indent_level);
+                    printf("elsif ");
+                    print_expression(block->u.if_.condition);
+                    printf(" then\n");
+                    for(const Statement* s = block->u.if_.stmts; s != NULL; s = s->next) {
+                        print_statement(s, indent_level+1);
+                    }
+                    block = block->u.if_.else_;
+                } else {
+                    print_indent(indent_level);
+                    assert(block->kind == STMT_BLOCK);
+                    printf("else\n");
+                    for(const Statement* s = block->u.block.stmts; s != NULL; s = s->next) {
+                        print_statement(s, indent_level+1);
+                    }
+                    block = NULL;
+                }
+            }
+            print_indent(indent_level);
+            printf("end if");
+            break;
         default:
             printf("Unhandled statement");
     }

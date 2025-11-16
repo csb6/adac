@@ -54,6 +54,23 @@ package IntTypeTest is
         zeroary_procedure;
         unary_procedure('u');
         binary_procedure('a', c);
+        if True then
+            null;
+        end if;
+
+        if True then
+            null;
+        elsif False then
+            null;
+        end if;
+
+        if True then
+            null;
+        elsif False then
+            null;
+        else
+            a := True;
+        end if;
         return;
     end;
 

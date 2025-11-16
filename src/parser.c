@@ -72,6 +72,7 @@ static Statement* parse_statement(void);
 static void parse_assign_statement(Statement* stmt, StringView name);
 static void parse_procedure_call_statement(Statement* stmt, StringView name);
 static void parse_block_statement(Statement* stmt);
+static void parse_if_statement(Statement* stmt);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
@@ -500,6 +501,9 @@ Statement* parse_statement(void)
         case TOKEN_DECLARE:
             parse_block_statement(stmt);
             break;
+        case TOKEN_IF:
+            parse_if_statement(stmt);
+            break;
         default:
             print_unexpected_token_error(&ctx.token);
         case TOKEN_ERROR:
@@ -614,6 +618,52 @@ void parse_block_statement(Statement* stmt)
     next_token();
 
     end_region();
+}
+
+static
+void parse_if_statement(Statement* stmt)
+{
+    bool is_if = ctx.token.kind == TOKEN_IF;
+    next_token(); // Skip 'if'/'elsif'
+    stmt->kind = STMT_IF;
+    stmt->u.if_.condition = parse_expression();
+    expect_token(TOKEN_THEN);
+    next_token();
+
+    StmtList stmt_list = {0};
+    while(ctx.token.kind != TOKEN_END && ctx.token.kind != TOKEN_ELSIF && ctx.token.kind != TOKEN_ELSE) {
+        append_stmt(&stmt_list, parse_statement());
+    }
+    stmt->u.if_.stmts = stmt_list.first;
+    switch(ctx.token.kind) {
+        case TOKEN_ELSIF:
+            stmt->u.if_.else_ = calloc(1, sizeof(Statement));
+            parse_if_statement(stmt->u.if_.else_);
+            break;
+        case TOKEN_ELSE:
+            next_token();
+            stmt->u.if_.else_ = calloc(1, sizeof(Statement));
+            stmt->u.if_.else_->kind = STMT_BLOCK;
+            memset(&stmt_list, 0, sizeof(stmt_list));
+            while(ctx.token.kind != TOKEN_END) {
+                append_stmt(&stmt_list, parse_statement());
+            }
+            stmt->u.if_.else_->u.block.stmts = stmt_list.first;
+            break;
+        case TOKEN_END:
+            break;
+        default:
+            print_unexpected_token_error(&ctx.token); /* fall through */
+        case TOKEN_ERROR:
+            exit(1);
+    }
+
+    if(is_if) {
+        expect_token(TOKEN_END);
+        next_token();
+        expect_token(TOKEN_IF);
+        next_token();
+    }
 }
 
 typedef uint8_t OperatorFlags;
