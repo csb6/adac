@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 static const char* source_file_path = NULL;
 
@@ -45,4 +46,9 @@ void error_print(const char* text_start, const char* curr, const char* message, 
     vfprintf(stderr, message, args);
     fputc('\n', stderr);
     va_end(args);
+}
+
+void error_exit(void)
+{
+    exit(1);
 }

@@ -20,5 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 void error_set_source_file_path(const char* path);
 void error_print(const char* text_start, const char* curr, const char* message, ...);
+void error_exit(void) __attribute__ ((noreturn));
 
 #endif /* ADA_ERROR_H */

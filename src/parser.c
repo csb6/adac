@@ -136,7 +136,7 @@ void parse_package_spec(PackageSpec* package_spec)
     if(ctx.token.kind == TOKEN_IDENT) {
         if(!identifier_equal(&package_spec->name, &ctx.token.text)) {
             print_parse_error("Closing identifier does not match package specification name (%.*s)", SV(package_spec->name));
-            exit(1);
+            error_exit();
         }
         next_token();
     }
@@ -171,7 +171,7 @@ void parse_basic_declaration(void)
         default:
             print_unexpected_token_error(&ctx.token); /* fall through */
         case TOKEN_ERROR:
-            exit(1);
+            error_exit();
     }
     expect_token(TOKEN_SEMICOLON);
     next_token();
@@ -187,7 +187,7 @@ void parse_object_declaration(Declaration* decl, bool is_param)
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(obj_decl->name) != NULL) {
         print_parse_error("Redefinition of '%.*s' within same declarative region", SV(obj_decl->name));
-        exit(1);
+        error_exit();
     }
     next_token();
 
@@ -209,7 +209,7 @@ void parse_object_declaration(Declaration* decl, bool is_param)
                 next_token();
                 break;
             case TOKEN_ERROR:
-                exit(1);
+                error_exit();
             default:
                 // No mode specified means 'in' mode
                 obj_decl->mode = PARAM_MODE_IN;
@@ -225,7 +225,7 @@ void parse_object_declaration(Declaration* decl, bool is_param)
         Declaration* type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
         if(!type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
-            exit(1);
+            error_exit();
         }
         obj_decl->type = &type_decl->u.type;
         next_token();
@@ -234,7 +234,7 @@ void parse_object_declaration(Declaration* decl, bool is_param)
         obj_decl->type = &universal_int_type;
     } else {
         print_unexpected_token_error(&ctx.token);
-        exit(1);
+        error_exit();
     }
 
     if(ctx.token.kind == TOKEN_ASSIGN) {
@@ -257,7 +257,7 @@ void parse_type_declaration(Declaration* decl)
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(type_decl->name) != NULL) {
         print_parse_error("Redefinition of '%.*s' within same declarative region", SV(type_decl->name));
-        exit(1);
+        error_exit();
     }
     next_token();
 
@@ -271,7 +271,7 @@ void parse_type_declaration(Declaration* decl)
         Declaration* base_type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
         if(!base_type_decl) {
             print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
-            exit(1);
+            error_exit();
         }
         type_decl->kind = TYPE_SUBTYPE;
         type_decl->u.subtype.base = &base_type_decl->u.type;
@@ -293,7 +293,7 @@ void parse_type_declaration(Declaration* decl)
                 Declaration* base_type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
                 if(!base_type_decl) {
                     print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
-                    exit(1);
+                    error_exit();
                 }
                 type_decl->kind = TYPE_DERIVED;
                 type_decl->u.subtype.base = &base_type_decl->u.type;
@@ -302,7 +302,7 @@ void parse_type_declaration(Declaration* decl)
             default:
                 print_unexpected_token_error(&ctx.token); /* fall through */
             case TOKEN_ERROR:
-                exit(1);
+                error_exit();
         }
     }
     push_declaration(decl);
@@ -340,7 +340,7 @@ void parse_enum_type_definition(EnumType* enum_type)
             default:
                 // Should be unreachable since count_enum_literals() succeeded
                 print_unexpected_token_error(&ctx.token);
-                exit(1);
+                error_exit();
         }
         next_token();
         if(i < literal_count - 1) {
@@ -362,12 +362,12 @@ void parse_subprogram_declaration(Declaration* decl)
     if(ctx.token.kind == TOKEN_STRING_LITERAL) {
         if(decl->kind != DECL_FUNCTION) {
             print_parse_error("Overloaded operators must be functions");
-            exit(1);
+            error_exit();
         }
         const char* token_end = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.token.text.value, &op_token);
         if(token_end != ctx.token.text.value + ctx.token.text.len || !is_overloadable_op(op_token.kind)) {
             print_parse_error("'%.*s' is not an overloadable operator", SV(ctx.token.text));
-            exit(1);
+            error_exit();
         }
         decl->u.subprogram.is_operator = true;
     } else {
@@ -395,7 +395,7 @@ void parse_subprogram_declaration(Declaration* decl)
         Declaration* return_type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
         if(!return_type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
-            exit(1);
+            error_exit();
         }
         decl->u.subprogram.return_type = &return_type_decl->u.type;
         next_token();
@@ -437,7 +437,7 @@ void parse_subprogram_body(Declaration* decl)
     if(ctx.token.kind == TOKEN_IDENT) {
         if(!identifier_equal(&ctx.token.text, &decl->u.subprogram.name)) {
             print_parse_error("Closing identifier does not match subprogram name (%.*s)", SV(decl->u.subprogram.name));
-            exit(1);
+            error_exit();
         }
         next_token();
     }
@@ -493,7 +493,7 @@ Statement* parse_statement(void)
                 default:
                     print_unexpected_token_error(&ctx.token); /* fall through */
                 case TOKEN_ERROR:
-                    exit(1);
+                    error_exit();
             }
             break;
         }
@@ -507,7 +507,7 @@ Statement* parse_statement(void)
         default:
             print_unexpected_token_error(&ctx.token);
         case TOKEN_ERROR:
-            exit(1);
+            error_exit();
     }
     expect_token(TOKEN_SEMICOLON);
     next_token();
@@ -522,7 +522,7 @@ void parse_assign_statement(Statement* stmt, StringView name)
     Declaration* dest = find_visible_declaration(name, DECL_OBJECT);
     if(!dest) {
         print_parse_error("Unknown variable '%.*s'", SV(name));
-        exit(1);
+        error_exit();
     }
     stmt->u.assign.dest = &dest->u.object;
     stmt->u.assign.expr = parse_expression();
@@ -538,7 +538,7 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
         } else {
             print_parse_error("Unknown procedure '%.*s'", SV(name));
         }
-        exit(1);
+        error_exit();
     }
     assert(subprogram_decl->kind == DECL_FUNCTION || subprogram_decl->kind == DECL_PROCEDURE);
     SubprogramDecl* subprogram = &subprogram_decl->u.subprogram;
@@ -549,14 +549,14 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
             // Must be a subprogram called with no arguments
             if(subprogram->param_count != 0) {
                 print_parse_error("Subprogram '%.*s' is called with zero arguments, but it requires %u argument(s)", SV(name), subprogram->param_count);
-                exit(1);
+                error_exit();
             }
             break;
         case TOKEN_L_PAREN: {
             // TODO: account for default arguments and named arguments
             if(subprogram->param_count == 0) {
                 print_parse_error("Subprogram '%.*s' is called with %u arguments, but it requires 0 arguments", SV(name), subprogram->param_count);
-                exit(1);
+                error_exit();
             }
             next_token();
             args = calloc(subprogram->param_count, sizeof(Expression));
@@ -564,7 +564,7 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
             while(ctx.token.kind != TOKEN_R_PAREN) {
                 if(i >= subprogram->param_count) {
                     print_parse_error("Subprogram '%.*s' is called with too many arguments (requires %u argument(s))", SV(name), subprogram->param_count);
-                    exit(1);
+                    error_exit();
                 }
                 args[i] = parse_expression();
                 if(i != subprogram->param_count - 1) {
@@ -576,14 +576,14 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
             next_token(); // Skip ')'
             if(i != subprogram->param_count) {
                 print_parse_error("Subprogram '%.*s' is called with %u arguments, but it requires %u argument(s)", SV(name), i, subprogram->param_count);
-                exit(1);
+                error_exit();
             }
             break;
         }
         default:
             print_unexpected_token_error(&ctx.token); /* fall through */
         case TOKEN_ERROR:
-            exit(1);
+            error_exit();
     }
 
     stmt->kind = STMT_CALL;
@@ -655,7 +655,7 @@ void parse_if_statement(Statement* stmt)
         default:
             print_unexpected_token_error(&ctx.token); /* fall through */
         case TOKEN_ERROR:
-            exit(1);
+            error_exit();
     }
 
     if(is_if) {
@@ -777,15 +777,15 @@ void check_op_arity(const Token* op_token, uint8_t param_count)
         if(is_binary_op(op_token->kind)) {
             if(param_count != 1 && param_count != 2) {
                 print_parse_error("Overloaded operator '%.*s' must be an unary or binary function", SV(op_token->text));
-                exit(1);
+                error_exit();
             }
         } else if(param_count != 1) {
             print_parse_error("Overloaded operator '%.*s' must be an unary function", SV(op_token->text));
-            exit(1);
+            error_exit();
         }
     } else if(param_count != 2) {
         print_parse_error("Overloaded operator '%.*s' must be a binary function", SV(op_token->text));
-        exit(1);
+        error_exit();
     }
 }
 
@@ -849,7 +849,7 @@ Expression* parse_primary_expression(void)
             next_token();
             break;
         case TOKEN_ERROR:
-            exit(1);
+            error_exit();
         default:
             if(is_unary_op(ctx.token.kind)) {
                 UnaryOperator op = unary_op(ctx.token.kind);
@@ -861,7 +861,7 @@ Expression* parse_primary_expression(void)
                 expr->u.unary.right = right;
             } else {
                 print_unexpected_token_error(&ctx.token);
-                exit(1);
+                error_exit();
             }
     }
     return expr;
@@ -875,7 +875,7 @@ Expression* parse_numeric_literal(void)
 
     if(memchr(ctx.token.text.value, '.', ctx.token.text.len) != NULL) {
         print_parse_error("TODO: support non-integer numeric literals");
-        exit(1);
+        error_exit();
     }
     int base = 10;
     const char* hash_mark = memchr(ctx.token.text.value, '#', ctx.token.text.len);
@@ -888,20 +888,20 @@ Expression* parse_numeric_literal(void)
         }
         if(base < 1 || base > 16) {
             print_parse_error("Numeric literal has invalid base (%d). Bases must be in range [1, 16]", base);
-            exit(1);
+            error_exit();
         }
     }
 
     num_buffer[0] = '\0';
     if(!prepare_num_str(&ctx.token.text, num_buffer, sizeof(num_buffer))) {
         print_parse_error("Numeric literal is too long to be processed (max supported is 127 characters)");
-        exit(1);
+        error_exit();
     }
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
     if(mpz_init_set_str(expr->u.int_lit, num_buffer, base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), base);
-        exit(1);
+        error_exit();
     }
     next_token();
     return expr;
@@ -913,7 +913,7 @@ void begin_region(void)
 {
     if(ctx.curr_region_idx + 1 >= cnt_of_array(ctx.region_stack)) {
         print_parse_error("Too many nested regions (maximum is %u nested regions)", cnt_of_array(ctx.region_stack));
-        exit(1);
+        error_exit();
     }
     ++ctx.curr_region_idx;
     memset(&curr_region(ctx), 0, sizeof(ctx.region_stack[0]));
@@ -924,7 +924,7 @@ void end_region(void)
 {
     if(ctx.curr_region_idx == 0) {
         print_parse_error("Attempted to exit top-level region");
-        exit(1);
+        error_exit();
     }
     --ctx.curr_region_idx;
 }
@@ -1032,12 +1032,12 @@ static
 void expect_token(TokenKind kind)
 {
     if(ctx.token.kind == TOKEN_ERROR) {
-        exit(1);
+        error_exit();
     }
     if(ctx.token.kind != kind) {
         print_unexpected_token_error(&ctx.token);
         print_parse_error("Expected token: '%s'", token_kind_to_str(kind));
-        exit(1);
+        error_exit();
     }
 }
 
@@ -1053,7 +1053,7 @@ uint32_t count_enum_literals(void)
             case TOKEN_CHAR_LITERAL:
                 if(literal_count == UINT32_MAX) {
                     error_print(ctx.input_start, curr, "Enumeration type has too many literals to be processed (max supported is 2**32-1 literals)");
-                    exit(1);
+                    error_exit();
                 }
                 ++literal_count;
                 break;
@@ -1062,7 +1062,7 @@ uint32_t count_enum_literals(void)
             default:
                 print_unexpected_token_error(&token); /* fall through */
             case TOKEN_ERROR:
-                exit(1);
+                error_exit();
         }
         curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
     }
