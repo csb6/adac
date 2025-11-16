@@ -29,15 +29,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "string_view.h"
 #include "mini-gmp.h"
 
-typedef struct {
-    Declaration* first; // linked list of decls
-    Declaration* last; // Pointer to last decl
-} DeclList;
+#define DEFINE_LIST_TYPE(list_type, value_type, name) \
+    typedef struct { \
+        value_type* first; \
+        value_type* last; \
+    } list_type; \
+    static void append_##name(list_type* list, value_type* value) \
+    { \
+        if(list->last) { \
+            list->last->next = value; \
+        } else { \
+            list->first = value; \
+        } \
+        list->last = value; \
+    }
 
-typedef struct {
-    Statement* first; // linked list of stmts
-    Statement* last; // Pointer to last stmt
-} StmtList;
+DEFINE_LIST_TYPE(DeclList, Declaration, decl)
+DEFINE_LIST_TYPE(StmtList, Statement, stmt)
+DEFINE_LIST_TYPE(CaseList, Case, case)
 
 typedef struct {
     DeclList region_stack[32];
@@ -73,6 +82,7 @@ static void parse_assign_statement(Statement* stmt, StringView name);
 static void parse_procedure_call_statement(Statement* stmt, StringView name);
 static void parse_block_statement(Statement* stmt);
 static void parse_if_statement(Statement* stmt);
+static void parse_case_statement(Statement* stmt);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
@@ -98,8 +108,6 @@ static uint32_t count_enum_literals(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 static bool identifier_equal(const StringView* a, const StringView* b);
-static void append_decl(DeclList* decl_list, Declaration* decl);
-static void append_stmt(StmtList* stmt_list, Statement* stmt);
 
 PackageSpec* parser_parse(const char* input_start, const char* input_end)
 {
@@ -504,6 +512,9 @@ Statement* parse_statement(void)
         case TOKEN_IF:
             parse_if_statement(stmt);
             break;
+        case TOKEN_CASE:
+            parse_case_statement(stmt);
+            break;
         default:
             print_unexpected_token_error(&ctx.token);
         case TOKEN_ERROR:
@@ -664,6 +675,39 @@ void parse_if_statement(Statement* stmt)
         expect_token(TOKEN_IF);
         next_token();
     }
+}
+
+static
+void parse_case_statement(Statement* stmt)
+{
+    next_token(); // Skip 'case'
+    stmt->kind = STMT_CASE;
+    stmt->u.case_.expr = parse_expression();
+    expect_token(TOKEN_IS);
+    next_token();
+
+    CaseList choice_list = {0};
+    while(ctx.token.kind != TOKEN_END) {
+        expect_token(TOKEN_WHEN);
+        next_token();
+        Case* case_ = calloc(1, sizeof(Case));
+        case_->choice = parse_expression(); // TODO: can be more than just expression
+
+        expect_token(TOKEN_ARROW);
+        next_token();
+
+        StmtList stmt_list = {0};
+        while(ctx.token.kind != TOKEN_WHEN && ctx.token.kind != TOKEN_END) {
+            append_stmt(&stmt_list, parse_statement());
+        }
+        case_->stmts = stmt_list.first;
+        append_case(&choice_list, case_);
+    }
+    stmt->u.case_.cases = choice_list.first;
+    next_token();
+
+    expect_token(TOKEN_CASE);
+    next_token();
 }
 
 typedef uint8_t OperatorFlags;
@@ -948,28 +992,6 @@ bool identifier_equal(const StringView* a, const StringView* b)
         }
     }
     return true;
-}
-
-static
-void append_decl(DeclList* decl_list, Declaration* decl)
-{
-    if(decl_list->last) {
-        decl_list->last->next = decl;
-    } else {
-        decl_list->first = decl;
-    }
-    decl_list->last = decl;
-}
-
-static
-void append_stmt(StmtList* stmt_list, Statement* stmt)
-{
-    if(stmt_list->last) {
-        stmt_list->last->next = stmt;
-    } else {
-        stmt_list->first = stmt;
-    }
-    stmt_list->last = stmt;
 }
 
 static

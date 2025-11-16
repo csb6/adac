@@ -25,6 +25,8 @@ static void print_declaration(const Declaration* decl, uint8_t indent_level);
 static void print_subprogram_decl(const Declaration* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
 static void print_statement(const Statement* stmt, uint8_t indent_level);
+static void print_if_statement(const IfStmt* stmt, uint8_t indent_level);
+static void print_case_statement(const CaseStmt* stmt, uint8_t indent_level);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
@@ -228,40 +230,68 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             printf("end");
             break;
         case STMT_IF:
-            printf("if ");
-            print_expression(stmt->u.if_.condition);
-            printf(" then\n");
-            for(const Statement* s = stmt->u.if_.stmts; s != NULL; s = s->next) {
-                print_statement(s, indent_level+1);
-            }
-            const Statement* block = stmt->u.if_.else_;
-            while(block) {
-                if(block->kind == STMT_IF) {
-                    print_indent(indent_level);
-                    printf("elsif ");
-                    print_expression(block->u.if_.condition);
-                    printf(" then\n");
-                    for(const Statement* s = block->u.if_.stmts; s != NULL; s = s->next) {
-                        print_statement(s, indent_level+1);
-                    }
-                    block = block->u.if_.else_;
-                } else {
-                    print_indent(indent_level);
-                    assert(block->kind == STMT_BLOCK);
-                    printf("else\n");
-                    for(const Statement* s = block->u.block.stmts; s != NULL; s = s->next) {
-                        print_statement(s, indent_level+1);
-                    }
-                    block = NULL;
-                }
-            }
-            print_indent(indent_level);
-            printf("end if");
+            print_if_statement(&stmt->u.if_, indent_level);
+            break;
+        case STMT_CASE:
+            print_case_statement(&stmt->u.case_, indent_level);
             break;
         default:
             printf("Unhandled statement");
     }
     printf(";\n");
+}
+
+static
+void print_if_statement(const IfStmt* stmt, uint8_t indent_level)
+{
+    printf("if ");
+    print_expression(stmt->condition);
+    printf(" then\n");
+    for(const Statement* s = stmt->stmts; s != NULL; s = s->next) {
+        print_statement(s, indent_level+1);
+    }
+    const Statement* block = stmt->else_;
+    while(block) {
+        if(block->kind == STMT_IF) {
+            print_indent(indent_level);
+            printf("elsif ");
+            print_expression(block->u.if_.condition);
+            printf(" then\n");
+            for(const Statement* s = block->u.if_.stmts; s != NULL; s = s->next) {
+                print_statement(s, indent_level+1);
+            }
+            block = block->u.if_.else_;
+        } else {
+            print_indent(indent_level);
+            assert(block->kind == STMT_BLOCK);
+            printf("else\n");
+            for(const Statement* s = block->u.block.stmts; s != NULL; s = s->next) {
+                print_statement(s, indent_level+1);
+            }
+            block = NULL;
+        }
+    }
+    print_indent(indent_level);
+    printf("end if");
+}
+
+static
+void print_case_statement(const CaseStmt* stmt, uint8_t indent_level)
+{
+    printf("case ");
+    print_expression(stmt->expr);
+    printf(" is\n");
+    for(const Case* case_ = stmt->cases; case_ != NULL; case_ = case_->next) {
+        print_indent(indent_level+1);
+        printf("when ");
+        print_expression(case_->choice);
+        printf(" =>\n");
+        for(const Statement* s = case_->stmts; s != NULL; s = s->next) {
+            print_statement(s, indent_level+2);
+        }
+    }
+    print_indent(indent_level);
+    printf("end case");
 }
 
 static

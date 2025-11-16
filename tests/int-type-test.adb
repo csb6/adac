@@ -91,6 +91,12 @@ package IntTypeTest is
         end;
         begin
             b := False;
+            case b is
+                when False => b := True;
+                when True  =>
+                  b := True;
+                  b := False;
+            end case;
         end;
         return 1 + 1;
     end bar;

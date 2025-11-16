@@ -166,7 +166,7 @@ typedef struct Declaration_ {
 typedef uint8_t StmtKind;
 enum {
     STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
-    STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF
+    STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE,
 };
 
 typedef struct AssignStmt_ {
@@ -194,6 +194,17 @@ typedef struct IfStmt_ {
     struct Statement_* else_; // Either an IfStmt (for elsif block) or a BlockStmt (for else block)
 } IfStmt;
 
+typedef struct Case_ {
+    struct Expression_* choice; // TODO: can be more than just an expression - see choice grammar rule
+    struct Statement_* stmts;
+    struct Case_* next;
+} Case;
+
+typedef struct CaseStmt_ {
+    struct Expression_* expr;
+    Case* cases;
+} CaseStmt;
+
 typedef struct Statement_ {
     StmtKind kind;
     union {
@@ -202,6 +213,7 @@ typedef struct Statement_ {
         ReturnStmt return_;
         BlockStmt block;
         IfStmt if_;
+        CaseStmt case_;
     } u;
     struct Statement_* next;
 } Statement;
