@@ -56,7 +56,6 @@ enum {
     // 3.8: Access types
     TYPE_ACCESS, TYPE_INCOMPLETE,
 
-    TYPE_PLACEHOLDER,
     TYPE_KIND_COUNT
 };
 
@@ -131,7 +130,6 @@ typedef struct TypeDecl_ {
         ArrayType array;
         RecordType record;
         AccessType access;
-        StringView placeholder_name;
     } u;
 } TypeDecl;
 

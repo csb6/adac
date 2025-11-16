@@ -153,9 +153,6 @@ void print_type_decl(const TypeDecl* type_decl)
 {
     printf("%s %.*s is ", type_decl->kind == TYPE_SUBTYPE ? "subtype" : "type", SV(type_decl->name));
     switch(type_decl->kind) {
-        case TYPE_PLACEHOLDER:
-            printf("%.*s (placeholder)", SV(type_decl->u.placeholder_name));
-            break;
         case TYPE_UNIV_INTEGER:
             printf("universal integer");
             break;
