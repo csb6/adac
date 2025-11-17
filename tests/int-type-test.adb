@@ -101,4 +101,21 @@ package IntTypeTest is
         end;
         return 1 + 1;
     end bar;
+
+    procedure some_loops is
+    begin
+        loop
+            null;
+        end loop;
+        while True loop
+            null;
+            some_loops;
+        end loop;
+        for i in 0 .. 10 loop
+            null;
+        end loop;
+        for i in reverse 0 .. 10 loop
+            null;
+        end loop;
+    end;
 end inttypetest;

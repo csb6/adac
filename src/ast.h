@@ -161,7 +161,7 @@ typedef struct Declaration_ {
 typedef uint8_t StmtKind;
 enum {
     STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
-    STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE,
+    STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP,
 };
 
 typedef struct AssignStmt_ {
@@ -218,6 +218,31 @@ typedef struct CaseStmt_ {
     Case* cases;
 } CaseStmt;
 
+typedef uint8_t LoopKind;
+enum {
+    // Note: loops without iteration scheme are considered 'while true' loops
+    LOOP_WHILE, LOOP_FOR
+};
+
+typedef struct {
+    struct Expression_* condition; // Must be boolean
+} WhileLoop;
+
+typedef struct {
+    ObjectDecl* var;
+    struct Expression_* range;
+} ForLoop;
+
+typedef struct LoopStmt_ {
+    LoopKind kind;
+    bool reverse; // Only valid for ForLoop
+    union {
+        WhileLoop while_;
+        ForLoop for_;
+    } u;
+    struct Statement_* stmts;
+} LoopStmt;
+
 typedef struct Statement_ {
     StmtKind kind;
     union {
@@ -227,6 +252,7 @@ typedef struct Statement_ {
         BlockStmt block;
         IfStmt if_;
         CaseStmt case_;
+        LoopStmt loop;
     } u;
     struct Statement_* next;
 } Statement;

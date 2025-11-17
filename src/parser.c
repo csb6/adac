@@ -84,6 +84,7 @@ static void parse_procedure_call_statement(Statement* stmt, StringView name);
 static void parse_block_statement(Statement* stmt);
 static void parse_if_statement(Statement* stmt);
 static void parse_case_statement(Statement* stmt);
+static void parse_loop_statement(Statement* stmt);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
@@ -516,6 +517,11 @@ Statement* parse_statement(void)
         case TOKEN_CASE:
             parse_case_statement(stmt);
             break;
+        case TOKEN_FOR:
+        case TOKEN_WHILE:
+        case TOKEN_LOOP:
+            parse_loop_statement(stmt);
+            break;
         default:
             print_unexpected_token_error(&ctx.token);
         case TOKEN_ERROR:
@@ -708,6 +714,62 @@ void parse_case_statement(Statement* stmt)
     next_token();
 
     expect_token(TOKEN_CASE);
+    next_token();
+}
+
+static
+void parse_loop_statement(Statement* stmt)
+{
+    // TODO: loop_simple_name (also required at end if provided at start)
+    stmt->kind = STMT_LOOP;
+    stmt->u.loop.kind = LOOP_WHILE;
+    if(ctx.token.kind == TOKEN_WHILE) {
+        next_token();
+        stmt->u.loop.u.while_.condition = parse_expression();
+    } else if(ctx.token.kind == TOKEN_FOR) {
+        stmt->u.loop.kind = LOOP_FOR;
+        next_token();
+        expect_token(TOKEN_IDENT);
+        StringView var_name = ctx.token.text;
+        if(find_declaration_in_current_region(var_name)) {
+            print_parse_error("Redefinition of '%.*s' within same declarative region", SV(var_name));
+            error_exit();
+        }
+        stmt->u.loop.u.for_.var = calloc(1, sizeof(ObjectDecl));
+        stmt->u.loop.u.for_.var->name = var_name;
+        stmt->u.loop.u.for_.var->type = &universal_int_type; // TODO: will need to fill in this type later to be range's type
+        next_token();
+
+        expect_token(TOKEN_IN);
+        next_token();
+        if(ctx.token.kind == TOKEN_REVERSE) {
+            stmt->u.loop.reverse = true;
+            next_token();
+        }
+        Expression* range = parse_expression();
+        if(range->kind != EXPR_BINARY || range->u.binary.op != OP_RANGE) {
+            print_parse_error("Unexpected expression: for loop must have a discrete range");
+            error_exit();
+        }
+        stmt->u.loop.u.for_.range = range;
+    } else {
+        stmt->u.loop.u.while_.condition = calloc(1, sizeof(Expression));
+        // TODO: set to boolean literal
+        stmt->u.loop.u.while_.condition->kind = EXPR_INT_LIT;
+        mpz_init_set_ui(stmt->u.loop.u.while_.condition->u.int_lit, 1);
+    }
+
+    expect_token(TOKEN_LOOP);
+    next_token();
+    StmtList stmt_list = {0};
+    while(ctx.token.kind != TOKEN_END) {
+        append_stmt(&stmt_list, parse_statement());
+    }
+    stmt->u.loop.stmts = stmt_list.first;
+
+    expect_token(TOKEN_END);
+    next_token();
+    expect_token(TOKEN_LOOP);
     next_token();
 }
 
