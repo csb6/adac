@@ -113,9 +113,11 @@ package IntTypeTest is
         end loop;
         for i in 0 .. 10 loop
             null;
+            exit when True;
         end loop;
         for i in reverse 0 .. 10 loop
             null;
+            exit;
         end loop;
     end;
 end inttypetest;

@@ -488,6 +488,15 @@ Statement* parse_statement(void)
                 stmt->u.return_.expr = parse_expression();
             }
             break;
+        case TOKEN_EXIT:
+            stmt->kind = STMT_EXIT;
+            next_token();
+            // TODO: support optional loop name
+            if(ctx.token.kind == TOKEN_WHEN) {
+                next_token();
+                stmt->u.exit.condition = parse_expression();
+            }
+            break;
         case TOKEN_IDENT: {
             // TODO: properly parse array/record components (and maybe .all?) See LRM chapter 4.1
             StringView name = ctx.token.text;

@@ -178,6 +178,10 @@ typedef struct ReturnStmt_ {
     struct Expression_* expr;
 } ReturnStmt;
 
+typedef struct {
+    struct Expression_* condition; // Can be NULL
+} ExitStmt;
+
 typedef struct BlockStmt_ {
     struct Declaration_* decls;
     struct Statement_* stmts;
@@ -249,6 +253,7 @@ typedef struct Statement_ {
         AssignStmt assign;
         CallStmt call;
         ReturnStmt return_;
+        ExitStmt exit;
         BlockStmt block;
         IfStmt if_;
         CaseStmt case_;

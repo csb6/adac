@@ -203,6 +203,13 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
                 print_expression(stmt->u.return_.expr);
             }
             break;
+        case STMT_EXIT:
+            printf("exit");
+            if(stmt->u.exit.condition) {
+                printf(" when ");
+                print_expression(stmt->u.exit.condition);
+            }
+            break;
         case STMT_CALL:
             printf("%.*s", SV(stmt->u.call.subprogram->name));
             if(stmt->u.call.subprogram->param_count > 0) {
