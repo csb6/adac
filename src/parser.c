@@ -692,7 +692,7 @@ void parse_case_statement(Statement* stmt)
         expect_token(TOKEN_WHEN);
         next_token();
         Case* case_ = calloc(1, sizeof(Case));
-        case_->choice = parse_choice();
+        case_->choices = parse_choice();
 
         expect_token(TOKEN_ARROW);
         next_token();

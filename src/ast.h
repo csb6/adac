@@ -204,7 +204,7 @@ typedef struct Choice_ {
 } Choice;
 
 typedef struct Case_ {
-    Choice* choice;
+    Choice* choices;
     struct Statement_* stmts;
     struct Case_* next;
 } Case;

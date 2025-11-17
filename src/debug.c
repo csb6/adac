@@ -283,7 +283,7 @@ void print_case_statement(const CaseStmt* stmt, uint8_t indent_level)
     for(const Case* case_ = stmt->cases; case_ != NULL; case_ = case_->next) {
         print_indent(indent_level+1);
         printf("when ");
-        print_choices(case_->choice);
+        print_choices(case_->choices);
         printf(" =>\n");
         for(const Statement* s = case_->stmts; s != NULL; s = s->next) {
             print_statement(s, indent_level+2);
