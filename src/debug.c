@@ -31,7 +31,7 @@ static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
 static void print_params(const Declaration* params, uint8_t param_count);
-static void print_choices(const Choice* choice);
+static void print_choice(const Choice* choice);
 static const char* param_mode_str(ParamMode mode);
 static void print_indent(uint8_t size);
 
@@ -283,7 +283,7 @@ void print_case_statement(const CaseStmt* stmt, uint8_t indent_level)
     for(const Case* case_ = stmt->cases; case_ != NULL; case_ = case_->next) {
         print_indent(indent_level+1);
         printf("when ");
-        print_choices(case_->choices);
+        print_choice(&case_->choice);
         printf(" =>\n");
         for(const Statement* s = case_->stmts; s != NULL; s = s->next) {
             print_statement(s, indent_level+2);
@@ -294,22 +294,24 @@ void print_case_statement(const CaseStmt* stmt, uint8_t indent_level)
 }
 
 static
-void print_choices(const Choice* choice)
+void print_choice(const Choice* choice)
 {
-    switch(choice->kind) {
-        case CHOICE_EXPR:
-            print_expression(choice->u.expr);
-            break;
-        case CHOICE_OTHERS:
-            printf("others");
-            break;
-        default:
-            printf("Unknown choice");
-            break;
-    }
-    if(choice->next) {
-        printf(" | ");
-        print_choices(choice->next);
+    for(uint8_t i = 0; i < choice->count; ++i) {
+        const Alternative* alt = &choice->alternatives[i];
+        switch(alt->kind) {
+            case ALT_EXPR:
+                print_expression(alt->u.expr);
+                break;
+            case ALT_OTHERS:
+                printf("others");
+                break;
+            default:
+                printf("Unknown alternative");
+                break;
+        }
+        if(i < choice->count - 1) {
+            printf(" | ");
+        }
     }
 }
 

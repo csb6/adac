@@ -189,22 +189,26 @@ typedef struct IfStmt_ {
     struct Statement_* else_; // Either an IfStmt (for elsif block) or a BlockStmt (for else block)
 } IfStmt;
 
-typedef uint8_t ChoiceKind;
+typedef uint8_t AltKind;
 enum {
     // TODO: component_simple_name
-    CHOICE_EXPR, CHOICE_OTHERS
+    ALT_EXPR, ALT_OTHERS
 };
 
-typedef struct Choice_ {
-    ChoiceKind kind;
+typedef struct Alternative_ {
+    AltKind kind;
     union {
         struct Expression_* expr;
     } u;
-    struct Choice_* next;
+} Alternative;
+
+typedef struct Choice_ {
+    Alternative* alternatives;
+    uint8_t count;
 } Choice;
 
 typedef struct Case_ {
-    Choice* choices;
+    Choice choice;
     struct Statement_* stmts;
     struct Case_* next;
 } Case;

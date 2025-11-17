@@ -76,6 +76,7 @@ static void parse_enum_type_definition(EnumType* enum_type);
 static void parse_subprogram_declaration(Declaration* decl);
 static uint8_t parse_parameters(void);
 static void parse_subprogram_body(Declaration* decl);
+static void parse_choice(Choice* choice);
 /* STATEMENTS */
 static Statement* parse_statement(void);
 static void parse_assign_statement(Statement* stmt, StringView name);
@@ -94,8 +95,6 @@ static void end_region(void);
 static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
 static Declaration* find_visible_declaration(StringView name, DeclKind kind);
-/* OTHER */
-static Choice* parse_choice(void);
 /* UTILITIES */
 #define curr_region(ctx) ctx.region_stack[ctx.curr_region_idx]
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
@@ -107,6 +106,7 @@ static bool is_unary_op(TokenKind token);
 static bool is_overloadable_op(TokenKind token);
 static void check_op_arity(const Token* op_token, uint8_t param_count);
 static uint32_t count_enum_literals(void);
+static uint8_t count_alternatives(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 static bool identifier_equal(const StringView* a, const StringView* b);
@@ -692,7 +692,7 @@ void parse_case_statement(Statement* stmt)
         expect_token(TOKEN_WHEN);
         next_token();
         Case* case_ = calloc(1, sizeof(Case));
-        case_->choices = parse_choice();
+        parse_choice(&case_->choice);
 
         expect_token(TOKEN_ARROW);
         next_token();
@@ -957,25 +957,22 @@ Expression* parse_numeric_literal(void)
 }
 
 static
-Choice* parse_choice(void)
+void parse_choice(Choice* choice)
 {
-    Choice* choice = calloc(1, sizeof(Choice));
-    while(ctx.token.kind != TOKEN_ARROW) {
-        // TODO: component_simple_name
-        switch(ctx.token.kind) {
-            case TOKEN_OTHERS:
-                choice->kind = CHOICE_OTHERS;
-                next_token();
-                break;
-            default:
-                choice->u.expr = parse_expression();
-                if(ctx.token.kind == TOKEN_BAR) {
-                    next_token();
-                    choice->next = parse_choice();
-                }
+    choice->count = count_alternatives();
+    choice->alternatives = calloc(choice->count, sizeof(Alternative));
+    for(uint8_t i = 0; i < choice->count; ++i) {
+        if(ctx.token.kind == TOKEN_OTHERS) {
+            choice->alternatives[i].kind = ALT_OTHERS;
+            next_token();
+        } else {
+            choice->alternatives[i].u.expr = parse_expression();
+        }
+        if(i != choice->count - 1) {
+            expect_token(TOKEN_BAR);
+            next_token();
         }
     }
-    return choice;
 }
 
 // TODO: have way to provide initial list of declarations (e.g. from a package spec or a function's param list)
@@ -1116,6 +1113,32 @@ uint32_t count_enum_literals(void)
         curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
     }
     return literal_count;
+}
+
+static
+uint8_t count_alternatives(void)
+{
+    uint8_t alt_count = 1;
+    Token token = ctx.token;
+    const char* curr = ctx.curr;
+    while(token.kind != TOKEN_ARROW) {
+        switch(token.kind) {
+            case TOKEN_BAR:
+                if(alt_count == UINT8_MAX) {
+                    error_print(ctx.input_start, curr, "Case has too many alternatives to be processed (max supported is 255 alternatives)");
+                    error_exit();
+                }
+                ++alt_count;
+                break;
+            case TOKEN_ERROR:
+                error_exit();
+                break;
+            default:
+                break;
+        }
+        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+    }
+    return alt_count;
 }
 
 static
