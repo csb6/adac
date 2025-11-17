@@ -1,6 +1,6 @@
 package IntTypeTest is
     -- comment
-    type SmallInteger is range 16#FFF# .. 12;
+    type SmallInteger is range 16#FFF# .. 12+1;
 
     type BigInteger is range 1 .. 12_000_000_000;
     small_int: SmallInteger := 1 + 2 * +4 * abs 1 / 3**12-1;
@@ -92,8 +92,9 @@ package IntTypeTest is
         begin
             b := False;
             case b is
-                when False => b := True;
-                when True  =>
+                when False | True => b := True;
+                when 0 .. 1 => null;
+                when others  =>
                   b := True;
                   b := False;
             end case;

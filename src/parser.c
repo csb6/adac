@@ -94,6 +94,8 @@ static void end_region(void);
 static void push_declaration(Declaration* decl);
 static Declaration* find_declaration_in_current_region(StringView name);
 static Declaration* find_visible_declaration(StringView name, DeclKind kind);
+/* OTHER */
+static Choice* parse_choice(void);
 /* UTILITIES */
 #define curr_region(ctx) ctx.region_stack[ctx.curr_region_idx]
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
@@ -690,7 +692,7 @@ void parse_case_statement(Statement* stmt)
         expect_token(TOKEN_WHEN);
         next_token();
         Case* case_ = calloc(1, sizeof(Case));
-        case_->choice = parse_expression(); // TODO: can be more than just expression
+        case_->choice = parse_choice();
 
         expect_token(TOKEN_ARROW);
         next_token();
@@ -952,6 +954,28 @@ Expression* parse_numeric_literal(void)
     }
     next_token();
     return expr;
+}
+
+static
+Choice* parse_choice(void)
+{
+    Choice* choice = calloc(1, sizeof(Choice));
+    while(ctx.token.kind != TOKEN_ARROW) {
+        // TODO: component_simple_name
+        switch(ctx.token.kind) {
+            case TOKEN_OTHERS:
+                choice->kind = CHOICE_OTHERS;
+                next_token();
+                break;
+            default:
+                choice->u.expr = parse_expression();
+                if(ctx.token.kind == TOKEN_BAR) {
+                    next_token();
+                    choice->next = parse_choice();
+                }
+        }
+    }
+    return choice;
 }
 
 // TODO: have way to provide initial list of declarations (e.g. from a package spec or a function's param list)
