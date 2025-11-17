@@ -58,7 +58,6 @@ int main(int argc, char** argv)
     }
     off_t file_size = get_file_size(fd);
     if(file_size < 0) {
-        perror("Failed to read metadata of input file");
         return 1;
     }
 
