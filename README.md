@@ -11,7 +11,7 @@ GNAT from source.
 
 ## Progress
 
-- The lexer is largely complete, although it is does not currently support:
+- The lexer is largely complete, although it does not currently support:
   - Based literals with points
   - Substitution of '#' with '"' within based literals
 
@@ -25,8 +25,7 @@ GNAT from source.
   - Some checking for redefinitions of names within same region
   - Package specifications containing the supported kinds of declarations
 
-No semantic analysis or code generation is currently implemented. The goal is to eventually compile each compilation unit
-into an object file so that GNAT can be built and linked with GCC.
+No semantic analysis or code generation is currently implemented.
 
 ## Building
 
@@ -36,7 +35,7 @@ into an object file so that GNAT can be built and linked with GCC.
     # Here we use ninja, but use whichever CMake generator you prefer
     ninja
 
-Since CMake itself requires a C++ compiler to bootstrap, it is also possible to build using a manual compiler
+Since CMake requires a C++ compiler, it is also possible to build this project using a manual compiler
 invocation. Reference the CMakeLists.txt files to see the source files needed. It should be as simple as passing
 all of the .c files (except `keywords.c` and `lexer_table.c`) into the compiler driver.
 
