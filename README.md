@@ -6,8 +6,7 @@ of the GNAT Ada compiler, enabling GNAT to be bootstrapped.
 GNAT is part of GCC and is written in Ada, which causes bootstrapping issues
 when compiling GCC from source code. It means that a prebuilt binary of GNAT (built
 using earlier versions of GNAT, themselves built using a proprietary Ada compiler
-during GNAT's early development before GNAT became self-hosting) is necessary to build
-GNAT from source.
+during GNAT's early development) is necessary to build GNAT from source.
 
 ## Progress
 
