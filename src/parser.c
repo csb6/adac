@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "token.h"
 #include "error.h"
 #include "static_assert.h"
+#include "string_pool.h"
 #include "string_view.h"
 #include "mini-gmp.h"
 
@@ -60,7 +61,7 @@ typedef struct {
 static const char universal_integer_str[] = "universal_integer";
 TypeDecl universal_int_type = {
     .kind = TYPE_UNIV_INTEGER,
-    .name = { .value = universal_integer_str, .len = sizeof(universal_integer_str) }
+    .name = 0 // This gets set in parser_parse
 };
 
 static ParseContext ctx;
@@ -79,8 +80,8 @@ static void parse_subprogram_body(Declaration* decl);
 static void parse_choice(Choice* choice);
 /* STATEMENTS */
 static Statement* parse_statement(void);
-static void parse_assign_statement(Statement* stmt, StringView name);
-static void parse_procedure_call_statement(Statement* stmt, StringView name);
+static void parse_assign_statement(Statement* stmt, StringToken name);
+static void parse_procedure_call_statement(Statement* stmt, StringToken name);
 static void parse_block_statement(Statement* stmt);
 static void parse_if_statement(Statement* stmt);
 static void parse_case_statement(Statement* stmt);
@@ -94,8 +95,9 @@ static Expression* parse_numeric_literal(void);
 static void begin_region(void);
 static void end_region(void);
 static void push_declaration(Declaration* decl);
-static Declaration* find_declaration_in_current_region(StringView name);
-static Declaration* find_visible_declaration(StringView name, DeclKind kind);
+static Declaration* find_declaration(Declaration* decl_list, StringToken name);
+static Declaration* find_declaration_in_current_region(StringToken name);
+static Declaration* find_visible_declaration(StringToken name, DeclKind kind);
 /* UTILITIES */
 #define curr_region(ctx) ctx.region_stack[ctx.curr_region_idx]
 #define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
@@ -110,7 +112,6 @@ static uint32_t count_enum_literals(void);
 static uint8_t count_alternatives(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
-static bool identifier_equal(const StringView* a, const StringView* b);
 
 PackageSpec* parser_parse(const char* input_start, const char* input_end)
 {
@@ -119,6 +120,12 @@ PackageSpec* parser_parse(const char* input_start, const char* input_end)
     ctx.curr = input_start;
     ctx.input_start = input_start;
     ctx.input_end = input_end;
+
+    // TODO: only do this once (at start of compilation)
+    {
+        StringView universal_int_str_view = { .value = universal_integer_str, .len = sizeof(universal_integer_str) };
+        universal_int_type.name = string_pool_to_token(universal_int_str_view);
+    }
 
     next_token();
     parse_package_spec(package_spec);
@@ -132,7 +139,7 @@ void parse_package_spec(PackageSpec* package_spec)
     next_token();
 
     expect_token(TOKEN_IDENT);
-    package_spec->name = ctx.token.text;
+    package_spec->name = string_pool_to_token(ctx.token.text);
     next_token();
 
     expect_token(TOKEN_IS);
@@ -145,8 +152,9 @@ void parse_package_spec(PackageSpec* package_spec)
     next_token(); // Skip 'end'
 
     if(ctx.token.kind == TOKEN_IDENT) {
-        if(!identifier_equal(&package_spec->name, &ctx.token.text)) {
-            print_parse_error("Closing identifier does not match package specification name (%.*s)", SV(package_spec->name));
+        StringToken closing_name = string_pool_to_token(ctx.token.text);
+        if(package_spec->name != closing_name) {
+            print_parse_error("Closing identifier does not match package specification name (%s)", ST(package_spec->name));
             error_exit();
         }
         next_token();
@@ -194,10 +202,10 @@ void parse_object_declaration(Declaration* decl, bool is_param)
     decl->kind = DECL_OBJECT;
     ObjectDecl* obj_decl = &decl->u.object;
     // TODO: support identifier_list
-    obj_decl->name = ctx.token.text;
+    obj_decl->name = string_pool_to_token(ctx.token.text);
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(obj_decl->name) != NULL) {
-        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(obj_decl->name));
+        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
         error_exit();
     }
     next_token();
@@ -233,7 +241,8 @@ void parse_object_declaration(Declaration* decl, bool is_param)
     if(ctx.token.kind == TOKEN_IDENT) {
         // Type name
         // TODO: properly parse this as a subtype_indication or constrained_array_definition
-        Declaration* type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
+        StringToken type_name = string_pool_to_token(ctx.token.text);
+        Declaration* type_decl = find_visible_declaration(type_name, DECL_TYPE);
         if(!type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             error_exit();
@@ -264,10 +273,10 @@ void parse_type_declaration(Declaration* decl)
     next_token(); // Skip 'type'/'subtype' keyword
 
     expect_token(TOKEN_IDENT);
-    type_decl->name = ctx.token.text;
+    type_decl->name = string_pool_to_token(ctx.token.text);
     // TODO: print line number of previous definition
     if(find_declaration_in_current_region(type_decl->name) != NULL) {
-        print_parse_error("Redefinition of '%.*s' within same declarative region", SV(type_decl->name));
+        print_parse_error("Redefinition of '%s' within same declarative region", ST(type_decl->name));
         error_exit();
     }
     next_token();
@@ -279,7 +288,8 @@ void parse_type_declaration(Declaration* decl)
     if(is_subtype) {
         // TODO: properly parse this as a subtype_indication
         expect_token(TOKEN_IDENT);
-        Declaration* base_type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
+        StringToken base_type_name = string_pool_to_token(ctx.token.text);
+        Declaration* base_type_decl = find_visible_declaration(base_type_name, DECL_TYPE);
         if(!base_type_decl) {
             print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
             error_exit();
@@ -301,7 +311,8 @@ void parse_type_declaration(Declaration* decl)
                 next_token();
                 // TODO: properly parse this as a subtype_indication
                 expect_token(TOKEN_IDENT);
-                Declaration* base_type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
+                StringToken base_type_name = string_pool_to_token(ctx.token.text);
+                Declaration* base_type_decl = find_visible_declaration(base_type_name, DECL_TYPE);
                 if(!base_type_decl) {
                     print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
                     error_exit();
@@ -384,7 +395,7 @@ void parse_subprogram_declaration(Declaration* decl)
         expect_token(TOKEN_IDENT);
     }
     // TODO: check if is an overload, if so if it is permissable
-    decl->u.subprogram.name = ctx.token.text;
+    decl->u.subprogram.name = string_pool_to_token(ctx.token.text);
     push_declaration(decl);
     next_token();
 
@@ -402,7 +413,8 @@ void parse_subprogram_declaration(Declaration* decl)
         expect_token(TOKEN_RETURN);
         next_token();
         // TODO: properly parse type_mark
-        Declaration* return_type_decl = find_visible_declaration(ctx.token.text, DECL_TYPE);
+        StringToken return_type_name = string_pool_to_token(ctx.token.text);
+        Declaration* return_type_decl = find_visible_declaration(return_type_name, DECL_TYPE);
         if(!return_type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             error_exit();
@@ -445,8 +457,9 @@ void parse_subprogram_body(Declaration* decl)
     next_token();
 
     if(ctx.token.kind == TOKEN_IDENT) {
-        if(!identifier_equal(&ctx.token.text, &decl->u.subprogram.name)) {
-            print_parse_error("Closing identifier does not match subprogram name (%.*s)", SV(decl->u.subprogram.name));
+        StringToken closing_name = string_pool_to_token(ctx.token.text);
+        if(closing_name != decl->u.subprogram.name) {
+            print_parse_error("Closing identifier does not match subprogram name (%.*s)", SV(ctx.token.text));
             error_exit();
         }
         next_token();
@@ -499,7 +512,7 @@ Statement* parse_statement(void)
             break;
         case TOKEN_IDENT: {
             // TODO: properly parse array/record components (and maybe .all?) See LRM chapter 4.1
-            StringView name = ctx.token.text;
+            StringToken name = string_pool_to_token(ctx.token.text);
             next_token();
             switch(ctx.token.kind) {
                 case TOKEN_ASSIGN:
@@ -542,13 +555,13 @@ Statement* parse_statement(void)
 }
 
 static
-void parse_assign_statement(Statement* stmt, StringView name)
+void parse_assign_statement(Statement* stmt, StringToken name)
 {
     next_token(); // Skip ':='
     stmt->kind = STMT_ASSIGN;
     Declaration* dest = find_visible_declaration(name, DECL_OBJECT);
     if(!dest) {
-        print_parse_error("Unknown variable '%.*s'", SV(name));
+        print_parse_error("Unknown variable '%s'", ST(name));
         error_exit();
     }
     stmt->u.assign.dest = &dest->u.object;
@@ -556,14 +569,14 @@ void parse_assign_statement(Statement* stmt, StringView name)
 }
 
 static
-void parse_procedure_call_statement(Statement* stmt, StringView name)
+void parse_procedure_call_statement(Statement* stmt, StringToken name)
 {
     Declaration* subprogram_decl = find_visible_declaration(name, DECL_PROCEDURE);
     if(!subprogram_decl) {
         if(find_visible_declaration(name, DECL_FUNCTION)) {
             print_parse_error("A function call cannot be a standalone statement (only procedure calls can)");
         } else {
-            print_parse_error("Unknown procedure '%.*s'", SV(name));
+            print_parse_error("Unknown procedure '%s'", ST(name));
         }
         error_exit();
     }
@@ -575,14 +588,14 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
         case TOKEN_SEMICOLON:
             // Must be a subprogram called with no arguments
             if(subprogram->param_count != 0) {
-                print_parse_error("Subprogram '%.*s' is called with zero arguments, but it requires %u argument(s)", SV(name), subprogram->param_count);
+                print_parse_error("Subprogram '%s' is called with zero arguments, but it requires %u argument(s)", ST(name), subprogram->param_count);
                 error_exit();
             }
             break;
         case TOKEN_L_PAREN: {
             // TODO: account for default arguments and named arguments
             if(subprogram->param_count == 0) {
-                print_parse_error("Subprogram '%.*s' is called with %u arguments, but it requires 0 arguments", SV(name), subprogram->param_count);
+                print_parse_error("Subprogram '%s' is called with %u arguments, but it requires 0 arguments", ST(name), subprogram->param_count);
                 error_exit();
             }
             next_token();
@@ -590,7 +603,7 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
             uint8_t i = 0;
             while(ctx.token.kind != TOKEN_R_PAREN) {
                 if(i >= subprogram->param_count) {
-                    print_parse_error("Subprogram '%.*s' is called with too many arguments (requires %u argument(s))", SV(name), subprogram->param_count);
+                    print_parse_error("Subprogram '%s' is called with too many arguments (requires %u argument(s))", ST(name), subprogram->param_count);
                     error_exit();
                 }
                 args[i] = parse_expression();
@@ -602,7 +615,7 @@ void parse_procedure_call_statement(Statement* stmt, StringView name)
             }
             next_token(); // Skip ')'
             if(i != subprogram->param_count) {
-                print_parse_error("Subprogram '%.*s' is called with %u arguments, but it requires %u argument(s)", SV(name), i, subprogram->param_count);
+                print_parse_error("Subprogram '%s' is called with %u arguments, but it requires %u argument(s)", ST(name), i, subprogram->param_count);
                 error_exit();
             }
             break;
@@ -739,9 +752,9 @@ void parse_loop_statement(Statement* stmt)
         stmt->u.loop.kind = LOOP_FOR;
         next_token();
         expect_token(TOKEN_IDENT);
-        StringView var_name = ctx.token.text;
+        StringToken var_name = string_pool_to_token(ctx.token.text);
         if(find_declaration_in_current_region(var_name)) {
-            print_parse_error("Redefinition of '%.*s' within same declarative region", SV(var_name));
+            print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
             error_exit();
         }
         stmt->u.loop.u.for_.var = calloc(1, sizeof(ObjectDecl));
@@ -1074,29 +1087,38 @@ void push_declaration(Declaration* decl)
     append_decl(&curr_region(ctx), decl);
 }
 
-// TODO: intern strings to make this faster
 static
-bool identifier_equal(const StringView* a, const StringView* b)
+StringToken get_decl_name(const Declaration* decl)
 {
-    if(a->len != b->len) {
-        return false;
+    StringToken name = 0;
+    switch(decl->kind) {
+        case DECL_TYPE:
+            name = decl->u.type.name;
+            break;
+        case DECL_OBJECT:
+            name = decl->u.object.name;
+            break;
+        case DECL_PROCEDURE:
+        case DECL_FUNCTION:
+            name = decl->u.subprogram.name;
+            break;
+        default:
+            assert(false && "Unhandled declaration type");
     }
-    for(uint32_t i = 0; i < a->len; ++i) {
-        if(tolower(a->value[i]) != tolower(b->value[i])) {
-            return false;
-        }
-    }
-    return true;
+    return name;
 }
 
 static
-Declaration* find_visible_declaration(StringView name, DeclKind kind)
+Declaration* find_visible_declaration(StringToken name, DeclKind kind)
 {
     for(int stack_idx = ctx.curr_region_idx; stack_idx >= 0; --stack_idx) {
         DeclList* region = &ctx.region_stack[stack_idx];
         for(Declaration* decl = region->first; decl != NULL; decl = decl->next) {
-            if(decl->kind == kind && identifier_equal(&decl->u.type.name, &name)) {
-                return decl;
+            if(decl->kind == kind) {
+                StringToken decl_name = get_decl_name(decl);
+                if(decl_name == name) {
+                    return decl;
+                }
             }
         }
     }
@@ -1104,36 +1126,19 @@ Declaration* find_visible_declaration(StringView name, DeclKind kind)
 }
 
 static
-Declaration* find_declaration(Declaration* decl_list, StringView name)
+Declaration* find_declaration(Declaration* decl_list, StringToken name)
 {
     for(Declaration* decl = decl_list; decl != NULL; decl = decl->next) {
-        switch(decl->kind) {
-            case DECL_TYPE:
-                if(identifier_equal(&decl->u.type.name, &name)) {
-                    return decl;
-                }
-                break;
-            case DECL_OBJECT:
-                if(identifier_equal(&decl->u.object.name, &name)) {
-                    return decl;
-                }
-                break;
-            case DECL_PROCEDURE:
-            case DECL_FUNCTION: {
-                if(identifier_equal(&decl->u.subprogram.name, &name)) {
-                    return decl;
-                }
-                break;
-            }
-            default:
-                assert(false && "Unhandled declaration type");
+        StringToken decl_name = get_decl_name(decl);
+        if(decl_name == name) {
+            return decl;
         }
     }
     return NULL;
 }
 
 static
-Declaration* find_declaration_in_current_region(StringView name)
+Declaration* find_declaration_in_current_region(StringToken name)
 {
     DeclList* region = &ctx.region_stack[ctx.curr_region_idx];
     return find_declaration(region->first, name);

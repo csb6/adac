@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "error.h"
 #include "parser.h"
 #include "debug.h"
+#include "string_pool.h"
 
 static
 void usage(const char* exe)
@@ -69,6 +70,7 @@ int main(int argc, char** argv)
 
     const char* input_start = input_file;
     const char* input_end = input_start + file_size;
+    string_pool_init();
     PackageSpec* spec = parser_parse(input_start, input_end);
     if(spec == NULL) {
         fprintf(stderr, "Failed to parse package spec\n");

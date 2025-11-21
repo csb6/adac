@@ -38,11 +38,11 @@ static void print_indent(uint8_t size);
 
 void print_package_spec(const PackageSpec* package_spec)
 {
-    printf("package %.*s is\n", SV(package_spec->name));
+    printf("package %s is\n", ST(package_spec->name));
     for(const Declaration* decl = package_spec->decls; decl != NULL; decl = decl->next) {
         print_declaration(decl, 1);
     }
-    printf("end %.*s;\n", SV(package_spec->name));
+    printf("end %s;\n", ST(package_spec->name));
 }
 
 static
@@ -55,11 +55,11 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
             break;
         case DECL_OBJECT:
             print_indent(indent_level);
-            printf("%.*s : ", SV(decl->u.object.name));
+            printf("%s : ", ST(decl->u.object.name));
             if(decl->u.object.is_constant) {
                 printf("constant ");
             }
-            printf("%.*s", SV(decl->u.object.type->name));
+            printf("%s", ST(decl->u.object.type->name));
             if(decl->u.object.init_expr) {
                 printf(" := ");
                 print_expression(decl->u.object.init_expr);
@@ -79,10 +79,10 @@ static
 void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
 {
     print_indent(indent_level);
-    printf("%s %.*s", decl->kind == DECL_FUNCTION ? "function" : "procedure", SV(decl->u.subprogram.name));
+    printf("%s %s", decl->kind == DECL_FUNCTION ? "function" : "procedure", ST(decl->u.subprogram.name));
     print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
     if(decl->kind == DECL_FUNCTION) {
-        printf(" return %.*s", SV(decl->u.subprogram.return_type->name));
+        printf(" return %s", ST(decl->u.subprogram.return_type->name));
     }
 
     Declaration* inner_decl = decl->u.subprogram.decls;
@@ -102,7 +102,7 @@ void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
             print_statement(stmt, indent_level+1);
         }
         print_indent(indent_level);
-        printf("end %.*s", SV(decl->u.subprogram.name));
+        printf("end %s", ST(decl->u.subprogram.name));
     }
 }
 
@@ -114,7 +114,7 @@ void print_params(const Declaration* params, uint8_t param_count)
     for(uint8_t i = 0; i < param_count; ++i) {
         assert(decl->kind == DECL_OBJECT);
         const ObjectDecl* param = &decl->u.object;
-        printf("%.*s : %s %.*s", SV(param->name), param_mode_str(param->mode), SV(param->type->name));
+        printf("%s : %s %s", ST(param->name), param_mode_str(param->mode), ST(param->type->name));
         if(param->init_expr) {
             printf(" := ");
             print_expression(param->init_expr);
@@ -156,7 +156,7 @@ void print_indent(uint8_t size)
 static
 void print_type_decl(const TypeDecl* type_decl)
 {
-    printf("%s %.*s is ", type_decl->kind == TYPE_SUBTYPE ? "subtype" : "type", SV(type_decl->name));
+    printf("%s %s is ", type_decl->kind == TYPE_SUBTYPE ? "subtype" : "type", ST(type_decl->name));
     switch(type_decl->kind) {
         case TYPE_UNIV_INTEGER:
             printf("universal integer");
@@ -174,10 +174,10 @@ void print_type_decl(const TypeDecl* type_decl)
             putchar(')');
             break;
         case TYPE_SUBTYPE:
-            printf("%.*s", SV(type_decl->u.subtype.base->name));
+            printf("%s", ST(type_decl->u.subtype.base->name));
             break;
         case TYPE_DERIVED:
-            printf("new %.*s", SV(type_decl->u.subtype.base->name));
+            printf("new %s", ST(type_decl->u.subtype.base->name));
             break;
         default:
             printf("Unhandled type");
@@ -193,7 +193,7 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             printf("null");
             break;
         case STMT_ASSIGN:
-            printf("%.*s := ", SV(stmt->u.assign.dest->name));
+            printf("%s := ", ST(stmt->u.assign.dest->name));
             print_expression(stmt->u.assign.expr);
             break;
         case STMT_RETURN:
@@ -211,7 +211,7 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             }
             break;
         case STMT_CALL:
-            printf("%.*s", SV(stmt->u.call.subprogram->name));
+            printf("%s", ST(stmt->u.call.subprogram->name));
             if(stmt->u.call.subprogram->param_count > 0) {
                 putchar('(');
                 for(uint8_t i = 0; i < stmt->u.call.subprogram->param_count; ++i) {
@@ -334,7 +334,7 @@ void print_loop_statement(const LoopStmt* loop, uint8_t indent_level)
         print_expression(loop->u.while_.condition);
     } else {
         assert(loop->kind == LOOP_FOR);
-        printf("for %.*s in ", SV(loop->u.for_.var->name));
+        printf("for %s in ", ST(loop->u.for_.var->name));
         if(loop->reverse) {
             printf("reverse ");
         }

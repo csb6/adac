@@ -22,6 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include "mini-gmp.h"
 #include "string_view.h"
+#include "string_pool.h"
 
 struct Declaration_;
 struct TypeDecl_;
@@ -33,7 +34,7 @@ struct Expression_;
 
 // 7.1: Package Structure
 typedef struct PackageSpec_ {
-    StringView name;
+    StringToken name;
     struct Declaration_* decls; // TODO: support representation_clause/use_clause in this list
 } PackageSpec;
 
@@ -115,7 +116,7 @@ enum {
 
 // 3.3.1: Type Declarations
 typedef struct TypeDecl_ {
-    StringView name;
+    StringToken name;
     // TODO: discriminant_part
     TypeKind kind;
     union {
@@ -130,18 +131,18 @@ typedef struct TypeDecl_ {
 
 // 3.2: Objects and Named Numbers
 typedef struct ObjectDecl_ {
-    StringView name;
     TypeDecl* type;
     struct Expression_* init_expr;
+    StringToken name;
     bool is_constant;
     ParamMode mode; // Only used if ObjectDecl is a formal parameter
 } ObjectDecl;
 
 typedef struct SubprogramDecl_ {
-    StringView name;
     TypeDecl* return_type; // NULL for procedures
     struct Declaration_* decls; // Parameters are the first param_count decls
     struct Statement_* stmts;
+    StringToken name;
     uint8_t param_count;
     bool is_operator;
 } SubprogramDecl;
