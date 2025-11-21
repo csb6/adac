@@ -130,7 +130,7 @@ typedef struct TypeDecl_ {
 } TypeDecl;
 
 // 3.2: Objects and Named Numbers
-typedef struct ObjectDecl_ {
+typedef struct {
     TypeDecl* type;
     struct Expression_* init_expr;
     StringToken name;
@@ -138,7 +138,7 @@ typedef struct ObjectDecl_ {
     ParamMode mode; // Only used if ObjectDecl is a formal parameter
 } ObjectDecl;
 
-typedef struct SubprogramDecl_ {
+typedef struct {
     TypeDecl* return_type; // NULL for procedures
     struct Declaration_* decls; // Parameters are the first param_count decls
     struct Statement_* stmts;
@@ -165,17 +165,17 @@ enum {
     STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP,
 };
 
-typedef struct AssignStmt_ {
+typedef struct {
     ObjectDecl* dest; // TODO: array/record components
     struct Expression_* expr;
 } AssignStmt;
 
-typedef struct CallStmt_ {
+typedef struct {
     SubprogramDecl* subprogram;
     struct Expression_** args; // array of Expression*
 } CallStmt;
 
-typedef struct ReturnStmt_ {
+typedef struct {
     struct Expression_* expr;
 } ReturnStmt;
 
@@ -183,7 +183,7 @@ typedef struct {
     struct Expression_* condition; // Can be NULL
 } ExitStmt;
 
-typedef struct BlockStmt_ {
+typedef struct {
     struct Declaration_* decls;
     struct Statement_* stmts;
 } BlockStmt;
@@ -200,14 +200,14 @@ enum {
     ALT_EXPR, ALT_OTHERS
 };
 
-typedef struct Alternative_ {
+typedef struct {
     AltKind kind;
     union {
         struct Expression_* expr;
     } u;
 } Alternative;
 
-typedef struct Choice_ {
+typedef struct {
     Alternative* alternatives;
     uint8_t count;
 } Choice;
@@ -218,7 +218,7 @@ typedef struct Case_ {
     struct Case_* next;
 } Case;
 
-typedef struct CaseStmt_ {
+typedef struct {
     struct Expression_* expr;
     Case* cases;
 } CaseStmt;
@@ -238,7 +238,7 @@ typedef struct {
     struct Expression_* range;
 } ForLoop;
 
-typedef struct LoopStmt_ {
+typedef struct {
     LoopKind kind;
     bool reverse; // Only valid for ForLoop
     union {
@@ -296,12 +296,12 @@ enum {
     BINARY_OP_COUNT
 };
 
-typedef struct UnaryExpr_ {
+typedef struct {
     struct Expression_* right;
     UnaryOperator op;
 } UnaryExpr;
 
-typedef struct BinaryExpr_ {
+typedef struct {
     struct Expression_* left;
     struct Expression_* right;
     BinaryOperator op;

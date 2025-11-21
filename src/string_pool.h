@@ -19,7 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define ADA_STRING_POOL_H
 
 #include <stdint.h>
-#include <stdbool.h>
 #include "string_view.h"
 
 typedef uint32_t StringToken;
