@@ -114,7 +114,8 @@ StringToken append(StringView s)
     }
     StringToken token = string_pool_size;
     memcpy(string_pool + token, s.value, s.len);
-    string_pool_size += s.len + 1; // +1 adds null-terminator
+    string_pool[string_pool_size + s.len] = '\0';
+    string_pool_size += s.len + 1;
     return token;
 }
 
