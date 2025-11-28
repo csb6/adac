@@ -126,7 +126,7 @@ package IntTypeTest is
         goto A;
         <<A>> null;
 
-        <<B>>
+        <<B>> null;
         goto B;
 
         declare
