@@ -68,6 +68,10 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
         case DECL_SUBPROGRAM:
             print_subprogram_decl(decl, indent_level);
             break;
+        case DECL_LABEL:
+            print_indent(indent_level);
+            printf("(Scope contains label: %s)", ST(decl->u.label.name));
+            break;
         default:
             printf("Unknown declaration");
     }
@@ -187,11 +191,6 @@ static
 void print_statement(const Statement* stmt, uint8_t indent_level)
 {
     print_indent(indent_level);
-    if(stmt->labels) {
-        for(uint8_t i = 0; i < stmt->labels->label_count; ++i) {
-            printf("<<%s>> ", ST(stmt->labels->names[i]));
-        }
-    }
     switch(stmt->kind) {
         case STMT_NULL:
             printf("null");
@@ -248,6 +247,9 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             break;
         case STMT_LOOP:
             print_loop_statement(&stmt->u.loop, indent_level);
+            break;
+        case STMT_GOTO:
+            printf("goto %s", ST(stmt->u.goto_.label->name));
             break;
         default:
             printf("Unhandled statement");

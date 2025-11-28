@@ -105,7 +105,7 @@ extern struct TypeDecl_ universal_int_type;
 
 typedef uint8_t DeclKind;
 enum {
-    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM,
+    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL
 };
 
 // 6.2: Formal Parameter Modes
@@ -147,12 +147,18 @@ typedef struct {
     bool is_operator;
 } SubprogramDecl;
 
+typedef struct {
+    struct Statement_* target;
+    StringToken name;
+} LabelDecl;
+
 typedef struct Declaration_ {
     DeclKind kind;
     union {
         ObjectDecl object;
         TypeDecl type;
         SubprogramDecl subprogram;
+        LabelDecl label;
     } u;
     struct Declaration_* next;
 } Declaration;
@@ -249,9 +255,8 @@ typedef struct {
 } LoopStmt;
 
 typedef struct {
-    StringToken* names;
-    uint8_t label_count;
-} LabelInfo;
+    LabelDecl* label;
+} GotoStmt;
 
 typedef struct Statement_ {
     StmtKind kind;
@@ -264,8 +269,8 @@ typedef struct Statement_ {
         IfStmt if_;
         CaseStmt case_;
         LoopStmt loop;
+        GotoStmt goto_;
     } u;
-    LabelInfo* labels;
     struct Statement_* next;
 } Statement;
 

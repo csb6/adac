@@ -80,12 +80,14 @@ static void parse_subprogram_body(Declaration* decl);
 static void parse_choice(Choice* choice);
 /* STATEMENTS */
 static Statement* parse_statement(void);
+static void parse_statement_labels(Statement* stmt);
 static void parse_assign_statement(Statement* stmt, StringToken name);
 static void parse_procedure_call_statement(Statement* stmt, StringToken name);
 static void parse_block_statement(Statement* stmt);
 static void parse_if_statement(Statement* stmt);
 static void parse_case_statement(Statement* stmt);
 static void parse_loop_statement(Statement* stmt);
+static void parse_goto_statement(Statement* stmt);
 /* EXPRESSIONS */
 static Expression* parse_expression(void);
 static Expression* parse_expression_1(uint8_t min_precedence);
@@ -110,7 +112,6 @@ static bool is_overloadable_op(TokenKind token);
 static void check_op_arity(const Token* op_token, uint8_t param_count);
 static uint32_t count_enum_literals(void);
 static uint8_t count_alternatives(void);
-static uint8_t count_labels(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 
@@ -490,19 +491,7 @@ static
 Statement* parse_statement(void)
 {
     Statement* stmt = calloc(1, sizeof(Statement));
-    if(ctx.token.kind == TOKEN_LABEL) {
-        // TODO: append labels to enclosing region's declarative part
-        //  so that when parsing goto statements we can see if the label is
-        //  valid. Might be some cases where label is used before it is declared
-        stmt->labels = calloc(1, sizeof(LabelInfo));
-        uint8_t label_count = count_labels();
-        stmt->labels->names = calloc(label_count, sizeof(StringToken));
-        for(uint8_t i = 0; i < label_count; ++i) {
-            stmt->labels->names[i] = string_pool_to_token(ctx.token.text);
-            next_token();
-        }
-        stmt->labels->label_count = label_count;
-    }
+    parse_statement_labels(stmt);
     switch(ctx.token.kind) {
         case TOKEN_NULL:
             stmt->kind = STMT_NULL;
@@ -559,6 +548,9 @@ Statement* parse_statement(void)
         case TOKEN_LOOP:
             parse_loop_statement(stmt);
             break;
+        case TOKEN_GOTO:
+            parse_goto_statement(stmt);
+            break;
         default:
             print_unexpected_token_error(&ctx.token);
         case TOKEN_ERROR:
@@ -567,6 +559,32 @@ Statement* parse_statement(void)
     expect_token(TOKEN_SEMICOLON);
     next_token();
     return stmt;
+}
+
+static
+void parse_statement_labels(Statement* stmt)
+{
+    while(ctx.token.kind == TOKEN_LABEL) {
+        StringToken label_name = string_pool_to_token(ctx.token.text);
+        next_token();
+        Declaration* existing_decl = find_declaration_in_current_region(label_name);
+        if(existing_decl) {
+            if(existing_decl->kind != DECL_LABEL || existing_decl->u.label.target) {
+                // TODO: is it okay to have labels and other objects/subprograms with same name?
+                //  (when answered update lookups in parse_goto_statement as well)
+                print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
+                error_exit();
+            }
+            // There is a placeholder label defined - fill it in instead of creating a new label
+            existing_decl->u.label.target = stmt;
+        } else {
+            Declaration* label = calloc(1, sizeof(Declaration));
+            label->kind = DECL_LABEL;
+            label->u.label.name = label_name;
+            label->u.label.target = stmt;
+            push_declaration(label);
+        }
+    }
 }
 
 static
@@ -806,6 +824,35 @@ void parse_loop_statement(Statement* stmt)
     expect_token(TOKEN_END);
     next_token();
     expect_token(TOKEN_LOOP);
+    next_token();
+}
+
+static
+void parse_goto_statement(Statement* stmt)
+{
+    next_token(); // Skip 'goto'
+    stmt->kind = STMT_GOTO;
+    expect_token(TOKEN_IDENT);
+    StringToken label_name = string_pool_to_token(ctx.token.text);
+    Declaration* label = find_visible_declaration(label_name, DECL_LABEL);
+    if(label) {
+        // Label is defined prior to the goto statement
+        stmt->u.goto_.label = &label->u.label;
+    } else {
+        // Label is not defined yet
+        if(find_declaration_in_current_region(label_name)) {
+            // When this label is defined, it will conflict with an existing declaration's name
+            print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
+            error_exit();
+        }
+        // Define a placeholder label
+        // TODO: in semantic analysis, verify that all placeholder labels are filled in
+        Declaration* label = calloc(1, sizeof(Declaration));
+        label->kind = DECL_LABEL;
+        label->u.label.name = label_name;
+        stmt->u.goto_.label = &label->u.label;
+        push_declaration(label);
+    }
     next_token();
 }
 
@@ -1115,6 +1162,9 @@ StringToken get_decl_name(const Declaration* decl)
         case DECL_SUBPROGRAM:
             name = decl->u.subprogram.name;
             break;
+        case DECL_LABEL:
+            name = decl->u.label.name;
+            break;
         default:
             assert(false && "Unhandled declaration type");
     }
@@ -1228,23 +1278,6 @@ uint8_t count_alternatives(void)
         curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
     }
     return alt_count;
-}
-
-static
-uint8_t count_labels(void)
-{
-    uint8_t label_count = 0;
-    Token token = ctx.token;
-    const char* curr = ctx.curr;
-    while(token.kind == TOKEN_LABEL) {
-        if(label_count == UINT8_MAX) {
-            error_print(ctx.input_start, curr, "Statement has too many labels (max supported is 255 labels)");
-            error_exit();
-        }
-        ++label_count;
-        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
-    }
-    return label_count;
 }
 
 static

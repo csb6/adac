@@ -54,9 +54,9 @@ package IntTypeTest is
             null;
         end;
     begin
-        <<label>> foo;
+        foo;
         zeroary_procedure;
-        <<a>> <<b>> unary_procedure('u');
+        unary_procedure('u');
         binary_procedure('a', c);
         if True then
             null;
@@ -119,5 +119,25 @@ package IntTypeTest is
             null;
             exit;
         end loop;
+    end;
+
+    procedure some_gotos is
+    begin
+        goto A;
+        <<A>> null;
+
+        <<B>>
+        goto B;
+
+        declare
+        begin
+           goto B;
+        end;
+
+        goto C; -- TODO: this will be a semantic error (C is never defined)
+        declare
+        begin
+            <<C>> null; -- Not visible to enclosing scope
+        end;
     end;
 end inttypetest;
