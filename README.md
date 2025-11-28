@@ -17,7 +17,7 @@ during GNAT's early development) is necessary to build GNAT. This project aims t
   - Integer, enumeration, subtype, and derived type definitions (although no constraints are supported besides ranges on integer types)
   - Object (and constant) declarations
   - Subprogram declarations and bodies
-  - Null, assignment, procedure call, return, block, if, case, exit, and loop statements
+  - Null, assignment, procedure call, return, block, if, case, exit, loop, and goto statements
   - Binary/unary expressions
   - Integer, string, and character literals
   - Some checking for redefinitions of names within same region
