@@ -65,8 +65,7 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
                 print_expression(decl->u.object.init_expr);
             }
             break;
-        case DECL_FUNCTION:
-        case DECL_PROCEDURE:
+        case DECL_SUBPROGRAM:
             print_subprogram_decl(decl, indent_level);
             break;
         default:
@@ -79,9 +78,9 @@ static
 void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
 {
     print_indent(indent_level);
-    printf("%s %s", decl->kind == DECL_FUNCTION ? "function" : "procedure", ST(decl->u.subprogram.name));
+    printf("%s %s", decl->u.subprogram.return_type ? "function" : "procedure", ST(decl->u.subprogram.name));
     print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
-    if(decl->kind == DECL_FUNCTION) {
+    if(decl->u.subprogram.return_type) {
         printf(" return %s", ST(decl->u.subprogram.return_type->name));
     }
 

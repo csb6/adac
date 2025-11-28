@@ -376,12 +376,13 @@ void parse_enum_type_definition(EnumType* enum_type)
 static
 void parse_subprogram_declaration(Declaration* decl)
 {
-    decl->kind = (ctx.token.kind == TOKEN_FUNCTION) ? DECL_FUNCTION : DECL_PROCEDURE;
+    bool is_function = ctx.token.kind == TOKEN_FUNCTION;
+    decl->kind = DECL_SUBPROGRAM;
     next_token();
 
     Token op_token = {0};
     if(ctx.token.kind == TOKEN_STRING_LITERAL) {
-        if(decl->kind != DECL_FUNCTION) {
+        if(!is_function) {
             print_parse_error("Overloaded operators must be functions");
             error_exit();
         }
@@ -409,7 +410,7 @@ void parse_subprogram_declaration(Declaration* decl)
         check_op_arity(&op_token, decl->u.subprogram.param_count);
     }
 
-    if(decl->kind == DECL_FUNCTION) {
+    if(is_function) {
         expect_token(TOKEN_RETURN);
         next_token();
         // TODO: properly parse type_mark
@@ -571,16 +572,15 @@ void parse_assign_statement(Statement* stmt, StringToken name)
 static
 void parse_procedure_call_statement(Statement* stmt, StringToken name)
 {
-    Declaration* subprogram_decl = find_visible_declaration(name, DECL_PROCEDURE);
+    Declaration* subprogram_decl = find_visible_declaration(name, DECL_SUBPROGRAM);
     if(!subprogram_decl) {
-        if(find_visible_declaration(name, DECL_FUNCTION)) {
-            print_parse_error("A function call cannot be a standalone statement (only procedure calls can)");
-        } else {
-            print_parse_error("Unknown procedure '%s'", ST(name));
-        }
+        print_parse_error("Unknown procedure '%s'", ST(name));
         error_exit();
     }
-    assert(subprogram_decl->kind == DECL_FUNCTION || subprogram_decl->kind == DECL_PROCEDURE);
+    if(subprogram_decl->u.subprogram.return_type) {
+        print_parse_error("A function call cannot be a standalone statement (only procedure calls can)");
+        error_exit();
+    }
     SubprogramDecl* subprogram = &subprogram_decl->u.subprogram;
 
     Expression** args = NULL;
@@ -1098,8 +1098,7 @@ StringToken get_decl_name(const Declaration* decl)
         case DECL_OBJECT:
             name = decl->u.object.name;
             break;
-        case DECL_PROCEDURE:
-        case DECL_FUNCTION:
+        case DECL_SUBPROGRAM:
             name = decl->u.subprogram.name;
             break;
         default:

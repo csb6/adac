@@ -105,7 +105,7 @@ extern struct TypeDecl_ universal_int_type;
 
 typedef uint8_t DeclKind;
 enum {
-    DECL_OBJECT, DECL_TYPE, DECL_FUNCTION, DECL_PROCEDURE
+    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM,
 };
 
 // 6.2: Formal Parameter Modes
