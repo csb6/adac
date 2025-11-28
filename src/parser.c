@@ -429,6 +429,7 @@ void parse_subprogram_declaration(Declaration* decl)
     if(ctx.token.kind == TOKEN_IS) {
         parse_subprogram_body(decl);
     }
+    decl->u.subprogram.decls = curr_region(ctx).first;
     end_region();
 }
 
@@ -689,6 +690,7 @@ void parse_block_statement(Statement* stmt)
     expect_token(TOKEN_END);
     next_token();
 
+    stmt->u.block.decls = curr_region(ctx).first;
     end_region();
 }
 
