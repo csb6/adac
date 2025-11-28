@@ -10,10 +10,9 @@ tokens = [
     "TOKEN_SINGLE_QUOTE", "TOKEN_MULT", "TOKEN_MINUS", "TOKEN_DOT", "TOKEN_DIVIDE", "TOKEN_COLON",
     "TOKEN_LT", "TOKEN_EQ", "TOKEN_GT",
     #  Multi-character elements
-    "TOKEN_NEQ", "TOKEN_GTE", "TOKEN_LTE", "TOKEN_ARROW", "TOKEN_DOUBLE_DOT", "TOKEN_EXP", "TOKEN_ASSIGN", "TOKEN_L_LABEL_BRACKET",
-    "TOKEN_R_LABEL_BRACKET", "TOKEN_BOX",
+    "TOKEN_NEQ", "TOKEN_GTE", "TOKEN_LTE", "TOKEN_ARROW", "TOKEN_DOUBLE_DOT", "TOKEN_EXP", "TOKEN_ASSIGN", "TOKEN_BOX",
     #  Identifier
-    "TOKEN_IDENT",
+    "TOKEN_IDENT", "TOKEN_LABEL",
     #  Literals
     "TOKEN_NUM_LITERAL", "TOKEN_CHAR_LITERAL", "TOKEN_STRING_LITERAL",
     "TOKEN_ERROR"
@@ -89,7 +88,7 @@ state_table = {
     },
     "STATE_LT_LTE_LB_BOX": {
         "CLASS_EQ": "TOKEN_LTE",
-        "CLASS_LT": "TOKEN_L_LABEL_BRACKET",
+        "CLASS_LT": "STATE_IN_LABEL",
         "CLASS_GT": "TOKEN_BOX",
         "others": "TOKEN_LT"
     },
@@ -99,7 +98,6 @@ state_table = {
     },
     "STATE_GT_GTE_GB": {
         "CLASS_EQ": "TOKEN_GTE",
-        "CLASS_GT": "TOKEN_R_LABEL_BRACKET",
         "others": "TOKEN_GT"
     },
     "STATE_IN_IDENTIFIER": {
@@ -107,7 +105,7 @@ state_table = {
         "CLASS_E": "STATE_IN_IDENTIFIER",
         "CLASS_DIGIT": "STATE_IN_IDENTIFIER",
         "CLASS_USCORE": "STATE_IN_IDENT_USCORE",
-        "others": "TOKEN_IDENT" # Hand-written code can switch to specific keyword if needed
+        "others": "TOKEN_IDENT"
     },
     # Ensures only 1 underscore in a row
     "STATE_IN_IDENT_USCORE": {
@@ -115,7 +113,33 @@ state_table = {
         "CLASS_E": "STATE_IN_IDENTIFIER",
         "CLASS_DIGIT": "STATE_IN_IDENTIFIER",
         "CLASS_USCORE": "TOKEN_ERROR",
-        "others": "TOKEN_IDENT" # Hand-written code can switch to specific keyword if needed
+        "others": "TOKEN_IDENT"
+    },
+    "STATE_IN_LABEL": {
+        "CLASS_LETTER": "STATE_IN_LABEL2",
+        "CLASS_E": "STATE_IN_LABEL2",
+        "others": "TOKEN_ERROR"
+    },
+    "STATE_IN_LABEL2": {
+        "CLASS_LETTER": "STATE_IN_LABEL2",
+        "CLASS_E": "STATE_IN_LABEL2",
+        "CLASS_DIGIT": "STATE_IN_LABEL2",
+        "CLASS_USCORE": "STATE_IN_LABEL_USCORE",
+        "CLASS_GT": "STATE_IN_LABEL3",
+        "others": "TOKEN_ERROR"
+    },
+    # Ensures only 1 underscore in a row
+    "STATE_IN_LABEL_USCORE": {
+        "CLASS_LETTER": "STATE_IN_LABEL2",
+        "CLASS_E": "STATE_IN_LABEL2",
+        "CLASS_DIGIT": "STATE_IN_LABEL2",
+        "CLASS_USCORE": "TOKEN_ERROR",
+        "CLASS_GT": "STATE_IN_LABEL3",
+        "others": "TOKEN_ERROR"
+    },
+    "STATE_IN_LABEL3": {
+        "CLASS_GT": "TOKEN_LABEL",
+        "others": "TOKEN_ERROR"
     },
     "STATE_IN_CHAR_LITERAL_1": {
         # TODO: restrict to graphic_characters
@@ -217,15 +241,14 @@ move_table = {
     "TOKEN_ASSIGN": 1,
     "TOKEN_COLON": 0,
     "TOKEN_LTE": 1,
-    "TOKEN_L_LABEL_BRACKET": 1,
     "TOKEN_BOX": 1,
     "TOKEN_LT": 0,
     "TOKEN_ARROW": 1,
     "TOKEN_EQ": 0,
     "TOKEN_GTE": 1,
-    "TOKEN_R_LABEL_BRACKET": 1,
     "TOKEN_GT": 0,
     "TOKEN_IDENT": 0,
+    "TOKEN_LABEL": 1,
     "TOKEN_CHAR_LITERAL": 1,
     "TOKEN_SINGLE_QUOTE": 0,
     "TOKEN_STRING_LITERAL": 0,

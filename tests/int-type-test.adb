@@ -54,9 +54,9 @@ package IntTypeTest is
             null;
         end;
     begin
-        foo;
+        <<label>> foo;
         zeroary_procedure;
-        unary_procedure('u');
+        <<a>> <<b>> unary_procedure('u');
         binary_procedure('a', c);
         if True then
             null;

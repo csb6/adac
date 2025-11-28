@@ -187,6 +187,11 @@ static
 void print_statement(const Statement* stmt, uint8_t indent_level)
 {
     print_indent(indent_level);
+    if(stmt->labels) {
+        for(uint8_t i = 0; i < stmt->labels->label_count; ++i) {
+            printf("<<%s>> ", ST(stmt->labels->names[i]));
+        }
+    }
     switch(stmt->kind) {
         case STMT_NULL:
             printf("null");

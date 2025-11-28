@@ -46,14 +46,13 @@ static const char* const token_kind_strs[] = {
     [TOKEN_DOUBLE_DOT] = "..",
     [TOKEN_EXP] = "**",
     [TOKEN_ASSIGN] = ":=",
-    [TOKEN_L_LABEL_BRACKET] = "<<",
-    [TOKEN_R_LABEL_BRACKET] = ">>",
     [TOKEN_BOX] = "<>",
     [TOKEN_NOT_IN] = "not in",
     [TOKEN_AND_THEN] = "and then",
     [TOKEN_OR_ELSE] = "or else",
     // Identifier
     [TOKEN_IDENT] = "identifier",
+    [TOKEN_LABEL] = "label",
     // Literals
     [TOKEN_NUM_LITERAL] = "numeric literal",
     [TOKEN_CHAR_LITERAL] = "character literal",

@@ -110,6 +110,7 @@ static bool is_overloadable_op(TokenKind token);
 static void check_op_arity(const Token* op_token, uint8_t param_count);
 static uint32_t count_enum_literals(void);
 static uint8_t count_alternatives(void);
+static uint8_t count_labels(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 
@@ -489,6 +490,19 @@ static
 Statement* parse_statement(void)
 {
     Statement* stmt = calloc(1, sizeof(Statement));
+    if(ctx.token.kind == TOKEN_LABEL) {
+        // TODO: append labels to enclosing region's declarative part
+        //  so that when parsing goto statements we can see if the label is
+        //  valid. Might be some cases where label is used before it is declared
+        stmt->labels = calloc(1, sizeof(LabelInfo));
+        uint8_t label_count = count_labels();
+        stmt->labels->names = calloc(label_count, sizeof(StringToken));
+        for(uint8_t i = 0; i < label_count; ++i) {
+            stmt->labels->names[i] = string_pool_to_token(ctx.token.text);
+            next_token();
+        }
+        stmt->labels->label_count = label_count;
+    }
     switch(ctx.token.kind) {
         case TOKEN_NULL:
             stmt->kind = STMT_NULL;
@@ -1214,6 +1228,23 @@ uint8_t count_alternatives(void)
         curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
     }
     return alt_count;
+}
+
+static
+uint8_t count_labels(void)
+{
+    uint8_t label_count = 0;
+    Token token = ctx.token;
+    const char* curr = ctx.curr;
+    while(token.kind == TOKEN_LABEL) {
+        if(label_count == UINT8_MAX) {
+            error_print(ctx.input_start, curr, "Statement has too many labels (max supported is 255 labels)");
+            error_exit();
+        }
+        ++label_count;
+        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+    }
+    return label_count;
 }
 
 static

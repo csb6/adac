@@ -248,6 +248,11 @@ typedef struct {
     struct Statement_* stmts;
 } LoopStmt;
 
+typedef struct {
+    StringToken* names;
+    uint8_t label_count;
+} LabelInfo;
+
 typedef struct Statement_ {
     StmtKind kind;
     union {
@@ -260,6 +265,7 @@ typedef struct Statement_ {
         CaseStmt case_;
         LoopStmt loop;
     } u;
+    LabelInfo* labels;
     struct Statement_* next;
 } Statement;
 
