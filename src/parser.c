@@ -76,7 +76,7 @@ static void parse_integer_type_definition(IntType* int_type);
 static void parse_enum_type_definition(EnumType* enum_type);
 static void parse_subprogram_declaration(Declaration* decl);
 static uint8_t parse_parameters(void);
-static void parse_subprogram_body(Declaration* decl);
+static void parse_subprogram_body(SubprogramDecl* decl);
 static void parse_choice(Choice* choice);
 /* STATEMENTS */
 static Statement* parse_statement(void);
@@ -447,14 +447,14 @@ void parse_subprogram_declaration(Declaration* decl)
     }
 
     if(ctx.token.kind == TOKEN_IS) {
-        parse_subprogram_body(decl);
+        parse_subprogram_body(&decl->u.subprogram);
     }
     decl->u.subprogram.decls = curr_region(ctx).first;
     end_region();
 }
 
 static
-void parse_subprogram_body(Declaration* decl)
+void parse_subprogram_body(SubprogramDecl* decl)
 {
     next_token(); // Skip 'is'
 
@@ -463,9 +463,9 @@ void parse_subprogram_body(Declaration* decl)
     while(ctx.token.kind != TOKEN_BEGIN) {
         parse_basic_declaration();
     }
-    if(decl->u.subprogram.param_count == 0) {
+    if(decl->param_count == 0) {
         // Params and decls are in same list, so if no params then the first element will be the first decl (if any)
-        decl->u.subprogram.decls = curr_region(ctx).first;
+        decl->decls = curr_region(ctx).first;
     }
 
     next_token(); // Skip 'begin'
@@ -473,7 +473,7 @@ void parse_subprogram_body(Declaration* decl)
     while(ctx.token.kind != TOKEN_END && ctx.token.kind != TOKEN_EXCEPTION) {
         append_stmt(&stmt_list, parse_statement());
     }
-    decl->u.subprogram.stmts = stmt_list.first;
+    decl->stmts = stmt_list.first;
 
     // TODO: exception handlers
 
@@ -482,7 +482,7 @@ void parse_subprogram_body(Declaration* decl)
 
     if(ctx.token.kind == TOKEN_IDENT) {
         StringToken closing_name = string_pool_to_token(ctx.token.text);
-        if(closing_name != decl->u.subprogram.name) {
+        if(closing_name != decl->name) {
             print_parse_error("Closing identifier does not match subprogram name (%.*s)", SV(ctx.token.text));
             error_exit();
         }
