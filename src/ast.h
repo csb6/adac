@@ -26,17 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 struct Declaration_;
 struct TypeDecl_;
-struct Type_;
 struct Statement_;
 struct Expression_;
-
-/* PACKAGES */
-
-// 7.1: Package Structure
-typedef struct PackageSpec_ {
-    StringToken name;
-    struct Declaration_* decls; // TODO: support representation_clause/use_clause in this list
-} PackageSpec;
 
 /* TYPES */
 
@@ -101,179 +92,6 @@ typedef struct {
 
 extern struct TypeDecl_ universal_int_type;
 
-/* DECLARATIONS */
-
-typedef uint8_t DeclKind;
-enum {
-    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL
-};
-
-// 6.2: Formal Parameter Modes
-typedef uint8_t ParamMode;
-enum {
-    PARAM_MODE_NONE, PARAM_MODE_IN, PARAM_MODE_OUT, PARAM_MODE_IN_OUT
-};
-
-// 3.3.1: Type Declarations
-typedef struct TypeDecl_ {
-    StringToken name;
-    // TODO: discriminant_part
-    TypeKind kind;
-    union {
-        EnumType enum_;
-        IntType int_;
-        SubType subtype;
-        ArrayType array;
-        RecordType record;
-        AccessType access;
-    } u;
-} TypeDecl;
-
-// 3.2: Objects and Named Numbers
-typedef struct {
-    TypeDecl* type;
-    struct Expression_* init_expr;
-    StringToken name;
-    bool is_constant;
-    ParamMode mode; // Only used if ObjectDecl is a formal parameter
-} ObjectDecl;
-
-typedef struct {
-    TypeDecl* return_type; // NULL for procedures
-    struct Declaration_* decls; // Parameters are the first param_count decls
-    struct Statement_* stmts;
-    StringToken name;
-    uint8_t param_count;
-    bool is_operator;
-} SubprogramDecl;
-
-typedef struct {
-    struct Statement_* target;
-    StringToken name;
-} LabelDecl;
-
-typedef struct Declaration_ {
-    DeclKind kind;
-    union {
-        ObjectDecl object;
-        TypeDecl type;
-        SubprogramDecl subprogram;
-        LabelDecl label;
-    } u;
-    struct Declaration_* next;
-} Declaration;
-
-/* STATEMENTS */
-
-typedef uint8_t StmtKind;
-enum {
-    STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
-    STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP,
-};
-
-typedef struct {
-    ObjectDecl* dest; // TODO: array/record components
-    struct Expression_* expr;
-} AssignStmt;
-
-typedef struct {
-    SubprogramDecl* subprogram;
-    struct Expression_** args; // array of Expression*
-} CallStmt;
-
-typedef struct {
-    struct Expression_* expr;
-} ReturnStmt;
-
-typedef struct {
-    struct Expression_* condition; // Can be NULL
-} ExitStmt;
-
-typedef struct {
-    struct Declaration_* decls;
-    struct Statement_* stmts;
-} BlockStmt;
-
-typedef struct IfStmt_ {
-    struct Expression_* condition;
-    struct Statement_* stmts;
-    struct Statement_* else_; // Either an IfStmt (for elsif block) or a BlockStmt (for else block)
-} IfStmt;
-
-typedef uint8_t AltKind;
-enum {
-    // TODO: component_simple_name
-    ALT_EXPR, ALT_OTHERS
-};
-
-typedef struct {
-    AltKind kind;
-    union {
-        struct Expression_* expr;
-    } u;
-} Alternative;
-
-typedef struct {
-    Alternative* alternatives;
-    uint8_t count;
-} Choice;
-
-typedef struct Case_ {
-    Choice choice;
-    struct Statement_* stmts;
-    struct Case_* next;
-} Case;
-
-typedef struct {
-    struct Expression_* expr;
-    Case* cases;
-} CaseStmt;
-
-typedef uint8_t LoopKind;
-enum {
-    // Note: loops without iteration scheme are considered 'while true' loops
-    LOOP_WHILE, LOOP_FOR
-};
-
-typedef struct {
-    struct Expression_* condition; // Must be boolean
-} WhileLoop;
-
-typedef struct {
-    ObjectDecl* var;
-    struct Expression_* range;
-} ForLoop;
-
-typedef struct {
-    LoopKind kind;
-    bool reverse; // Only valid for ForLoop
-    union {
-        WhileLoop while_;
-        ForLoop for_;
-    } u;
-    struct Statement_* stmts;
-} LoopStmt;
-
-typedef struct {
-    LabelDecl* label;
-} GotoStmt;
-
-typedef struct Statement_ {
-    StmtKind kind;
-    union {
-        AssignStmt assign;
-        CallStmt call;
-        ReturnStmt return_;
-        ExitStmt exit;
-        BlockStmt block;
-        IfStmt if_;
-        CaseStmt case_;
-        LoopStmt loop;
-        GotoStmt goto_;
-    } u;
-    struct Statement_* next;
-} Statement;
-
 /* EXPRESSIONS */
 
 typedef uint8_t ExprKind;
@@ -330,5 +148,186 @@ typedef struct Expression_ {
         BinaryExpr binary;
     } u;
 } Expression;
+
+/* DECLARATIONS */
+
+typedef uint8_t DeclKind;
+enum {
+    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL
+};
+
+// 6.2: Formal Parameter Modes
+typedef uint8_t ParamMode;
+enum {
+    PARAM_MODE_NONE, PARAM_MODE_IN, PARAM_MODE_OUT, PARAM_MODE_IN_OUT
+};
+
+// 3.3.1: Type Declarations
+typedef struct TypeDecl_ {
+    StringToken name;
+    // TODO: discriminant_part
+    TypeKind kind;
+    union {
+        EnumType enum_;
+        IntType int_;
+        SubType subtype;
+        ArrayType array;
+        RecordType record;
+        AccessType access;
+    } u;
+} TypeDecl;
+
+// 3.2: Objects and Named Numbers
+typedef struct {
+    TypeDecl* type;
+    Expression* init_expr;
+    StringToken name;
+    bool is_constant;
+    ParamMode mode; // Only used if ObjectDecl is a formal parameter
+} ObjectDecl;
+
+typedef struct {
+    TypeDecl* return_type; // NULL for procedures
+    struct Declaration_* decls; // Parameters are the first param_count decls
+    struct Statement_* stmts;
+    StringToken name;
+    uint8_t param_count;
+    bool is_operator;
+} SubprogramDecl;
+
+typedef struct {
+    struct Statement_* target;
+    StringToken name;
+} LabelDecl;
+
+typedef struct Declaration_ {
+    DeclKind kind;
+    union {
+        ObjectDecl object;
+        TypeDecl type;
+        SubprogramDecl subprogram;
+        LabelDecl label;
+    } u;
+    struct Declaration_* next;
+} Declaration;
+
+/* STATEMENTS */
+
+typedef uint8_t StmtKind;
+enum {
+    STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
+    STMT_ABORT, STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP,
+};
+
+typedef struct {
+    ObjectDecl* dest; // TODO: array/record components
+    Expression* expr;
+} AssignStmt;
+
+typedef struct {
+    SubprogramDecl* subprogram;
+    Expression** args; // array of Expression*
+} CallStmt;
+
+typedef struct {
+    Expression* expr;
+} ReturnStmt;
+
+typedef struct {
+    Expression* condition; // Can be NULL
+} ExitStmt;
+
+typedef struct {
+    struct Declaration_* decls;
+    struct Statement_* stmts;
+} BlockStmt;
+
+typedef struct IfStmt_ {
+    Expression* condition;
+    struct Statement_* stmts;
+    struct Statement_* else_; // Either an IfStmt (for elsif block) or a BlockStmt (for else block)
+} IfStmt;
+
+typedef uint8_t AltKind;
+enum {
+    // TODO: component_simple_name
+    ALT_EXPR, ALT_OTHERS
+};
+
+typedef struct {
+    AltKind kind;
+    union {
+        Expression* expr;
+    } u;
+} Alternative;
+
+typedef struct {
+    Alternative* alternatives;
+    uint8_t count;
+} Choice;
+
+typedef struct Case_ {
+    Choice choice;
+    struct Statement_* stmts;
+    struct Case_* next;
+} Case;
+
+typedef struct {
+    Expression* expr;
+    Case* cases;
+} CaseStmt;
+
+typedef uint8_t LoopKind;
+enum {
+    // Note: loops without iteration scheme are considered 'while true' loops
+    LOOP_WHILE, LOOP_FOR
+};
+
+typedef struct {
+    Expression* condition; // Must be boolean
+} WhileLoop;
+
+typedef struct {
+    ObjectDecl* var;
+    Expression* range;
+} ForLoop;
+
+typedef struct {
+    LoopKind kind;
+    bool reverse; // Only valid for ForLoop
+    union {
+        WhileLoop while_;
+        ForLoop for_;
+    } u;
+    struct Statement_* stmts;
+} LoopStmt;
+
+typedef struct {
+    LabelDecl* label;
+} GotoStmt;
+
+typedef struct Statement_ {
+    StmtKind kind;
+    union {
+        AssignStmt assign;
+        CallStmt call;
+        ReturnStmt return_;
+        ExitStmt exit;
+        BlockStmt block;
+        IfStmt if_;
+        CaseStmt case_;
+        LoopStmt loop;
+        GotoStmt goto_;
+    } u;
+    struct Statement_* next;
+} Statement;
+
+/* PACKAGES */
+
+// 7.1: Package Structure
+typedef struct PackageSpec_ {
+    StringToken name;
+    struct Declaration_* decls; // TODO: support representation_clause/use_clause in this list
+} PackageSpec;
 
 #endif /* ADA_AST_H */
