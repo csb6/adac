@@ -18,8 +18,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef ADA_PARSER_H
 #define ADA_PARSER_H
 
-struct PackageSpec_;
+struct CompilationUnit_;
 
-struct PackageSpec_* parser_parse(const char* input_start, const char* input_end);
+void parser_init(void);
+struct CompilationUnit_* parser_parse(const char* input_start, const char* input_end);
 
 #endif /* ADA_PARSER_H */

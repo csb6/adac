@@ -25,8 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma GCC diagnostic pop
 #include <string.h>
 
-static
-TokenKind lookahead(const char* input_start, const char* input_end, const char** curr)
+TokenKind lexer_lookahead(const char* input_start, const char* input_end, const char** curr)
 {
     Token next_token;
     *curr = lexer_parse_token(input_start, input_end, *curr, &next_token);
@@ -78,28 +77,28 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                     switch(keyword->kind) {
                         case TOKEN_AND:
                             next = curr;
-                            if(lookahead(input_start, input_end, &next) == TOKEN_THEN) {
+                            if(lexer_lookahead(input_start, input_end, &next) == TOKEN_THEN) {
                                 token->kind = TOKEN_AND_THEN;
                                 curr = next;
                             }
                             break;
                         case TOKEN_OR:
                             next = curr;
-                            if(lookahead(input_start, input_end, &next) == TOKEN_ELSE) {
+                            if(lexer_lookahead(input_start, input_end, &next) == TOKEN_ELSE) {
                                 token->kind = TOKEN_OR_ELSE;
                                 curr = next;
                             }
                             break;
                         case TOKEN_NOT:
                             next = curr;
-                            if(lookahead(input_start, input_end, &next) == TOKEN_IN) {
+                            if(lexer_lookahead(input_start, input_end, &next) == TOKEN_IN) {
                                 token->kind = TOKEN_NOT_IN;
                                 curr = next;
                             }
                             break;
                         case TOKEN_IN:
                             next = curr;
-                            if(lookahead(input_start, input_end, &next) == TOKEN_OUT) {
+                            if(lexer_lookahead(input_start, input_end, &next) == TOKEN_OUT) {
                                 token->kind = TOKEN_IN_OUT;
                                 curr = next;
                             }

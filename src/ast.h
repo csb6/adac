@@ -327,7 +327,32 @@ typedef struct Statement_ {
 // 7.1: Package Structure
 typedef struct PackageSpec_ {
     StringToken name;
-    struct Declaration_* decls; // TODO: support representation_clause/use_clause in this list
+    Declaration* decls; // TODO: support representation_clause/use_clause in this list
 } PackageSpec;
+
+typedef struct {
+    StringToken name;
+    Declaration* decls;
+    Statement* stmts;
+} PackageBody;
+
+/* COMPILATION UNITS */
+
+typedef uint8_t CompilationUnitKind;
+enum {
+    COMP_UNIT_SUBPROGRAM,
+    COMP_UNIT_PACKAGE_SPEC,
+    COMP_UNIT_PACKAGE_BODY,
+};
+
+typedef struct CompilationUnit_ {
+    CompilationUnitKind kind;
+    union {
+        SubprogramDecl subprogram_decl;
+        PackageSpec package_spec;
+        PackageBody package_body;
+        // TODO: secondary_unit, generics
+    } u;
+} CompilationUnit;
 
 #endif /* ADA_AST_H */

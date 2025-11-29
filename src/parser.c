@@ -115,23 +115,43 @@ static uint8_t count_alternatives(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
 
-PackageSpec* parser_parse(const char* input_start, const char* input_end)
+void parser_init(void)
+{
+    StringView universal_int_str_view = { .value = universal_integer_str, .len = sizeof(universal_integer_str) };
+    universal_int_type.name = string_pool_to_token(universal_int_str_view);
+}
+
+CompilationUnit* parser_parse(const char* input_start, const char* input_end)
 {
     memset(&ctx, 0, sizeof(ctx));
-    PackageSpec* package_spec = calloc(1, sizeof(PackageSpec));
+    CompilationUnit* unit = calloc(1, sizeof(CompilationUnit));
+
     ctx.curr = input_start;
     ctx.input_start = input_start;
     ctx.input_end = input_end;
-
-    // TODO: only do this once (at start of compilation)
-    {
-        StringView universal_int_str_view = { .value = universal_integer_str, .len = sizeof(universal_integer_str) };
-        universal_int_type.name = string_pool_to_token(universal_int_str_view);
+    next_token(); // Read first token
+    switch(ctx.token.kind) {
+        case TOKEN_PACKAGE: {
+            const char* next = ctx.curr;
+            if(lexer_lookahead(ctx.input_start, ctx.input_end, &next) == TOKEN_BODY) {
+                unit->kind = COMP_UNIT_PACKAGE_BODY;
+                // TODO
+            } else {
+                unit->kind = COMP_UNIT_PACKAGE_SPEC;
+                parse_package_spec(&unit->u.package_spec);
+            }
+            break;
+        }
+        case TOKEN_PROCEDURE:
+            unit->kind = COMP_UNIT_SUBPROGRAM;
+            // TODO
+            break;
+        default:
+            print_unexpected_token_error(&ctx.token); /* fall through */
+        case TOKEN_ERROR:
+            error_exit();
     }
-
-    next_token();
-    parse_package_spec(package_spec);
-    return package_spec;
+    return unit;
 }
 
 static

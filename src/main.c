@@ -62,6 +62,7 @@ int main(int argc, char** argv)
     }
 
     string_pool_init();
+    parser_init();
     for(int i = 1; i < argc; ++i) {
         const char* source_file_path = argv[i];
         StringView source_file_path_view = {.value = source_file_path, .len = strlen(source_file_path)};
@@ -95,12 +96,18 @@ int main(int argc, char** argv)
 
         const char* input_start = input_file;
         const char* input_end = input_start + file_size;
-        PackageSpec* spec = parser_parse(input_start, input_end);
-        if(spec == NULL) {
+        CompilationUnit* unit = parser_parse(input_start, input_end);
+        if(unit == NULL) {
             fprintf(stderr, "Error: Failed to parse %s\n", source_file_path);
             return 1;
         }
-        print_package_spec(spec);
+        switch(unit->kind) {
+            case COMP_UNIT_PACKAGE_SPEC:
+                print_package_spec(&unit->u.package_spec);
+                break;
+            default:
+                printf("Unhandled compilation unit\n");
+        }
 
         if(munmap(input_file, file_size) < 0) {
             fprintf(stderr, "Error: Failed to unmap %s\n", source_file_path);
