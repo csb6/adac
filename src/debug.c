@@ -22,7 +22,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ast.h"
 
 static void print_declaration(const Declaration* decl, uint8_t indent_level);
-static void print_subprogram_decl(const Declaration* decl, uint8_t indent_level);
+static void print_subprogram_decl(const SubprogramDecl* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
 static void print_statement(const Statement* stmt, uint8_t indent_level);
 static void print_if_statement(const IfStmt* stmt, uint8_t indent_level);
@@ -51,26 +51,28 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
     switch(decl->kind) {
         case DECL_TYPE:
             print_indent(indent_level);
-            print_type_decl(&decl->u.type);
+            print_type_decl((const TypeDecl*)decl);
             break;
-        case DECL_OBJECT:
+        case DECL_OBJECT: {
+            const ObjectDecl* object_decl = (const ObjectDecl*)decl;
             print_indent(indent_level);
-            printf("%s : ", ST(decl->u.object.name));
-            if(decl->u.object.is_constant) {
+            printf("%s : ", ST(object_decl->name));
+            if(object_decl->is_constant) {
                 printf("constant ");
             }
-            printf("%s", ST(decl->u.object.type->name));
-            if(decl->u.object.init_expr) {
+            printf("%s", ST(object_decl->type->name));
+            if(object_decl->init_expr) {
                 printf(" := ");
-                print_expression(decl->u.object.init_expr);
+                print_expression(object_decl->init_expr);
             }
             break;
+        }
         case DECL_SUBPROGRAM:
-            print_subprogram_decl(decl, indent_level);
+            print_subprogram_decl((const SubprogramDecl*)decl, indent_level);
             break;
         case DECL_LABEL:
             print_indent(indent_level);
-            printf("(Scope contains label: %s)", ST(decl->u.label.name));
+            printf("(Scope contains label: %s)", ST(((const LabelDecl*)decl)->name));
             break;
         default:
             printf("Unknown declaration");
@@ -79,21 +81,21 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
 }
 
 static
-void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
+void print_subprogram_decl(const SubprogramDecl* decl, uint8_t indent_level)
 {
     print_indent(indent_level);
-    printf("%s %s", decl->u.subprogram.return_type ? "function" : "procedure", ST(decl->u.subprogram.name));
-    print_params(decl->u.subprogram.decls, decl->u.subprogram.param_count);
-    if(decl->u.subprogram.return_type) {
-        printf(" return %s", ST(decl->u.subprogram.return_type->name));
+    printf("%s %s", decl->return_type ? "function" : "procedure", ST(decl->name));
+    print_params(decl->decls, decl->param_count);
+    if(decl->return_type) {
+        printf(" return %s", ST(decl->return_type->name));
     }
 
-    Declaration* inner_decl = decl->u.subprogram.decls;
-    for(uint8_t i = 0; i < decl->u.subprogram.param_count; ++i) {
+    Declaration* inner_decl = decl->decls;
+    for(uint8_t i = 0; i < decl->param_count; ++i) {
         inner_decl = inner_decl->next;
     }
     // Only print body if it exists
-    if(inner_decl || decl->u.subprogram.stmts) {
+    if(inner_decl || decl->stmts) {
         printf(" is\n");
         while(inner_decl) {
             print_declaration(inner_decl, indent_level+1);
@@ -101,11 +103,11 @@ void print_subprogram_decl(const Declaration* decl, uint8_t indent_level)
         }
         print_indent(indent_level);
         printf("begin\n");
-        for(const Statement* stmt = decl->u.subprogram.stmts; stmt != NULL; stmt = stmt->next) {
+        for(const Statement* stmt = decl->stmts; stmt != NULL; stmt = stmt->next) {
             print_statement(stmt, indent_level+1);
         }
         print_indent(indent_level);
-        printf("end %s", ST(decl->u.subprogram.name));
+        printf("end %s", ST(decl->name));
     }
 }
 
@@ -116,7 +118,7 @@ void print_params(const Declaration* params, uint8_t param_count)
     const Declaration* decl = params;
     for(uint8_t i = 0; i < param_count; ++i) {
         assert(decl->kind == DECL_OBJECT);
-        const ObjectDecl* param = &decl->u.object;
+        const ObjectDecl* param = (const ObjectDecl*)decl;
         printf("%s : %s %s", ST(param->name), param_mode_str(param->mode), ST(param->type->name));
         if(param->init_expr) {
             printf(" := ");

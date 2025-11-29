@@ -70,11 +70,11 @@ static ParseContext ctx;
 static void parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
 static void parse_basic_declaration(void);
-static void parse_object_declaration(Declaration* decl, bool is_param);
-static void parse_type_declaration(Declaration* decl);
+static void parse_object_declaration(bool is_param);
+static void parse_type_declaration(void);
 static void parse_integer_type_definition(IntType* int_type);
 static void parse_enum_type_definition(EnumType* enum_type);
-static void parse_subprogram_declaration(Declaration* decl);
+static SubprogramDecl* parse_subprogram_declaration(void);
 static uint8_t parse_parameters(void);
 static void parse_subprogram_body(SubprogramDecl* decl);
 static void parse_choice(Choice* choice);
@@ -195,19 +195,18 @@ static
 void parse_basic_declaration(void)
 {
     // TODO: parse representation_clause/use_clause here too
-    Declaration* decl = calloc(1, sizeof(Declaration));
     switch(ctx.token.kind) {
         case TOKEN_IDENT:
-            parse_object_declaration(decl, /*is_param*/false);
+            parse_object_declaration(/*is_param*/false);
             break;
         case TOKEN_TYPE:
         case TOKEN_SUBTYPE:
             // TODO: incomplete and private type declarations
-            parse_type_declaration(decl);
+            parse_type_declaration();
             break;
         case TOKEN_PROCEDURE:
         case TOKEN_FUNCTION:
-            parse_subprogram_declaration(decl);
+            parse_subprogram_declaration();
             break;
         default:
             print_unexpected_token_error(&ctx.token); /* fall through */
@@ -219,14 +218,14 @@ void parse_basic_declaration(void)
 }
 
 static
-void parse_object_declaration(Declaration* decl, bool is_param)
+void parse_object_declaration(bool is_param)
 {
-    decl->kind = DECL_OBJECT;
-    ObjectDecl* obj_decl = &decl->u.object;
+    ObjectDecl* decl = calloc(1, sizeof(ObjectDecl));
+    decl->base.kind = DECL_OBJECT;
     // TODO: support identifier_list
-    obj_decl->name = string_pool_to_token(ctx.token.text);
+    decl->name = string_pool_to_token(ctx.token.text);
     // TODO: print line number of previous definition
-    if(find_declaration_in_current_region(obj_decl->name) != NULL) {
+    if(find_declaration_in_current_region(decl->name) != NULL) {
         print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
         error_exit();
     }
@@ -238,25 +237,25 @@ void parse_object_declaration(Declaration* decl, bool is_param)
     if(is_param) {
         switch(ctx.token.kind) {
             case TOKEN_IN:
-                obj_decl->mode = PARAM_MODE_IN;
+                decl->mode = PARAM_MODE_IN;
                 next_token();
                 break;
             case TOKEN_OUT:
-                obj_decl->mode = PARAM_MODE_OUT;
+                decl->mode = PARAM_MODE_OUT;
                 next_token();
                 break;
             case TOKEN_IN_OUT:
-                obj_decl->mode = PARAM_MODE_IN_OUT;
+                decl->mode = PARAM_MODE_IN_OUT;
                 next_token();
                 break;
             case TOKEN_ERROR:
                 error_exit();
             default:
                 // No mode specified means 'in' mode
-                obj_decl->mode = PARAM_MODE_IN;
+                decl->mode = PARAM_MODE_IN;
         }
     } else if(ctx.token.kind == TOKEN_CONSTANT) {
-        obj_decl->is_constant = true;
+        decl->is_constant = true;
         next_token();
     }
 
@@ -264,16 +263,16 @@ void parse_object_declaration(Declaration* decl, bool is_param)
         // Type name
         // TODO: properly parse this as a subtype_indication or constrained_array_definition
         StringToken type_name = string_pool_to_token(ctx.token.text);
-        Declaration* type_decl = find_visible_declaration(type_name, DECL_TYPE);
+        TypeDecl* type_decl = (TypeDecl*)find_visible_declaration(type_name, DECL_TYPE);
         if(!type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             error_exit();
         }
-        obj_decl->type = &type_decl->u.type;
+        decl->type = type_decl;
         next_token();
-    } else if(obj_decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
+    } else if(decl->is_constant && ctx.token.kind == TOKEN_ASSIGN) {
         // number_declaration
-        obj_decl->type = &universal_int_type;
+        decl->type = &universal_int_type;
     } else {
         print_unexpected_token_error(&ctx.token);
         error_exit();
@@ -281,24 +280,24 @@ void parse_object_declaration(Declaration* decl, bool is_param)
 
     if(ctx.token.kind == TOKEN_ASSIGN) {
         next_token();
-        obj_decl->init_expr = parse_expression();
+        decl->init_expr = parse_expression();
     }
-    push_declaration(decl);
+    push_declaration(&decl->base);
 }
 
 static
-void parse_type_declaration(Declaration* decl)
+void parse_type_declaration(void)
 {
-    decl->kind = DECL_TYPE;
-    TypeDecl* type_decl = &decl->u.type;
+    TypeDecl* decl = calloc(1, sizeof(TypeDecl));
+    decl->base.kind = DECL_TYPE;
     bool is_subtype = ctx.token.kind == TOKEN_SUBTYPE;
     next_token(); // Skip 'type'/'subtype' keyword
 
     expect_token(TOKEN_IDENT);
-    type_decl->name = string_pool_to_token(ctx.token.text);
+    decl->name = string_pool_to_token(ctx.token.text);
     // TODO: print line number of previous definition
-    if(find_declaration_in_current_region(type_decl->name) != NULL) {
-        print_parse_error("Redefinition of '%s' within same declarative region", ST(type_decl->name));
+    if(find_declaration_in_current_region(decl->name) != NULL) {
+        print_parse_error("Redefinition of '%s' within same declarative region", ST(decl->name));
         error_exit();
     }
     next_token();
@@ -311,36 +310,36 @@ void parse_type_declaration(Declaration* decl)
         // TODO: properly parse this as a subtype_indication
         expect_token(TOKEN_IDENT);
         StringToken base_type_name = string_pool_to_token(ctx.token.text);
-        Declaration* base_type_decl = find_visible_declaration(base_type_name, DECL_TYPE);
+        TypeDecl* base_type_decl = (TypeDecl*)find_visible_declaration(base_type_name, DECL_TYPE);
         if(!base_type_decl) {
             print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
             error_exit();
         }
-        type_decl->kind = TYPE_SUBTYPE;
-        type_decl->u.subtype.base = &base_type_decl->u.type;
+        decl->kind = TYPE_SUBTYPE;
+        decl->u.subtype.base = base_type_decl;
         next_token();
     } else {
         switch(ctx.token.kind) {
             case TOKEN_RANGE:
-                type_decl->kind = TYPE_INTEGER;
-                parse_integer_type_definition(&type_decl->u.int_);
+                decl->kind = TYPE_INTEGER;
+                parse_integer_type_definition(&decl->u.int_);
                 break;
             case TOKEN_L_PAREN:
-                type_decl->kind = TYPE_ENUM;
-                parse_enum_type_definition(&type_decl->u.enum_);
+                decl->kind = TYPE_ENUM;
+                parse_enum_type_definition(&decl->u.enum_);
                 break;
             case TOKEN_NEW:
                 next_token();
                 // TODO: properly parse this as a subtype_indication
                 expect_token(TOKEN_IDENT);
                 StringToken base_type_name = string_pool_to_token(ctx.token.text);
-                Declaration* base_type_decl = find_visible_declaration(base_type_name, DECL_TYPE);
+                TypeDecl* base_type_decl = (TypeDecl*)find_visible_declaration(base_type_name, DECL_TYPE);
                 if(!base_type_decl) {
                     print_parse_error("Unknown base type: %.*s", SV(ctx.token.text));
                     error_exit();
                 }
-                type_decl->kind = TYPE_DERIVED;
-                type_decl->u.subtype.base = &base_type_decl->u.type;
+                decl->kind = TYPE_DERIVED;
+                decl->u.subtype.base = base_type_decl;
                 next_token();
                 break;
             default:
@@ -349,7 +348,7 @@ void parse_type_declaration(Declaration* decl)
                 error_exit();
         }
     }
-    push_declaration(decl);
+    push_declaration((Declaration*)decl);
 }
 
 static
@@ -396,10 +395,11 @@ void parse_enum_type_definition(EnumType* enum_type)
 }
 
 static
-void parse_subprogram_declaration(Declaration* decl)
+SubprogramDecl* parse_subprogram_declaration(void)
 {
+    SubprogramDecl* decl = calloc(1, sizeof(SubprogramDecl));
+    decl->base.kind = DECL_SUBPROGRAM;
     bool is_function = ctx.token.kind == TOKEN_FUNCTION;
-    decl->kind = DECL_SUBPROGRAM;
     next_token();
 
     Token op_token = {0};
@@ -413,23 +413,23 @@ void parse_subprogram_declaration(Declaration* decl)
             print_parse_error("'%.*s' is not an overloadable operator", SV(ctx.token.text));
             error_exit();
         }
-        decl->u.subprogram.is_operator = true;
+        decl->is_operator = true;
     } else {
         expect_token(TOKEN_IDENT);
     }
     // TODO: check if is an overload, if so if it is permissable
-    decl->u.subprogram.name = string_pool_to_token(ctx.token.text);
-    push_declaration(decl);
+    decl->name = string_pool_to_token(ctx.token.text);
+    push_declaration((Declaration*)decl);
     next_token();
 
     begin_region();
     if(ctx.token.kind == TOKEN_L_PAREN) {
-        decl->u.subprogram.param_count = parse_parameters();
-        decl->u.subprogram.decls = curr_region(ctx).first;
+        decl->param_count = parse_parameters();
+        decl->decls = curr_region(ctx).first;
     }
 
-    if(decl->u.subprogram.is_operator) {
-        check_op_arity(&op_token, decl->u.subprogram.param_count);
+    if(decl->is_operator) {
+        check_op_arity(&op_token, decl->param_count);
     }
 
     if(is_function) {
@@ -437,20 +437,21 @@ void parse_subprogram_declaration(Declaration* decl)
         next_token();
         // TODO: properly parse type_mark
         StringToken return_type_name = string_pool_to_token(ctx.token.text);
-        Declaration* return_type_decl = find_visible_declaration(return_type_name, DECL_TYPE);
+        TypeDecl* return_type_decl = (TypeDecl*)find_visible_declaration(return_type_name, DECL_TYPE);
         if(!return_type_decl) {
             print_parse_error("Unknown type: %.*s", SV(ctx.token.text));
             error_exit();
         }
-        decl->u.subprogram.return_type = &return_type_decl->u.type;
+        decl->return_type = return_type_decl;
         next_token();
     }
 
     if(ctx.token.kind == TOKEN_IS) {
-        parse_subprogram_body(&decl->u.subprogram);
+        parse_subprogram_body(decl);
     }
-    decl->u.subprogram.decls = curr_region(ctx).first;
+    decl->decls = curr_region(ctx).first;
     end_region();
+    return decl;
 }
 
 static
@@ -496,8 +497,7 @@ uint8_t parse_parameters(void)
     next_token(); // Skip '('
     uint8_t param_count = 0;
     while(ctx.token.kind != TOKEN_R_PAREN) {
-        Declaration* param = calloc(1, sizeof(Declaration));
-        parse_object_declaration(param, /*is_param*/true);
+        parse_object_declaration(/*is_param*/true);
         if(ctx.token.kind != TOKEN_R_PAREN) {
             expect_token(TOKEN_SEMICOLON);
             next_token();
@@ -590,20 +590,20 @@ void parse_statement_labels(Statement* stmt)
         next_token();
         Declaration* existing_decl = find_declaration_in_current_region(label_name);
         if(existing_decl) {
-            if(existing_decl->kind != DECL_LABEL || existing_decl->u.label.target) {
+            if(existing_decl->kind != DECL_LABEL || ((LabelDecl*)existing_decl)->target) {
                 // TODO: is it okay to have labels and other objects/subprograms with same name?
                 //  (when answered update lookups in parse_goto_statement as well)
                 print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
                 error_exit();
             }
             // There is a placeholder label defined - fill it in instead of creating a new label
-            existing_decl->u.label.target = stmt;
+            ((LabelDecl*)existing_decl)->target = stmt;
         } else {
-            Declaration* label = calloc(1, sizeof(Declaration));
-            label->kind = DECL_LABEL;
-            label->u.label.name = label_name;
-            label->u.label.target = stmt;
-            push_declaration(label);
+            LabelDecl* label = calloc(1, sizeof(LabelDecl));
+            label->base.kind = DECL_LABEL;
+            label->name = label_name;
+            label->target = stmt;
+            push_declaration((Declaration*)label);
         }
     }
 }
@@ -613,62 +613,61 @@ void parse_assign_statement(Statement* stmt, StringToken name)
 {
     next_token(); // Skip ':='
     stmt->kind = STMT_ASSIGN;
-    Declaration* dest = find_visible_declaration(name, DECL_OBJECT);
+    ObjectDecl* dest = (ObjectDecl*)find_visible_declaration(name, DECL_OBJECT);
     if(!dest) {
         print_parse_error("Unknown variable '%s'", ST(name));
         error_exit();
     }
-    stmt->u.assign.dest = &dest->u.object;
+    stmt->u.assign.dest = dest;
     stmt->u.assign.expr = parse_expression();
 }
 
 static
 void parse_procedure_call_statement(Statement* stmt, StringToken name)
 {
-    Declaration* subprogram_decl = find_visible_declaration(name, DECL_SUBPROGRAM);
+    SubprogramDecl* subprogram_decl = (SubprogramDecl*)find_visible_declaration(name, DECL_SUBPROGRAM);
     if(!subprogram_decl) {
         print_parse_error("Unknown procedure '%s'", ST(name));
         error_exit();
     }
-    if(subprogram_decl->u.subprogram.return_type) {
+    if(subprogram_decl->return_type) {
         print_parse_error("A function call cannot be a standalone statement (only procedure calls can)");
         error_exit();
     }
-    SubprogramDecl* subprogram = &subprogram_decl->u.subprogram;
 
     Expression** args = NULL;
     switch(ctx.token.kind) {
         case TOKEN_SEMICOLON:
             // Must be a subprogram called with no arguments
-            if(subprogram->param_count != 0) {
-                print_parse_error("Subprogram '%s' is called with zero arguments, but it requires %u argument(s)", ST(name), subprogram->param_count);
+            if(subprogram_decl->param_count != 0) {
+                print_parse_error("Subprogram '%s' is called with zero arguments, but it requires %u argument(s)", ST(name), subprogram_decl->param_count);
                 error_exit();
             }
             break;
         case TOKEN_L_PAREN: {
             // TODO: account for default arguments and named arguments
-            if(subprogram->param_count == 0) {
-                print_parse_error("Subprogram '%s' is called with %u arguments, but it requires 0 arguments", ST(name), subprogram->param_count);
+            if(subprogram_decl->param_count == 0) {
+                print_parse_error("Subprogram '%s' is called with %u arguments, but it requires 0 arguments", ST(name), subprogram_decl->param_count);
                 error_exit();
             }
             next_token();
-            args = calloc(subprogram->param_count, sizeof(Expression));
+            args = calloc(subprogram_decl->param_count, sizeof(Expression));
             uint8_t i = 0;
             while(ctx.token.kind != TOKEN_R_PAREN) {
-                if(i >= subprogram->param_count) {
-                    print_parse_error("Subprogram '%s' is called with too many arguments (requires %u argument(s))", ST(name), subprogram->param_count);
+                if(i >= subprogram_decl->param_count) {
+                    print_parse_error("Subprogram '%s' is called with too many arguments (requires %u argument(s))", ST(name), subprogram_decl->param_count);
                     error_exit();
                 }
                 args[i] = parse_expression();
-                if(i != subprogram->param_count - 1) {
+                if(i != subprogram_decl->param_count - 1) {
                     expect_token(TOKEN_COMMA);
                     next_token();
                 }
                 ++i;
             }
             next_token(); // Skip ')'
-            if(i != subprogram->param_count) {
-                print_parse_error("Subprogram '%s' is called with %u arguments, but it requires %u argument(s)", ST(name), i, subprogram->param_count);
+            if(i != subprogram_decl->param_count) {
+                print_parse_error("Subprogram '%s' is called with %u arguments, but it requires %u argument(s)", ST(name), i, subprogram_decl->param_count);
                 error_exit();
             }
             break;
@@ -680,7 +679,7 @@ void parse_procedure_call_statement(Statement* stmt, StringToken name)
     }
 
     stmt->kind = STMT_CALL;
-    stmt->u.call.subprogram = subprogram;
+    stmt->u.call.subprogram = subprogram_decl;
     stmt->u.call.args = args;
 }
 
@@ -856,10 +855,10 @@ void parse_goto_statement(Statement* stmt)
     stmt->kind = STMT_GOTO;
     expect_token(TOKEN_IDENT);
     StringToken label_name = string_pool_to_token(ctx.token.text);
-    Declaration* label = find_visible_declaration(label_name, DECL_LABEL);
+    LabelDecl* label = (LabelDecl*)find_visible_declaration(label_name, DECL_LABEL);
     if(label) {
         // Label is defined prior to the goto statement
-        stmt->u.goto_.label = &label->u.label;
+        stmt->u.goto_.label = label;
     } else {
         // Label is not defined yet
         if(find_declaration_in_current_region(label_name)) {
@@ -869,11 +868,11 @@ void parse_goto_statement(Statement* stmt)
         }
         // Define a placeholder label
         // TODO: in semantic analysis, verify that all placeholder labels are filled in
-        Declaration* label = calloc(1, sizeof(Declaration));
-        label->kind = DECL_LABEL;
-        label->u.label.name = label_name;
-        stmt->u.goto_.label = &label->u.label;
-        push_declaration(label);
+        LabelDecl* label = calloc(1, sizeof(LabelDecl));
+        label->base.kind = DECL_LABEL;
+        label->name = label_name;
+        stmt->u.goto_.label = label;
+        push_declaration((Declaration*)label);
     }
     next_token();
 }
@@ -1176,16 +1175,16 @@ StringToken get_decl_name(const Declaration* decl)
     StringToken name = 0;
     switch(decl->kind) {
         case DECL_TYPE:
-            name = decl->u.type.name;
+            name = ((TypeDecl*)decl)->name;
             break;
         case DECL_OBJECT:
-            name = decl->u.object.name;
+            name = ((ObjectDecl*)decl)->name;
             break;
         case DECL_SUBPROGRAM:
-            name = decl->u.subprogram.name;
+            name = ((SubprogramDecl*)decl)->name;
             break;
         case DECL_LABEL:
-            name = decl->u.label.name;
+            name = ((LabelDecl*)decl)->name;
             break;
         default:
             assert(false && "Unhandled declaration type");

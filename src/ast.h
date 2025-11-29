@@ -156,6 +156,11 @@ enum {
     DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL
 };
 
+typedef struct Declaration_ {
+    struct Declaration_* next;
+    DeclKind kind;
+} Declaration;
+
 // 6.2: Formal Parameter Modes
 typedef uint8_t ParamMode;
 enum {
@@ -164,6 +169,7 @@ enum {
 
 // 3.3.1: Type Declarations
 typedef struct TypeDecl_ {
+    Declaration base;
     StringToken name;
     // TODO: discriminant_part
     TypeKind kind;
@@ -179,6 +185,7 @@ typedef struct TypeDecl_ {
 
 // 3.2: Objects and Named Numbers
 typedef struct {
+    Declaration base;
     TypeDecl* type;
     Expression* init_expr;
     StringToken name;
@@ -187,6 +194,7 @@ typedef struct {
 } ObjectDecl;
 
 typedef struct {
+    Declaration base;
     TypeDecl* return_type; // NULL for procedures
     struct Declaration_* decls; // Parameters are the first param_count decls
     struct Statement_* stmts;
@@ -196,20 +204,10 @@ typedef struct {
 } SubprogramDecl;
 
 typedef struct {
+    Declaration base;
     struct Statement_* target;
     StringToken name;
 } LabelDecl;
-
-typedef struct Declaration_ {
-    DeclKind kind;
-    union {
-        ObjectDecl object;
-        TypeDecl type;
-        SubprogramDecl subprogram;
-        LabelDecl label;
-    } u;
-    struct Declaration_* next;
-} Declaration;
 
 /* STATEMENTS */
 
