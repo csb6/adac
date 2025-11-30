@@ -74,7 +74,7 @@ static void parse_object_declaration(bool is_param);
 static void parse_type_declaration(void);
 static void parse_integer_type_definition(IntType* int_type);
 static void parse_enum_type_definition(EnumType* enum_type);
-static SubprogramDecl* parse_subprogram_declaration(void);
+static void parse_subprogram_declaration(SubprogramDecl* decl);
 static uint8_t parse_parameters(void);
 static void parse_subprogram_body(SubprogramDecl* decl);
 static void parse_choice(Choice* choice);
@@ -144,7 +144,7 @@ CompilationUnit* parser_parse(const char* input_start, const char* input_end)
         }
         case TOKEN_PROCEDURE:
             unit->kind = COMP_UNIT_SUBPROGRAM;
-            // TODO
+            parse_subprogram_declaration(&unit->u.subprogram_decl);
             break;
         default:
             print_unexpected_token_error(&ctx.token); /* fall through */
@@ -205,9 +205,11 @@ void parse_basic_declaration(void)
             parse_type_declaration();
             break;
         case TOKEN_PROCEDURE:
-        case TOKEN_FUNCTION:
-            parse_subprogram_declaration();
+        case TOKEN_FUNCTION: {
+            SubprogramDecl* decl = calloc(1, sizeof(SubprogramDecl));
+            parse_subprogram_declaration(decl);
             break;
+        }
         default:
             print_unexpected_token_error(&ctx.token); /* fall through */
         case TOKEN_ERROR:
@@ -395,9 +397,8 @@ void parse_enum_type_definition(EnumType* enum_type)
 }
 
 static
-SubprogramDecl* parse_subprogram_declaration(void)
+void parse_subprogram_declaration(SubprogramDecl* decl)
 {
-    SubprogramDecl* decl = calloc(1, sizeof(SubprogramDecl));
     decl->base.kind = DECL_SUBPROGRAM;
     bool is_function = ctx.token.kind == TOKEN_FUNCTION;
     next_token();
@@ -451,7 +452,6 @@ SubprogramDecl* parse_subprogram_declaration(void)
     }
     decl->decls = curr_region(ctx).first;
     end_region();
-    return decl;
 }
 
 static

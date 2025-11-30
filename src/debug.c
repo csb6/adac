@@ -21,8 +21,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include "ast.h"
 
+static void print_package_spec(const struct PackageSpec_* package_spec);
+static void print_subprogram_decl(const struct SubprogramDecl_* decl, uint8_t indent_level);
 static void print_declaration(const Declaration* decl, uint8_t indent_level);
-static void print_subprogram_decl(const SubprogramDecl* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
 static void print_statement(const Statement* stmt, uint8_t indent_level);
 static void print_if_statement(const IfStmt* stmt, uint8_t indent_level);
@@ -36,13 +37,28 @@ static void print_choice(const Choice* choice);
 static const char* param_mode_str(ParamMode mode);
 static void print_indent(uint8_t size);
 
+void print_compilation_unit(const CompilationUnit* unit)
+{
+    switch(unit->kind) {
+        case COMP_UNIT_PACKAGE_SPEC:
+            print_package_spec(&unit->u.package_spec);
+            break;
+        case COMP_UNIT_SUBPROGRAM:
+            print_subprogram_decl(&unit->u.subprogram_decl, 0);
+            break;
+        default:
+            printf("Unhandled compilation unit\n");
+    }
+}
+
+static
 void print_package_spec(const PackageSpec* package_spec)
 {
     printf("package %s is\n", ST(package_spec->name));
     for(const Declaration* decl = package_spec->decls; decl != NULL; decl = decl->next) {
         print_declaration(decl, 1);
     }
-    printf("end %s;\n", ST(package_spec->name));
+    printf("end %s;", ST(package_spec->name));
 }
 
 static

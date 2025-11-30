@@ -193,7 +193,7 @@ typedef struct {
     ParamMode mode; // Only used if ObjectDecl is a formal parameter
 } ObjectDecl;
 
-typedef struct {
+typedef struct SubprogramDecl_ {
     Declaration base;
     TypeDecl* return_type; // NULL for procedures
     struct Declaration_* decls; // Parameters are the first param_count decls

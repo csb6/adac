@@ -101,13 +101,8 @@ int main(int argc, char** argv)
             fprintf(stderr, "Error: Failed to parse %s\n", source_file_path);
             return 1;
         }
-        switch(unit->kind) {
-            case COMP_UNIT_PACKAGE_SPEC:
-                print_package_spec(&unit->u.package_spec);
-                break;
-            default:
-                printf("Unhandled compilation unit\n");
-        }
+        print_compilation_unit(unit);
+        putchar('\n');
 
         if(munmap(input_file, file_size) < 0) {
             fprintf(stderr, "Error: Failed to unmap %s\n", source_file_path);

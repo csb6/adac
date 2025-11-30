@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef ADA_DEBUG_H
 #define ADA_DEBUG_H
 
-struct PackageSpec_;
+struct CompilationUnit_;
 
-void print_package_spec(const struct PackageSpec_* package_spec);
+void print_compilation_unit(const struct CompilationUnit_* unit);
 
 #endif /* ADA_DEBUG_H */
