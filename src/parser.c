@@ -69,7 +69,7 @@ static ParseContext ctx;
 /* PACKAGE */
 static void parse_package_spec(PackageSpec* package_spec);
 /* DECLARATIONS */
-static void parse_basic_declaration(void);
+static void parse_declaration(void);
 static void parse_object_declaration(bool is_param);
 static void parse_type_declaration(void);
 static void parse_integer_type_definition(IntType* int_type);
@@ -169,7 +169,7 @@ void parse_package_spec(PackageSpec* package_spec)
 
     begin_region();
     while(ctx.token.kind != TOKEN_END) {
-        parse_basic_declaration();
+        parse_declaration();
     }
     next_token(); // Skip 'end'
 
@@ -192,7 +192,7 @@ void parse_package_spec(PackageSpec* package_spec)
 }
 
 static
-void parse_basic_declaration(void)
+void parse_declaration(void)
 {
     // TODO: parse representation_clause/use_clause here too
     switch(ctx.token.kind) {
@@ -462,7 +462,7 @@ void parse_subprogram_body(SubprogramDecl* decl)
     // Declarative part
     // TODO: in semantic analysis phase, ensure no basic_declarative_items come after the first later_declarative_item
     while(ctx.token.kind != TOKEN_BEGIN) {
-        parse_basic_declaration();
+        parse_declaration();
     }
     if(decl->param_count == 0) {
         // Params and decls are in same list, so if no params then the first element will be the first decl (if any)
@@ -691,7 +691,7 @@ void parse_block_statement(Statement* stmt)
     if(ctx.token.kind == TOKEN_DECLARE) {
         next_token();
         while(ctx.token.kind != TOKEN_BEGIN) {
-           parse_basic_declaration();
+           parse_declaration();
         }
         stmt->u.block.decls = curr_region(ctx).first;
     }
