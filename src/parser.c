@@ -573,7 +573,7 @@ Statement* parse_statement(void)
             parse_goto_statement(stmt);
             break;
         default:
-            print_unexpected_token_error(&ctx.token);
+            print_unexpected_token_error(&ctx.token); /* fall through */
         case TOKEN_ERROR:
             error_exit();
     }

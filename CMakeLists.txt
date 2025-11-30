@@ -6,6 +6,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS OFF)
 
+option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
+option(ENABLE_UBSAN "Enable Undefined Behavior Sanitizer" OFF)
+option(ENABLE_GCC_ANALYZER "Enable GCC static analyzer" OFF)
+
 add_custom_target(gen_keyword_hash
     COMMAND
         gperf --ignore-case --compare-strncmp --readonly-tables --language='ANSI-C' --struct-type
@@ -20,6 +24,19 @@ add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/error.c 
 target_include_directories(adac PRIVATE .)
 target_compile_options(adac PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
 target_link_libraries(adac PRIVATE mini-gmp)
+if(ENABLE_ASAN)
+    target_compile_options(adac PRIVATE "-fsanitize=address")
+    target_link_options(adac PRIVATE "-fsanitize=address")
+endif()
+if(ENABLE_UBSAN)
+    target_compile_options(adac PRIVATE "-fsanitize=undefined")
+    target_link_options(adac PRIVATE "-fsanitize=undefined")
+endif()
+if(ENABLE_GCC_ANALYZER)
+    # Flags:
+    #  -Wno-analyzer-possible-null-dereference: Lots of false positives since we (purposefully) do not check calloc/malloc result
+    target_compile_options(adac PRIVATE "-fanalyzer" "-Wno-analyzer-possible-null-dereference" "--param" "analyzer-max-svalue-depth=10000")
+endif()
 
 add_custom_target(gen_lexer
     COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/gen_lexer_table.py > ${CMAKE_SOURCE_DIR}/src/lexer_table.c)

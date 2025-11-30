@@ -42,6 +42,12 @@ skip_table = {
     }
 }
 
+newline_table = {
+    "CLASS_WS": 0,
+    "CLASS_NEWLINE": 1,
+    "CLASS_MINUS": 0
+}
+
 state_table = {
     "STATE_START": {
         # Single character tokens
