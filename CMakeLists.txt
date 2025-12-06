@@ -17,13 +17,17 @@ add_custom_target(gen_keyword_hash
         --output-file="${CMAKE_SOURCE_DIR}/keywords.c"
         ${CMAKE_SOURCE_DIR}/keywords.gperf)
 
+add_library(util STATIC src/util/error.c src/util/file_buffer.c)
+target_include_directories(util PUBLIC src/util)
+target_compile_options(util PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
+
 add_library(mini-gmp OBJECT third_party/mini-gmp/mini-gmp.c)
 target_include_directories(mini-gmp PUBLIC third_party/mini-gmp)
 
-add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/error.c src/debug.c src/string_pool.c)
-target_include_directories(adac PRIVATE .)
+add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/debug.c src/string_pool.c)
+target_include_directories(adac PRIVATE src)
 target_compile_options(adac PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
-target_link_libraries(adac PRIVATE mini-gmp)
+target_link_libraries(adac PRIVATE mini-gmp util)
 if(ENABLE_ASAN)
     target_compile_options(adac PRIVATE "-fsanitize=address")
     target_link_options(adac PRIVATE "-fsanitize=address")
@@ -44,3 +48,4 @@ add_custom_target(gen_lexer
 add_executable(string_pool_test tests/string_pool_test.c src/string_pool.c)
 target_include_directories(string_pool_test PUBLIC src)
 target_compile_options(string_pool_test PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
+target_link_libraries(string_pool_test PUBLIC util)
