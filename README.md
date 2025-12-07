@@ -61,4 +61,4 @@ Currently, this simply parses the given file, emitting error messages if any are
 Files in the `third_party` directory are vendored and have their own separate copyrights/licenses. See the respective README
 files of each subdirectory for more information.
 
-All other files in this repository (unless otherwise specified) are licensed under the [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html).
+All other files in this repository (unless otherwise specified) are licensed under the [GNU General Public License, version 3](https://www.gnu.org/licenses/gpl-3.0.html) or any later version.
