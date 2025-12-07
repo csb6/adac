@@ -17,9 +17,17 @@ add_custom_target(gen_keyword_hash
         --output-file="${CMAKE_SOURCE_DIR}/keywords.c"
         ${CMAKE_SOURCE_DIR}/keywords.gperf)
 
-add_library(util STATIC src/util/error.c src/util/file_buffer.c)
+add_library(util STATIC src/util/error.c src/util/file_buffer.c src/util/string_view.c)
 target_include_directories(util PUBLIC src/util)
 target_compile_options(util PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
+
+add_executable(lexer_gen
+    src/lexer_gen/main.c
+    src/lexer_gen/lexer.c src/lexer_gen/parser.c src/lexer_gen/checker.c
+    src/lexer_gen/debug.c)
+target_include_directories(lexer_gen PRIVATE src/lexer_gen)
+target_compile_options(lexer_gen PRIVATE "-Wall" "-Wextra" "-pedantic-errors")
+target_link_libraries(lexer_gen PUBLIC util)
 
 add_library(mini-gmp OBJECT third_party/mini-gmp/mini-gmp.c)
 target_include_directories(mini-gmp PUBLIC third_party/mini-gmp)

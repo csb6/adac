@@ -29,17 +29,17 @@ type TokenKind is option
 | TOKEN_THEN | TOKEN_TYPE | TOKEN_USE | TOKEN_WHEN | TOKEN_WHILE | TOKEN_WITH | TOKEN_XOR;
 
 # Tokens used in skip_table
-subtype SkipTokens is TokenKind option TOKEN_EOF | TOKEN_MINUS;
+type SkipTokens is option SKIP_TOKEN_EOF | SKIP_TOKEN_MINUS;
 
-skip_table: StateTable[SkipTokens] = {
+skip_table: [SkipTokens] = {
   START: {
-    whitespace: START,
+    ' ' | '\f' | '\n' | '\r' | '\t' | '\v': START,
     '-': MINUS_OR_COMMENT,
-    others: TOKEN_EOF
+    others: SKIP_TOKEN_EOF
   },
   MINUS_OR_COMMENT: {
     '-': COMMENT,
-    others: TOKEN_MINUS
+    others: SKIP_TOKEN_MINUS
   },
   COMMENT: {
     '\n': START,
@@ -48,9 +48,9 @@ skip_table: StateTable[SkipTokens] = {
 };
 
 # Tokens used in table
-subtype StateTokens is TokenKind range TOKEN_AMP .. TOKEN_ERROR;
+type StateTokens is TokenKind range TOKEN_AMP .. TOKEN_ERROR;
 
-table: StateTable[StateTokens] = {
+table: [StateTokens] = {
   START: {
     # Single character tokens
     '&': TOKEN_AMP,

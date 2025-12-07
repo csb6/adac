@@ -15,14 +15,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef ADA_ERROR_H
-#define ADA_ERROR_H
+#ifndef LEXER_GEN_CHECKER_H
+#define LEXER_GEN_CHECKER_H
 
-#include <stdint.h>
+struct Module_;
 
-void error_set_source_file_path(const char* path);
-void error_print(const char* text_start, const char* curr, const char* message, ...);
-void error_print2(uint32_t line_num, const char *message, ...);
-void error_exit(void) __attribute__ ((noreturn));
+void check_module(struct Module_* module);
 
-#endif /* ADA_ERROR_H */
+#endif /* LEXER_GEN_CHECKER_H */

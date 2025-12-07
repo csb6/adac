@@ -48,6 +48,20 @@ void error_print(const char* text_start, const char* curr, const char* message, 
     va_end(args);
 }
 
+void error_print2(uint32_t line_num, const char *message, ...)
+{
+    if(source_file_path) {
+        fprintf(stderr, "%s:%u ", source_file_path, line_num);
+    }
+
+    va_list args;
+    va_start(args, message);
+    fprintf(stderr, "Error: ");
+    vfprintf(stderr, message, args);
+    fputc('\n', stderr);
+    va_end(args);
+}
+
 void error_exit(void)
 {
     exit(1);

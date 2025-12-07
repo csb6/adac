@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef ADA_STRING_VIEW_H
 #define ADA_STRING_VIEW_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct {
@@ -27,5 +28,10 @@ typedef struct {
 
 // Enables succinct printing of a StringView using printf("%.*s")
 #define SV(sv) (sv).len, (sv).value
+
+// Pre: length of buffer >= 2
+void escape_char(char c, char* buffer);
+char unescape_char(char second);
+bool string_view_eq(const StringView* a, const StringView* b);
 
 #endif /* ADA_STRING_VIEW_H */
