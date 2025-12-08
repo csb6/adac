@@ -15,6 +15,7 @@ endif()
 option(ENABLE_ASAN "Enable Address Sanitizer" OFF)
 option(ENABLE_UBSAN "Enable Undefined Behavior Sanitizer" OFF)
 option(ENABLE_GCC_ANALYZER "Enable GCC static analyzer" OFF)
+option(ENABLE_CLANG_ANALYZER "Enable Clang static analyzer" OFF)
 
 add_custom_target(gen_keyword_hash
     COMMAND
@@ -54,6 +55,11 @@ if(ENABLE_GCC_ANALYZER)
     # Flags:
     #  -Wno-analyzer-possible-null-dereference: Lots of false positives since we (purposefully) do not check calloc/malloc result
     target_compile_options(adac PRIVATE "-fanalyzer" "-Wno-analyzer-possible-null-dereference" "--param" "analyzer-max-svalue-depth=10000")
+endif()
+if(ENABLE_CLANG_ANALYZER)
+    target_compile_options(lexer_gen PRIVATE "--analyze")
+    target_compile_options(util PRIVATE "--analyze")
+    target_compile_options(adac PRIVATE "--analyze")
 endif()
 
 add_custom_target(gen_lexer
