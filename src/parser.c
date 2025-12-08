@@ -651,7 +651,7 @@ void parse_procedure_call_statement(Statement* stmt, StringToken name)
                 error_exit();
             }
             next_token();
-            args = calloc(subprogram_decl->param_count, sizeof(Expression));
+            args = calloc(subprogram_decl->param_count, sizeof(Expression*));
             uint8_t i = 0;
             while(ctx.token.kind != TOKEN_R_PAREN) {
                 if(i >= subprogram_decl->param_count) {
