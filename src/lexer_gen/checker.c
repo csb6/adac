@@ -80,8 +80,8 @@ void check_type_decl(TypeDecl* type_decl)
                 error_exit();
             }
             for(uint32_t i = 0; i < option_type->option_count; ++i) {
-                for(uint32_t j = 0; j < option_type->option_count; ++j) {
-                    if(i != j && string_view_eq(option_type->options + i, option_type->options + j)) {
+                for(uint32_t j = i + 1; j < option_type->option_count; ++j) {
+                    if(string_view_eq(option_type->options + i, option_type->options + j)) {
                         error_print2(type_decl->line_num, "Duplicate option: '%.*s'", SV(option_type->options[i]));
                         error_exit();
                     }
