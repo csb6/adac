@@ -1,5 +1,5 @@
 /*
-Ada compiler
+adac - Ada compiler
 Copyright (C) 2025  Cole Blakley
 
 This program is free software: you can redistribute it and/or modify
