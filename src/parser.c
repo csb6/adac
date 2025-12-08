@@ -147,8 +147,7 @@ CompilationUnit* parser_parse(const char* input_start, const char* input_end)
             parse_subprogram_declaration(&unit->u.subprogram_decl);
             break;
         default:
-            print_unexpected_token_error(&ctx.token); /* fall through */
-        case TOKEN_ERROR:
+            print_unexpected_token_error(&ctx.token);
             error_exit();
     }
     return unit;
@@ -211,8 +210,7 @@ void parse_declaration(void)
             break;
         }
         default:
-            print_unexpected_token_error(&ctx.token); /* fall through */
-        case TOKEN_ERROR:
+            print_unexpected_token_error(&ctx.token);
             error_exit();
     }
     expect_token(TOKEN_SEMICOLON);
@@ -250,8 +248,6 @@ void parse_object_declaration(bool is_param)
                 decl->mode = PARAM_MODE_IN_OUT;
                 next_token();
                 break;
-            case TOKEN_ERROR:
-                error_exit();
             default:
                 // No mode specified means 'in' mode
                 decl->mode = PARAM_MODE_IN;
@@ -345,8 +341,7 @@ void parse_type_declaration(void)
                 next_token();
                 break;
             default:
-                print_unexpected_token_error(&ctx.token); /* fall through */
-            case TOKEN_ERROR:
+                print_unexpected_token_error(&ctx.token);
                 error_exit();
         }
     }
@@ -548,8 +543,7 @@ Statement* parse_statement(void)
                     parse_procedure_call_statement(stmt, name);
                     break;
                 default:
-                    print_unexpected_token_error(&ctx.token); /* fall through */
-                case TOKEN_ERROR:
+                    print_unexpected_token_error(&ctx.token);
                     error_exit();
             }
             break;
@@ -573,8 +567,7 @@ Statement* parse_statement(void)
             parse_goto_statement(stmt);
             break;
         default:
-            print_unexpected_token_error(&ctx.token); /* fall through */
-        case TOKEN_ERROR:
+            print_unexpected_token_error(&ctx.token);
             error_exit();
     }
     expect_token(TOKEN_SEMICOLON);
@@ -673,8 +666,7 @@ void parse_procedure_call_statement(Statement* stmt, StringToken name)
             break;
         }
         default:
-            print_unexpected_token_error(&ctx.token); /* fall through */
-        case TOKEN_ERROR:
+            print_unexpected_token_error(&ctx.token);
             error_exit();
     }
 
@@ -746,8 +738,7 @@ void parse_if_statement(Statement* stmt)
         case TOKEN_END:
             break;
         default:
-            print_unexpected_token_error(&ctx.token); /* fall through */
-        case TOKEN_ERROR:
+            print_unexpected_token_error(&ctx.token);
             error_exit();
     }
 
@@ -1063,8 +1054,6 @@ Expression* parse_primary_expression(void)
             expect_token(TOKEN_R_PAREN);
             next_token();
             break;
-        case TOKEN_ERROR:
-            error_exit();
         default:
             if(is_unary_op(ctx.token.kind)) {
                 UnaryOperator op = unary_op(ctx.token.kind);
@@ -1237,9 +1226,6 @@ void next_token(void)
 static
 void expect_token(TokenKind kind)
 {
-    if(ctx.token.kind == TOKEN_ERROR) {
-        error_exit();
-    }
     if(ctx.token.kind != kind) {
         print_unexpected_token_error(&ctx.token);
         print_parse_error("Expected token: '%s'", token_kind_to_str(kind));
@@ -1266,8 +1252,7 @@ uint32_t count_enum_literals(void)
             case TOKEN_COMMA:
                 break;
             default:
-                print_unexpected_token_error(&token); /* fall through */
-            case TOKEN_ERROR:
+                print_unexpected_token_error(&token);
                 error_exit();
         }
         curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
@@ -1289,9 +1274,6 @@ uint8_t count_alternatives(void)
                     error_exit();
                 }
                 ++alt_count;
-                break;
-            case TOKEN_ERROR:
-                error_exit();
                 break;
             default:
                 break;

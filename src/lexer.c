@@ -65,6 +65,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
         } else {
             error_print(input_start, curr, "Unexpected end of file");
             token->kind = TOKEN_ERROR;
+            error_exit();
         }
     } else {
         token->kind = (TokenKind)state;
@@ -131,7 +132,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 token->text.value = token_start;
                 token->text.len = curr - token_start;
                 error_print(input_start, curr, "Unexpected character: '%c'", *curr);
-                break;
+                error_exit();
             default:
                 token->text.value = token_start;
                 token->text.len = curr - token_start;
