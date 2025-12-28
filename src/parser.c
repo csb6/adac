@@ -53,7 +53,6 @@ typedef struct {
     DeclList region_stack[32];
     uint8_t curr_region_idx;
     const char* curr;
-    const char* input_start;
     const char* input_end;
     Token token;
 } ParseContext;
@@ -127,14 +126,13 @@ CompilationUnit* parser_parse(const char* input_start, const char* input_end)
     CompilationUnit* unit = calloc(1, sizeof(CompilationUnit));
 
     ctx.curr = input_start;
-    ctx.input_start = input_start;
     ctx.input_end = input_end;
     ctx.token.line_num = 1;
     next_token(); // Read first token
     switch(ctx.token.kind) {
         case TOKEN_PACKAGE: {
             const char* next = ctx.curr;
-            if(lexer_lookahead(ctx.input_start, ctx.input_end, &next) == TOKEN_BODY) {
+            if(lexer_lookahead(ctx.input_end, &next) == TOKEN_BODY) {
                 unit->kind = COMP_UNIT_PACKAGE_BODY;
                 // TODO
             } else {
@@ -405,7 +403,7 @@ void parse_subprogram_declaration(SubprogramDecl* decl)
             print_parse_error("Overloaded operators must be functions");
             error_exit();
         }
-        const char* token_end = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.token.text.value, &op_token);
+        const char* token_end = lexer_parse_token(ctx.input_end, ctx.token.text.value, &op_token);
         if(token_end != ctx.token.text.value + ctx.token.text.len || !is_overloadable_op(op_token.kind)) {
             print_parse_error("'%.*s' is not an overloadable operator", SV(ctx.token.text));
             error_exit();
@@ -1221,7 +1219,7 @@ Declaration* find_declaration_in_current_region(StringToken name)
 static
 void next_token(void)
 {
-    ctx.curr = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.curr, &ctx.token);
+    ctx.curr = lexer_parse_token(ctx.input_end, ctx.curr, &ctx.token);
 }
 
 static
@@ -1256,7 +1254,7 @@ uint32_t count_enum_literals(void)
                 print_unexpected_token_error(&token);
                 error_exit();
         }
-        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+        curr = lexer_parse_token(ctx.input_end, curr, &token);
     }
     return literal_count;
 }
@@ -1279,7 +1277,7 @@ uint8_t count_alternatives(void)
             default:
                 break;
         }
-        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+        curr = lexer_parse_token(ctx.input_end, curr, &token);
     }
     return alt_count;
 }

@@ -25,7 +25,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "lexer.h"
 
 static struct {
-    const char* input_start;
     const char* input_end;
     const char* curr;
     Token token;
@@ -53,7 +52,6 @@ static uint16_t find_option(const StringView* options, uint8_t option_count, Str
 void parser_parse(const char* input_start, const char* input_end, struct Module_* module)
 {
     memset(&ctx, 0, sizeof(ctx));
-    ctx.input_start = input_start;
     ctx.input_end = input_end;
     ctx.curr = input_start;
     ctx.module = module;

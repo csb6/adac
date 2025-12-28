@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "token.h"
 
-const char* lexer_parse_token(const char* input_start, const char* input_end, const char* curr, Token* token);
-TokenKind lexer_lookahead(const char* input_start, const char* input_end, const char** curr);
+const char* lexer_parse_token(const char* input_end, const char* curr, Token* token);
+TokenKind lexer_lookahead(const char* input_end, const char** curr);
 
 #endif /*ADA_LEXER_H*/
