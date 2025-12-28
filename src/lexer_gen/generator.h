@@ -15,11 +15,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef LEXER_GEN_CHECKER_H
-#define LEXER_GEN_CHECKER_H
+#ifndef LEX_GEN_GENERATOR_H
+#define LEX_GEN_GENERATOR_H
 
 struct Module_;
 
-void check_module(const struct Module_* module);
+void generate(const struct Module_* module, const char* output_dir_path);
 
-#endif /* LEXER_GEN_CHECKER_H */
+#endif /* LEX_GEN_GENERATOR_H */

@@ -52,30 +52,30 @@ static
 void print_table_decl(const TableDecl* table_decl)
 {
     printf("%.*s: [%.*s] = {\n", SV(table_decl->name), SV(table_decl->domain->name));
-    for(const TableEntry* entry = table_decl->entries; entry != NULL; entry = entry->next) {
-        printf("  %.*s: {\n", SV(entry->state));
-        for(uint32_t i = 0; i < entry->mapping_count; ++i) {
+    for(const IState* istate = table_decl->istates; istate != NULL; istate = istate->next) {
+        printf("  %.*s: {\n", SV(istate->name));
+        for(uint32_t i = 0; i < istate->transition_count; ++i) {
             char c_str[3] = {0};
             char c_str1[3] = {0};
-            const Mapping* mapping = entry->mappings + i;
+            const Transition* transition = istate->transitions + i;
             printf("    ");
-            switch(mapping->kind) {
-                case MAPPING_CHAR:
-                    escape_char(mapping->u.c, c_str);
+            switch(transition->kind) {
+                case TRANSITION_CHAR:
+                    escape_char(transition->u.c, c_str);
                     printf("'%s'", c_str);
                     break;
-                case MAPPING_RANGE:
-                    escape_char(mapping->u.range.start, c_str);
-                    escape_char(mapping->u.range.end, c_str1);
+                case TRANSITION_RANGE:
+                    escape_char(transition->u.range.start, c_str);
+                    escape_char(transition->u.range.end, c_str1);
                     printf("'%s'..'%s'", c_str, c_str1);
                     break;
-                case MAPPING_OTHERS:
+                case TRANSITION_OTHERS:
                     printf("others");
                     break;
                 default:
-                    printf("Unknown mapping");
+                    printf("Unknown transition kind");
             }
-            printf(": %.*s,\n", SV(entry->mappings[i].next_state));
+            printf(": %.*s,\n", SV(istate->transitions[i].next_state_name));
         }
         printf("  },\n");
     }

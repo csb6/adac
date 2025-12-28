@@ -16,30 +16,34 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <stdio.h>
+#include <string.h>
 #include "ast.h"
 #include "checker.h"
 #include "error.h"
+#include "generator.h"
 #include "parser.h"
 #include "file_buffer.h"
-#include "debug.h"
 
+// TODO: generate move tables (will need to also ensure istates are successors of last value of StateTokenKind
+//  so that both istates and tokens can be used as indices into move table)
 int main(int argc, char** argv)
 {
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s lexer_spec_file\n", argv[0]);
+    if(argc != 4 || strcmp(argv[1], "-o") != 0) {
+        fprintf(stderr, "Usage: %s -o output_dir lexer_spec_file\n", argv[0]);
         return 1;
     }
 
     FileBuffer file_buffer;
-    if(!file_buffer_open(&file_buffer, argv[1])) {
+    if(!file_buffer_open(&file_buffer, argv[3])) {
         return 1;
     }
     error_set_source_file_path(file_buffer.path);
+    const char* output_dir_path = argv[2];
 
     Module module = {0};
     parser_parse(file_buffer.start, file_buffer.end, &module);
     check_module(&module);
-    print_module(&module);
+    generate(&module, output_dir_path);
 
     if(!file_buffer_close(&file_buffer)) {
         return 1;

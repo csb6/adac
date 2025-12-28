@@ -34,8 +34,8 @@ static struct {
 
 /* DECLARATIONS */
 static TableDecl* parse_table_decl(void);
-static TableEntry* parse_table_entry(void);
-static void parse_mapping_key(Mapping* mapping);
+static IState* parse_istate(void);
+static void parse_transition_key(Transition* transition);
 static char parse_char_literal(void);
 static TypeDecl* parse_type_decl(void);
 static void parse_option_type_decl(OptionType* decl);
@@ -44,7 +44,7 @@ static void parse_range_type_decl(RangeType* decl);
 #define print_parse_error(...) error_print2(ctx.token.line_num, __VA_ARGS__)
 static void print_unexpected_token_error(const Token* token);
 static uint8_t count_options(void);
-static uint32_t count_mappings(void);
+static uint8_t count_transitions(void);
 static void next_token(void);
 static void expect_token(TokenKind kind);
 static TypeDecl* find_type_decl(StringView name);
@@ -121,15 +121,16 @@ TableDecl* parse_table_decl(void)
 
     expect_token(TOKEN_L_BRACE);
     next_token();
-    TableEntry* last_entry = NULL;
+    IState* last_istate = NULL;
     while(ctx.token.kind != TOKEN_R_BRACE) {
-        TableEntry* entry = parse_table_entry();
-        if(last_entry) {
-            last_entry->next = entry;
+        IState* istate = parse_istate();
+        if(last_istate) {
+            last_istate->next = istate;
         } else {
-            decl->entries = entry;
+            decl->istates = istate;
         }
-        last_entry = entry;
+        last_istate = istate;
+        ++decl->istate_count;
     }
     next_token(); // Skip '}'
 
@@ -137,36 +138,40 @@ TableDecl* parse_table_decl(void)
 }
 
 static
-TableEntry* parse_table_entry(void)
+IState* parse_istate(void)
 {
-    TableEntry* entry = calloc(1, sizeof(TableEntry));
+    IState* istate = calloc(1, sizeof(IState));
     expect_token(TOKEN_IDENT);
-    entry->state = ctx.token.text;
-    entry->line_num = ctx.token.line_num;
+    istate->name = ctx.token.text;
+    istate->line_num = ctx.token.line_num;
     next_token();
     expect_token(TOKEN_COLON);
     next_token();
     expect_token(TOKEN_L_BRACE);
     next_token();
-    entry->mapping_count = count_mappings();
-    entry->mappings = calloc(entry->mapping_count, sizeof(Mapping));
-    uint32_t i = 0;
-    while(i < entry->mapping_count) {
-        parse_mapping_key(entry->mappings + i);
-        uint32_t first_key = i;
-        // Parse each alternative as if it were a separate mappings with identical next_state
+    istate->transition_count = count_transitions();
+    istate->transitions = calloc(istate->transition_count, sizeof(Transition));
+    uint8_t i = 0;
+    while(i < istate->transition_count) {
+        uint8_t first_key = i;
+        parse_transition_key(istate->transitions + i);
+        // Parse each alternative as if they were split into individual transitions with same next_state
         while(ctx.token.kind == TOKEN_BAR) {
             next_token();
+            if(i == UINT8_MAX) {
+                error_print2(istate->line_num, "Too many transitions (maximum supported is 255)");
+                error_exit();
+            }
             ++i;
-            parse_mapping_key(entry->mappings + i);
+            parse_transition_key(istate->transitions + i);
         }
         expect_token(TOKEN_COLON);
         next_token();
-        for(uint32_t j = first_key; j <= i; ++j) {
-            entry->mappings[j].next_state = ctx.token.text;
+        for(uint8_t j = first_key; j <= i; ++j) {
+            istate->transitions[j].next_state_name = ctx.token.text;
         }
         next_token();
-        if(i < entry->mapping_count - 1) {
+        if(i < istate->transition_count - 1) {
             expect_token(TOKEN_COMMA);
             next_token();
         } else if(ctx.token.kind == TOKEN_COMMA) {
@@ -181,13 +186,13 @@ TableEntry* parse_table_entry(void)
         // Optional trailing comma
         next_token();
     }
-    return entry;
+    return istate;
 }
 
 static
-void parse_mapping_key(Mapping* mapping)
+void parse_transition_key(Transition* transition)
 {
-    mapping->line_num = ctx.token.line_num;
+    transition->line_num = ctx.token.line_num;
     switch(ctx.token.kind) {
         case TOKEN_CHAR_LITERAL: {
             char c = parse_char_literal();
@@ -195,18 +200,18 @@ void parse_mapping_key(Mapping* mapping)
             if(ctx.token.kind == TOKEN_DOUBLE_DOT) {
                 next_token();
                 expect_token(TOKEN_CHAR_LITERAL);
-                mapping->kind = MAPPING_RANGE;
-                mapping->u.range.start = c;
-                mapping->u.range.end = parse_char_literal();
+                transition->kind = TRANSITION_RANGE;
+                transition->u.range.start = c;
+                transition->u.range.end = parse_char_literal();
                 next_token();
             } else {
-                mapping->kind = MAPPING_CHAR;
-                mapping->u.c = c;
+                transition->kind = TRANSITION_CHAR;
+                transition->u.c = c;
             }
             break;
         }
         case TOKEN_OTHERS:
-            mapping->kind = MAPPING_OTHERS;
+            transition->kind = TRANSITION_OTHERS;
             next_token();
             break;
         default:
@@ -354,9 +359,9 @@ uint8_t count_options(void)
 }
 
 static
-uint32_t count_mappings(void)
+uint8_t count_transitions(void)
 {
-    uint32_t count = 0;
+    uint8_t count = 0;
     Token token = ctx.token;
     const char* curr = ctx.curr;
     while(token.kind != TOKEN_R_BRACE) {
@@ -409,7 +414,7 @@ TypeDecl* find_type_decl(StringView name)
 static
 uint16_t find_option(const StringView* options, uint8_t option_count, StringView option_name)
 {
-    for(uint16_t i = 0; i < option_count; ++i) {
+    for(uint8_t i = 0; i < option_count; ++i) {
         if(string_view_eq(options + i, &option_name)) {
             return i;
         }

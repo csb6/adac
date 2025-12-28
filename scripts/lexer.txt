@@ -7,10 +7,10 @@ type TokenKind is option
 | TOKEN_SINGLE_QUOTE | TOKEN_MULT | TOKEN_MINUS | TOKEN_DOT | TOKEN_DIVIDE | TOKEN_COLON
 | TOKEN_LT | TOKEN_EQ | TOKEN_GT
   #  Multi-character elements
-| TOKEN_NEQ | TOKEN_GTE | TOKEN_LTE | TOKEN_ARROW | TOKEN_DOUBLE_DOT | TOKEN_EXP | TOKEN_ASSIGN | TOKEN_L_LABEL_BRACKET
-| TOKEN_R_LABEL_BRACKET | TOKEN_BOX | TOKEN_NOT_IN | TOKEN_AND_THEN | TOKEN_OR_ELSE
+| TOKEN_NEQ | TOKEN_GTE | TOKEN_LTE | TOKEN_ARROW | TOKEN_DOUBLE_DOT | TOKEN_EXP | TOKEN_ASSIGN
+| TOKEN_BOX | TOKEN_NOT_IN | TOKEN_AND_THEN | TOKEN_OR_ELSE
   # Identifier
-| TOKEN_IDENT
+| TOKEN_IDENT | TOKEN_LABEL
   # Literals
 | TOKEN_NUM_LITERAL | TOKEN_CHAR_LITERAL | TOKEN_STRING_LITERAL
   # End of file
@@ -29,9 +29,9 @@ type TokenKind is option
 | TOKEN_THEN | TOKEN_TYPE | TOKEN_USE | TOKEN_WHEN | TOKEN_WHILE | TOKEN_WITH | TOKEN_XOR;
 
 # Tokens used in skip_table
-type SkipTokens is option SKIP_TOKEN_EOF | SKIP_TOKEN_MINUS;
+type SkipTokenKind is option SKIP_TOKEN_EOF | SKIP_TOKEN_MINUS;
 
-skip_table: [SkipTokens] = {
+skip_table: [SkipTokenKind] = {
   START: {
     ' ' | '\f' | '\n' | '\r' | '\t' | '\v': START,
     '-': MINUS_OR_COMMENT,
@@ -48,9 +48,9 @@ skip_table: [SkipTokens] = {
 };
 
 # Tokens used in table
-type StateTokens is TokenKind range TOKEN_AMP .. TOKEN_ERROR;
+type StateTokenKind is TokenKind range TOKEN_AMP .. TOKEN_ERROR;
 
-table: [StateTokens] = {
+lexer_table: [StateTokenKind] = {
   START: {
     # Single character tokens
     '&': TOKEN_AMP,
@@ -95,7 +95,7 @@ table: [StateTokens] = {
   },
   LT_LTE_LB_BOX: {
       '=': TOKEN_LTE,
-      '<': TOKEN_L_LABEL_BRACKET,
+      '<': IN_LABEL,
       '>': TOKEN_BOX,
       others: TOKEN_LT
   },
@@ -105,7 +105,6 @@ table: [StateTokens] = {
   },
   GT_GTE_GB: {
       '=': TOKEN_GTE,
-      '>': TOKEN_R_LABEL_BRACKET,
       others: TOKEN_GT
   },
   IN_IDENTIFIER: {
@@ -118,6 +117,27 @@ table: [StateTokens] = {
       'a'..'z' | 'A'..'Z' | '0'..'9': IN_IDENTIFIER,
       '_': TOKEN_ERROR,
       others: TOKEN_IDENT
+  },
+  IN_LABEL: {
+      'a'..'z' | 'A'..'Z': IN_LABEL2,
+      others: TOKEN_ERROR
+  },
+  IN_LABEL2: {
+      'a'..'z' | 'A'..'Z' | '0'..'9': IN_LABEL2,
+      '_': IN_LABEL_USCORE,
+      '>': IN_LABEL3,
+      others: TOKEN_ERROR
+  },
+  # Ensures only 1 underscore in a row
+  IN_LABEL_USCORE: {
+      'a'..'z' | 'A'..'Z' | '0'..'9': IN_LABEL2,
+      '_': TOKEN_ERROR,
+      '>': IN_LABEL3,
+      others: TOKEN_ERROR
+  },
+  IN_LABEL3: {
+      '>': TOKEN_LABEL,
+      others: TOKEN_ERROR
   },
   IN_CHAR_LITERAL_1: {
       # TODO: restrict to graphic_characters
@@ -133,7 +153,7 @@ table: [StateTokens] = {
       others: IN_STRING_LITERAL
   },
   IN_D_QUOTE: {
-      '"': IN_STRING_LITERAL, # Escapes ''
+      '"': IN_STRING_LITERAL, # Escapes '"'
       others: TOKEN_STRING_LITERAL
   },
   IN_NUM_LIT: {

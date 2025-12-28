@@ -30,7 +30,7 @@ target_compile_options(util PRIVATE "${FLAGS}")
 
 add_executable(lexer_gen
     src/lexer_gen/main.c
-    src/lexer_gen/lexer.c src/lexer_gen/parser.c src/lexer_gen/checker.c
+    src/lexer_gen/lexer.c src/lexer_gen/parser.c src/lexer_gen/checker.c src/lexer_gen/generator.c
     src/lexer_gen/debug.c)
 target_include_directories(lexer_gen PRIVATE src/lexer_gen)
 target_compile_options(lexer_gen PRIVATE "${FLAGS}")

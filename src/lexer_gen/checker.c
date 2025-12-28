@@ -16,18 +16,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "checker.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "ast.h"
 #include "error.h"
 
-static void check_type_decl(TypeDecl* type_decl);
-static void check_table_decl(TableDecl* table_decl);
-static void check_mapping_overlap(const Mapping* a, const Mapping* b);
+static void check_type_decl(const TypeDecl* type_decl);
+static void check_table_decl(const TableDecl* table_decl);
+static void check_overlap(const Transition* a, const Transition* b);
 static void check_char_and_range(uint32_t line_num, char c, CharRange range);
 static bool find_option(const TypeDecl* type_decl, const StringView* name);
 
-void check_module(Module* module)
+void check_module(const Module* module)
 {
     if(!module->types) {
         error_print2(1, "Module must have at least 1 type");
@@ -38,24 +40,22 @@ void check_module(Module* module)
         error_exit();
     }
 
-    for(TypeDecl* type_decl = module->types; type_decl != NULL; type_decl = type_decl->next) {
+    for(const TypeDecl* type_decl = module->types; type_decl != NULL; type_decl = type_decl->next) {
         // Check for redefinitions
-        for(TypeDecl* other = module->types; other != NULL; other = other->next) {
-            if(other != type_decl && string_view_eq(&other->name, &type_decl->name)) {
-                uint32_t line_num = (type_decl->line_num > other->line_num) ? type_decl->line_num : other->line_num;
-                error_print2(line_num, "Redefinition of type '%.*s'", SV(type_decl->name));
+        for(const TypeDecl* other = type_decl->next; other != NULL; other = other->next) {
+            if(string_view_eq(&other->name, &type_decl->name)) {
+                error_print2(other->line_num, "Redefinition of type '%.*s'", SV(other->name));
                 error_exit();
             }
         }
         check_type_decl(type_decl);
     }
 
-    for(TableDecl* table_decl = module->tables; table_decl != NULL; table_decl = table_decl->next) {
+    for(const TableDecl* table_decl = module->tables; table_decl != NULL; table_decl = table_decl->next) {
         // Check for redefinitions
-        for(TableDecl* other = module->tables; other != NULL; other = other->next) {
-            if(other != table_decl && string_view_eq(&other->name, &table_decl->name)) {
-                uint32_t line_num = (table_decl->line_num > other->line_num) ? table_decl->line_num : other->line_num;
-                error_print2(line_num, "Redefinition of table '%.*s'", SV(table_decl->name));
+        for(const TableDecl* other = table_decl->next; other != NULL; other = other->next) {
+            if(string_view_eq(&other->name, &table_decl->name)) {
+                error_print2(other->line_num, "Redefinition of table '%.*s'", SV(other->name));
                 error_exit();
             }
         }
@@ -64,7 +64,7 @@ void check_module(Module* module)
 }
 
 static
-void check_type_decl(TypeDecl* type_decl)
+void check_type_decl(const TypeDecl* type_decl)
 {
     switch(type_decl->kind) {
         case TYPE_RANGE:
@@ -74,13 +74,13 @@ void check_type_decl(TypeDecl* type_decl)
             }
             break;
         case TYPE_OPTION: {
-            OptionType* option_type = &type_decl->u.option;
+            const OptionType* option_type = &type_decl->u.option;
             if(option_type->option_count == 0) {
                 error_print2(type_decl->line_num, "Option types must have at least 1 option");
                 error_exit();
             }
-            for(uint32_t i = 0; i < option_type->option_count; ++i) {
-                for(uint32_t j = i + 1; j < option_type->option_count; ++j) {
+            for(uint16_t i = 0; i < option_type->option_count; ++i) {
+                for(uint16_t j = i + 1; j < option_type->option_count; ++j) {
                     if(string_view_eq(option_type->options + i, option_type->options + j)) {
                         error_print2(type_decl->line_num, "Duplicate option: '%.*s'", SV(option_type->options[i]));
                         error_exit();
@@ -96,55 +96,75 @@ void check_type_decl(TypeDecl* type_decl)
 }
 
 static
-void check_table_decl(TableDecl* table_decl)
+void check_table_decl(const TableDecl* table_decl)
 {
-    for(const TableEntry* entry = table_decl->entries; entry != NULL; entry = entry->next) {
-        if(find_option(table_decl->domain, &entry->state)) {
-            error_print2(entry->line_num, "Intermediate state '%.*s' cannot share name of token in type '%.*s'", SV(entry->state), SV(table_decl->domain->name));
+    // Number of tokens (i.e. final states)
+    uint8_t token_count = 0;
+    switch(table_decl->domain->kind) {
+        case TYPE_OPTION:
+            token_count = table_decl->domain->u.option.option_count;
+            break;
+        case TYPE_RANGE:
+            token_count = table_decl->domain->u.range.end - table_decl->domain->u.range.start + 1;
+            break;
+        default:
+            assert(false);
+    }
+
+    uint32_t state_count = table_decl->istate_count + token_count;
+    if(state_count > UINT8_MAX) {
+        error_print2(table_decl->line_num, "Too many states for table '%.*s' (maximum supported is 255, has %u)", SV(table_decl->name), state_count);
+        error_exit();
+    }
+
+    for(IState* istate = table_decl->istates; istate != NULL; istate = istate->next) {
+        if(find_option(table_decl->domain, &istate->name)) {
+            error_print2(istate->line_num, "Intermediate state '%.*s' cannot share name of token in type '%.*s'", SV(istate->name), SV(table_decl->domain->name));
             error_exit();
         }
-        // TODO: don't need 'others' case if entry has all cases specified explictly 
-        uint32_t others_count = 0;
-        for(uint32_t i = 0; i < entry->mapping_count; ++i) {
-            if(entry->mappings[i].kind == MAPPING_OTHERS) {
-                ++others_count;
+        // TODO: don't need 'others' case if istate has all cases specified explictly
+        Transition* others = NULL;
+        for(uint16_t i = 0; i < istate->transition_count; ++i) {
+            if(istate->transitions[i].kind == TRANSITION_OTHERS) {
+                if(others) {
+                    error_print2(istate->line_num, "State '%.*s' has multiple 'others' cases", SV(istate->name));
+                    error_exit();
+                }
+                others = istate->transitions + i;
             }
         }
-        if(others_count == 0) {
-            error_print2(entry->line_num, "State '%.*s' is missing an 'others' case", SV(entry->state));
-            error_exit();
-        } else if(others_count > 1) {
-            error_print2(entry->line_num, "State '%.*s' has two 'others' cases", SV(entry->state));
+        if(!others) {
+            error_print2(istate->line_num, "State '%.*s' is missing an 'others' case", SV(istate->name));
             error_exit();
         }
+        istate->default_transition = others;
 
-        // Check for duplicate mappings
-        for(uint32_t i = 0; i < entry->mapping_count; ++i) {
-            for(uint32_t j = i + 1; j < entry->mapping_count; ++j) {
-                check_mapping_overlap(entry->mappings + i, entry->mappings + j);
+        for(uint16_t i = 0; i < istate->transition_count; ++i) {
+            for(uint16_t j = i + 1; j < istate->transition_count; ++j) {
+                check_overlap(istate->transitions + i, istate->transitions + j);
             }
         }
     }
 }
 
 static
-void check_mapping_overlap(const Mapping* a, const Mapping* b)
+void check_overlap(const Transition* a, const Transition* b)
 {
-    if(a->kind == MAPPING_CHAR) {
-        if(b->kind == MAPPING_CHAR) {
+    if(a->kind == TRANSITION_CHAR) {
+        if(b->kind == TRANSITION_CHAR) {
             if(a->u.c == b->u.c) {
                 char c_str[3] = {0};
                 escape_char(a->u.c, c_str);
-                error_print2(a->line_num, "Character mapping '%s' is duplicated in this entry", c_str);
+                error_print2(a->line_num, "'%s' has multiple possible transitions in this entry", c_str);
                 error_exit();
             }
-        } else if(b->kind == MAPPING_RANGE) {
+        } else if(b->kind == TRANSITION_RANGE) {
             check_char_and_range(a->line_num, a->u.c, b->u.range);
         }
-    } else if(a->kind == MAPPING_RANGE) {
-        if(b->kind == MAPPING_CHAR) {
+    } else if(a->kind == TRANSITION_RANGE) {
+        if(b->kind == TRANSITION_CHAR) {
             check_char_and_range(b->line_num, b->u.c, a->u.range);
-        } else if(b->kind == MAPPING_RANGE) {
+        } else if(b->kind == TRANSITION_RANGE) {
             if((a->u.range.start >= b->u.range.start && a->u.range.start <= b->u.range.end)
                 || (a->u.range.end >= b->u.range.start && a->u.range.end <= b->u.range.end)) {
                 char range_start1[3] = {0};
@@ -155,7 +175,7 @@ void check_mapping_overlap(const Mapping* a, const Mapping* b)
                 escape_char(a->u.range.end, range_end1);
                 escape_char(b->u.range.start, range_start2);
                 escape_char(b->u.range.end, range_end2);
-                error_print2(a->line_num, "Range mapping '%s' .. '%s' overlaps with range mapping '%s' .. '%s'", range_start1, range_end1, range_start2, range_end2);
+                error_print2(a->line_num, "Range '%s' .. '%s' overlaps with range '%s' .. '%s' in this entry", range_start1, range_end1, range_start2, range_end2);
                 error_exit();
             }
         }
@@ -172,7 +192,7 @@ void check_char_and_range(uint32_t line_num, char c, CharRange range)
         escape_char(c, c_str);
         escape_char(range.start, range_start);
         escape_char(range.end, range_end);
-        error_print2(line_num, "Character mapping '%s' overlaps with range mapping '%s' .. '%s'", c_str, range_start, range_end);
+        error_print2(line_num, "'%s' overlaps with range '%s' .. '%s' in this entry", c_str, range_start, range_end);
         error_exit();
     }
 }
@@ -182,7 +202,7 @@ bool find_option(const TypeDecl* type_decl, const StringView* name)
 {
     switch(type_decl->kind) {
         case TYPE_OPTION:
-            for(uint32_t i = 0; i < type_decl->u.option.option_count; ++i) {
+            for(uint16_t i = 0; i < type_decl->u.option.option_count; ++i) {
                 if(string_view_eq(type_decl->u.option.options + i, name)) {
                     return true;
                 }

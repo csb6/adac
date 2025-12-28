@@ -30,7 +30,7 @@ enum {
 
 typedef struct {
     StringView* options;
-    uint32_t option_count;
+    uint8_t option_count;
 } OptionType;
 
 typedef struct {
@@ -50,11 +50,11 @@ typedef struct TypeDecl_ {
     struct TypeDecl_* next;
 } TypeDecl;
 
-typedef uint8_t MappingKind;
+typedef uint8_t TransitionKind;
 enum {
-    MAPPING_CHAR,
-    MAPPING_RANGE,
-    MAPPING_OTHERS
+    TRANSITION_CHAR,
+    TRANSITION_RANGE,
+    TRANSITION_OTHERS
 };
 
 typedef struct {
@@ -63,28 +63,32 @@ typedef struct {
 } CharRange;
 
 typedef struct {
-    MappingKind kind;
     uint32_t line_num;
+    TransitionKind kind;
+    uint8_t next_state; // Only used in generator
     union {
         char c;
         CharRange range;
     } u;
-    StringView next_state;
-} Mapping;
+    StringView next_state_name;
+} Transition;
 
-typedef struct TableEntry_ {
-    StringView state;
-    Mapping* mappings;
-    uint32_t mapping_count;
+// Intermediate state
+typedef struct IState_ {
+    StringView name;
+    Transition* transitions;
     uint32_t line_num;
-    struct TableEntry_* next;
-} TableEntry;
+    uint8_t transition_count;
+    Transition* default_transition; // Set in checker; also included in transition list
+    struct IState_* next;
+} IState;
 
 typedef struct TableDecl_ {
     StringView name;
     uint32_t line_num;
+    uint8_t istate_count;
     TypeDecl* domain;
-    TableEntry* entries;
+    IState* istates;
     struct TableDecl_* next;
 } TableDecl;
 
