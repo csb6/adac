@@ -45,18 +45,14 @@ TokenKind find_keyword(StringView identifier)
 }
 
 static
-void print_unexpected_char(const char* input_start, const char* curr)
+void print_unexpected_char(uint32_t line_num, const char* curr)
 {
-    error_print(input_start, curr, "Unexpected character: %c", *curr);
+    error_print(line_num, "Unexpected character: %c", *curr);
 }
 
-const char* lexer_parse_token(const char* input_start, const char* input_end, const char* curr, Token* token)
+const char* lexer_parse_token(const char* input_end, const char* curr, Token* token)
 {
-    uint32_t prior_line_num = token->line_num == 0 ? 1 : token->line_num;
-    memset(token, 0, sizeof(*token));
     token->kind = TOKEN_EOF;
-    token->line_num = prior_line_num;
-
     bool done = false;
     while(curr != input_end && !done) {
         switch(*curr) {
@@ -138,10 +134,10 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
             case '.':
                 ++curr;
                 if(curr == input_end) {
-                    error_print(input_start, curr, "Unexpected end of input");
+                    error_print(token->line_num, "Unexpected end of input");
                     error_exit();
                 } else if(*curr != '.') {
-                    print_unexpected_char(input_start, curr);
+                    print_unexpected_char(token->line_num, curr);
                     error_exit();
                 } else {
                     token->kind = TOKEN_DOUBLE_DOT;
@@ -155,14 +151,14 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 token->kind = TOKEN_CHAR_LITERAL;
                 ++curr;
                 if(curr == input_end) {
-                    error_print(input_start, curr, "Unexpected end of input");
+                    error_print(token->line_num, "Unexpected end of input");
                     error_exit();
                 }
                 token->text.value = curr;
                 if(*curr == '\\') {
                     ++curr;
                     if(curr == input_end) {
-                        error_print(input_start, curr, "Unexpected end of escape sequence");
+                        error_print(token->line_num, "Unexpected end of escape sequence");
                         error_exit();
                     }
                     token->text.len = 2;
@@ -171,18 +167,19 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 }
                 ++curr;
                 if(curr == input_end || *curr != '\'') {
-                    error_print(input_start, curr, "Unexpected end of character literal");
+                    error_print(token->line_num, "Unexpected end of character literal");
                     error_exit();
                 }
                 ++curr; // Skip closing '\''
                 done = true;
                 break;
+            case '\n':
+                ++token->line_num;
+                ++curr;
+                break;
             default:
                 if(isspace(*curr)) {
                     // Skip whitespace
-                    if(*curr == '\n') {
-                        ++token->line_num;
-                    }
                     ++curr;
                 } else if(isalpha(*curr)) {
                     token->text.value = curr;
@@ -195,7 +192,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                     token->kind = (keyword == TOKEN_KIND_COUNT) ? TOKEN_IDENT : keyword;
                     done = true;
                 } else {
-                    print_unexpected_char(input_start, curr);
+                    print_unexpected_char(token->line_num, curr);
                     error_exit();
                 }
                 break;

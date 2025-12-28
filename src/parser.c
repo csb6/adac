@@ -102,7 +102,7 @@ static Declaration* find_declaration_in_current_region(StringToken name);
 static Declaration* find_visible_declaration(StringToken name, DeclKind kind);
 /* UTILITIES */
 #define curr_region(ctx) ctx.region_stack[ctx.curr_region_idx]
-#define print_parse_error(...) error_print(ctx.input_start, ctx.curr, __VA_ARGS__)
+#define print_parse_error(...) error_print(ctx.token.line_num, __VA_ARGS__)
 #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 static void next_token(void);
 static void expect_token(TokenKind kind);
@@ -129,6 +129,7 @@ CompilationUnit* parser_parse(const char* input_start, const char* input_end)
     ctx.curr = input_start;
     ctx.input_start = input_start;
     ctx.input_end = input_end;
+    ctx.token.line_num = 1;
     next_token(); // Read first token
     switch(ctx.token.kind) {
         case TOKEN_PACKAGE: {
@@ -398,7 +399,7 @@ void parse_subprogram_declaration(SubprogramDecl* decl)
     bool is_function = ctx.token.kind == TOKEN_FUNCTION;
     next_token();
 
-    Token op_token = {0};
+    Token op_token = ctx.token;
     if(ctx.token.kind == TOKEN_STRING_LITERAL) {
         if(!is_function) {
             print_parse_error("Overloaded operators must be functions");
@@ -1244,7 +1245,7 @@ uint32_t count_enum_literals(void)
             case TOKEN_IDENT:
             case TOKEN_CHAR_LITERAL:
                 if(literal_count == UINT32_MAX) {
-                    error_print(ctx.input_start, curr, "Enumeration type has too many literals to be processed (max supported is 2**32-1 literals)");
+                    error_print(token.line_num, "Enumeration type has too many literals to be processed (max supported is 2**32-1 literals)");
                     error_exit();
                 }
                 ++literal_count;
@@ -1270,7 +1271,7 @@ uint8_t count_alternatives(void)
         switch(token.kind) {
             case TOKEN_BAR:
                 if(alt_count == UINT8_MAX) {
-                    error_print(ctx.input_start, curr, "Case has too many alternatives to be processed (max supported is 255 alternatives)");
+                    error_print(token.line_num, "Case has too many alternatives to be processed (max supported is 255 alternatives)");
                     error_exit();
                 }
                 ++alt_count;
@@ -1287,7 +1288,7 @@ static
 void print_unexpected_token_error(const Token* token)
 {
     StringView token_str = token_to_str(token);
-    print_parse_error("Unexpected token: '%.*s'", SV(token_str));
+    error_print(token->line_num, "Unexpected token: '%.*s'", SV(token_str));
 }
 
 static

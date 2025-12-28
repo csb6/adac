@@ -23,7 +23,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #include "keywords.c"
 #pragma GCC diagnostic pop
-#include <string.h>
 
 TokenKind lexer_lookahead(const char* input_start, const char* input_end, const char** curr)
 {
@@ -34,12 +33,14 @@ TokenKind lexer_lookahead(const char* input_start, const char* input_end, const 
 
 const char* lexer_parse_token(const char* input_start, const char* input_end, const char* curr, Token* token)
 {
-    memset(token, 0, sizeof(*token));
     State state = STATE_START;
     // Skip whitespace and comments
     while(curr != input_end) {
         Class class_ = class_table[(uint8_t)*curr];
         state = skip_table[state - TOKEN_NUM_TOKEN_KINDS][class_];
+        if(*curr == '\n') {
+            ++token->line_num;
+        }
         if(state < TOKEN_NUM_TOKEN_KINDS) {
             break;
         }
@@ -63,7 +64,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
         if(state == STATE_START) {
             token->kind = TOKEN_EOF;
         } else {
-            error_print(input_start, curr, "Unexpected end of file");
+            error_print(token->line_num, "Unexpected end of file");
             token->kind = TOKEN_ERROR;
             error_exit();
         }
@@ -129,9 +130,7 @@ const char* lexer_parse_token(const char* input_start, const char* input_end, co
                 token->text.len = curr - token_start - 2;
                 break;
             case TOKEN_ERROR:
-                token->text.value = token_start;
-                token->text.len = curr - token_start;
-                error_print(input_start, curr, "Unexpected character: '%c'", *curr);
+                error_print(token->line_num, "Unexpected character: '%c'", *curr);
                 error_exit();
             default:
                 token->text.value = token_start;

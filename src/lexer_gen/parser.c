@@ -41,7 +41,7 @@ static TypeDecl* parse_type_decl(void);
 static void parse_option_type_decl(OptionType* decl);
 static void parse_range_type_decl(RangeType* decl);
 /* UTILITIES */
-#define print_parse_error(...) error_print2(ctx.token.line_num, __VA_ARGS__)
+#define print_parse_error(...) error_print(ctx.token.line_num, __VA_ARGS__)
 static void print_unexpected_token_error(const Token* token);
 static uint8_t count_options(void);
 static uint8_t count_transitions(void);
@@ -57,6 +57,7 @@ void parser_parse(const char* input_start, const char* input_end, struct Module_
     ctx.input_end = input_end;
     ctx.curr = input_start;
     ctx.module = module;
+    ctx.token.line_num = 1;
 
     TableDecl* last_table = NULL;
     TypeDecl* last_type = NULL;
@@ -159,7 +160,7 @@ IState* parse_istate(void)
         while(ctx.token.kind == TOKEN_BAR) {
             next_token();
             if(i == UINT8_MAX) {
-                error_print2(istate->line_num, "Too many transitions (maximum supported is 255)");
+                error_print(istate->line_num, "Too many transitions (maximum supported is 255)");
                 error_exit();
             }
             ++i;
@@ -338,7 +339,7 @@ uint8_t count_options(void)
         switch(token.kind) {
             case TOKEN_BAR:
                 if(option_count == UINT8_MAX) {
-                    error_print(ctx.input_start, curr, "Too many options for option type (maximum supported is 255)");
+                    error_print(token.line_num, "Too many options for option type (maximum supported is 255)");
                     error_exit();
                 }
                 ++option_count;
@@ -346,14 +347,13 @@ uint8_t count_options(void)
             case TOKEN_IDENT:
                 break;
             case TOKEN_EOF:
-                error_print(ctx.input_start, curr, "Unexpected end of input");
+                error_print(token.line_num, "Unexpected end of input");
                 error_exit();
-                break;
             default:
                 print_unexpected_token_error(&token);
                 error_exit();
         }
-        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+        curr = lexer_parse_token(ctx.input_end, curr, &token);
     }
     return option_count;
 }
@@ -373,7 +373,7 @@ uint8_t count_transitions(void)
             default:
                 break;
         }
-        curr = lexer_parse_token(ctx.input_start, ctx.input_end, curr, &token);
+        curr = lexer_parse_token(ctx.input_end, curr, &token);
     }
     return count;
 }
@@ -381,7 +381,7 @@ uint8_t count_transitions(void)
 static
 void next_token(void)
 {
-    ctx.curr = lexer_parse_token(ctx.input_start, ctx.input_end, ctx.curr, &ctx.token);
+    ctx.curr = lexer_parse_token(ctx.input_end, ctx.curr, &ctx.token);
 }
 
 static
@@ -397,7 +397,7 @@ void expect_token(TokenKind kind)
 static
 void print_unexpected_token_error(const Token* token)
 {
-    error_print2(token->line_num, "Unexpected token: '%.*s'", SV(token->text));
+    error_print(token->line_num, "Unexpected token: '%.*s'", SV(token->text));
 }
 
 static

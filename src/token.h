@@ -56,6 +56,7 @@ enum {
 
 typedef struct {
     StringView text;
+    uint32_t line_num;
     TokenKind kind;
 } Token;
 

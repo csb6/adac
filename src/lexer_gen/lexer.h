@@ -44,7 +44,7 @@ typedef struct {
     uint32_t line_num;
 } Token;
 
-const char* lexer_parse_token(const char* input_start, const char* input_end, const char* curr, Token* token);
+const char* lexer_parse_token(const char* input_end, const char* curr, Token* token);
 
 const char* token_kind_to_str(TokenKind kind);
 
