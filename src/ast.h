@@ -143,7 +143,7 @@ typedef struct Expression_ {
         // 4.2: Literals
         mpz_t int_lit;
         char char_lit;
-        StringView name;
+        StringToken name;
         StringView string_lit;
         UnaryExpr unary;
         BinaryExpr binary;

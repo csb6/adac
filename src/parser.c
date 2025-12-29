@@ -373,14 +373,13 @@ void parse_enum_type_definition(EnumType* enum_type)
         switch(ctx.token.kind) {
             case TOKEN_IDENT:
                 enum_type->literals[i].kind = EXPR_NAME;
-                enum_type->literals[i].u.name = ctx.token.text;
+                enum_type->literals[i].u.name = string_pool_to_token(ctx.token.text);
                 break;
             case TOKEN_CHAR_LITERAL:
                 enum_type->literals[i].kind = EXPR_CHAR_LIT;
                 enum_type->literals[i].u.char_lit = ctx.token.text.value[0]; // len is always 1
                 break;
             default:
-                // Should be unreachable since count_enum_literals() succeeded
                 print_unexpected_token_error(&ctx.token);
                 error_exit();
         }
@@ -1058,7 +1057,7 @@ Expression* parse_primary_expression(void)
             expr = calloc(1, sizeof(Expression));
             expr->kind = EXPR_NAME;
             expr->line_num = ctx.token.line_num;
-            expr->u.name = ctx.token.text;
+            expr->u.name = string_pool_to_token(ctx.token.text);
             next_token();
             break;
         case TOKEN_L_PAREN:

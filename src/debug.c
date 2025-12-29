@@ -386,7 +386,7 @@ void print_expression(const Expression* expr)
             printf("'%c'", expr->u.char_lit);
             break;
         case EXPR_NAME:
-            printf("%.*s", SV(expr->u.name));
+            printf("%s", ST(expr->u.name));
             break;
         case EXPR_STRING_LIT:
             printf("\"%.*s\"", SV(expr->u.string_lit));
