@@ -1282,16 +1282,12 @@ uint8_t count_alternatives(void)
     Token token = ctx.token;
     const char* curr = ctx.curr;
     while(token.kind != TOKEN_ARROW) {
-        switch(token.kind) {
-            case TOKEN_BAR:
-                if(alt_count == UINT8_MAX) {
-                    error_print(token.line_num, "Case has too many alternatives to be processed (max supported is 255 alternatives)");
-                    error_exit();
-                }
-                ++alt_count;
-                break;
-            default:
-                break;
+        if(token.kind == TOKEN_BAR) {
+            if(alt_count == UINT8_MAX) {
+                error_print(token.line_num, "Case has too many alternatives to be processed (max supported is 255 alternatives)");
+                error_exit();
+            }
+            ++alt_count;
         }
         curr = lexer_parse_token(ctx.input_end, curr, &token);
     }
