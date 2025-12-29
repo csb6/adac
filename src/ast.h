@@ -137,6 +137,7 @@ typedef struct {
 } BinaryExpr;
 
 typedef struct Expression_ {
+    uint32_t line_num;
     ExprKind kind;
     union {
         // 4.2: Literals
@@ -158,6 +159,7 @@ enum {
 
 typedef struct Declaration_ {
     struct Declaration_* next;
+    uint32_t line_num;
     DeclKind kind;
 } Declaration;
 
@@ -305,6 +307,7 @@ typedef struct {
 } GotoStmt;
 
 typedef struct Statement_ {
+    uint32_t line_num;
     StmtKind kind;
     union {
         AssignStmt assign;

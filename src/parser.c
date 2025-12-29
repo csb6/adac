@@ -221,11 +221,13 @@ void parse_object_declaration(bool is_param)
 {
     ObjectDecl* decl = calloc(1, sizeof(ObjectDecl));
     decl->base.kind = DECL_OBJECT;
+    decl->base.line_num = ctx.token.line_num;
     // TODO: support identifier_list
     decl->name = string_pool_to_token(ctx.token.text);
-    // TODO: print line number of previous definition
-    if(find_declaration_in_current_region(decl->name) != NULL) {
+    Declaration* prev_decl = find_declaration_in_current_region(decl->name);
+    if(prev_decl) {
         print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
+        error_print(prev_decl->line_num, "Previous definition here");
         error_exit();
     }
     next_token();
@@ -287,14 +289,16 @@ void parse_type_declaration(void)
 {
     TypeDecl* decl = calloc(1, sizeof(TypeDecl));
     decl->base.kind = DECL_TYPE;
+    decl->base.line_num = ctx.token.line_num;
     bool is_subtype = ctx.token.kind == TOKEN_SUBTYPE;
     next_token(); // Skip 'type'/'subtype' keyword
 
     expect_token(TOKEN_IDENT);
     decl->name = string_pool_to_token(ctx.token.text);
-    // TODO: print line number of previous definition
-    if(find_declaration_in_current_region(decl->name) != NULL) {
+    Declaration* prev_decl = find_declaration_in_current_region(decl->name);
+    if(prev_decl) {
         print_parse_error("Redefinition of '%s' within same declarative region", ST(decl->name));
+        error_print(prev_decl->line_num, "Previous definition here");
         error_exit();
     }
     next_token();
@@ -394,6 +398,7 @@ static
 void parse_subprogram_declaration(SubprogramDecl* decl)
 {
     decl->base.kind = DECL_SUBPROGRAM;
+    decl->base.line_num = ctx.token.line_num;
     bool is_function = ctx.token.kind == TOKEN_FUNCTION;
     next_token();
 
@@ -507,6 +512,7 @@ Statement* parse_statement(void)
 {
     Statement* stmt = calloc(1, sizeof(Statement));
     parse_statement_labels(stmt);
+    stmt->line_num = ctx.token.line_num;
     switch(ctx.token.kind) {
         case TOKEN_NULL:
             stmt->kind = STMT_NULL;
@@ -583,9 +589,8 @@ void parse_statement_labels(Statement* stmt)
         Declaration* existing_decl = find_declaration_in_current_region(label_name);
         if(existing_decl) {
             if(existing_decl->kind != DECL_LABEL || ((LabelDecl*)existing_decl)->target) {
-                // TODO: is it okay to have labels and other objects/subprograms with same name?
-                //  (when answered update lookups in parse_goto_statement as well)
                 print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
+                error_print(existing_decl->line_num, "Previous definition here");
                 error_exit();
             }
             // There is a placeholder label defined - fill it in instead of creating a new label
@@ -796,8 +801,10 @@ void parse_loop_statement(Statement* stmt)
         next_token();
         expect_token(TOKEN_IDENT);
         StringToken var_name = string_pool_to_token(ctx.token.text);
-        if(find_declaration_in_current_region(var_name)) {
+        Declaration* prev_decl = find_declaration_in_current_region(var_name);
+        if(prev_decl) {
             print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
+            error_print(prev_decl->line_num, "Previous definition here");
             error_exit();
         }
         stmt->u.loop.u.for_.var = calloc(1, sizeof(ObjectDecl));
@@ -851,9 +858,11 @@ void parse_goto_statement(Statement* stmt)
         stmt->u.goto_.label = label;
     } else {
         // Label is not defined yet
-        if(find_declaration_in_current_region(label_name)) {
+        Declaration* existing_decl = find_declaration_in_current_region(label_name);
+        if(existing_decl) {
             // When this label is defined, it will conflict with an existing declaration's name
             print_parse_error("Redefinition of '%.*s' within same declarative region", SV(ctx.token.text));
+            error_print(existing_decl->line_num, "Previous definition here");
             error_exit();
         }
         // Define a placeholder label
@@ -1009,10 +1018,12 @@ Expression* parse_expression_1(uint8_t min_precedence)
     Expression* left = parse_primary_expression();
     while(is_binary_op(ctx.token.kind) && binary_prec[binary_op(ctx.token.kind)] >= min_precedence) {
         BinaryOperator op = binary_op(ctx.token.kind);
+        uint32_t line_num = ctx.token.line_num;
         next_token();
         Expression* right = parse_expression_1(binary_prec[op] + 1);
         Expression* expr = calloc(1, sizeof(Expression));
         expr->kind = EXPR_BINARY;
+        expr->line_num = line_num;
         expr->u.binary.left = left;
         expr->u.binary.op = op;
         expr->u.binary.right = right;
@@ -1032,18 +1043,21 @@ Expression* parse_primary_expression(void)
         case TOKEN_CHAR_LITERAL:
             expr = calloc(1, sizeof(Expression));
             expr->kind = EXPR_CHAR_LIT;
+            expr->line_num = ctx.token.line_num;
             expr->u.char_lit = ctx.token.text.value[0];
             next_token();
             break;
         case TOKEN_STRING_LITERAL:
             expr = calloc(1, sizeof(Expression));
             expr->kind = EXPR_STRING_LIT;
+            expr->line_num = ctx.token.line_num;
             expr->u.string_lit = ctx.token.text;
             next_token();
             break;
         case TOKEN_IDENT:
             expr = calloc(1, sizeof(Expression));
             expr->kind = EXPR_NAME;
+            expr->line_num = ctx.token.line_num;
             expr->u.name = ctx.token.text;
             next_token();
             break;
@@ -1056,10 +1070,12 @@ Expression* parse_primary_expression(void)
         default:
             if(is_unary_op(ctx.token.kind)) {
                 UnaryOperator op = unary_op(ctx.token.kind);
+                uint32_t line_num = ctx.token.line_num;
                 next_token();
                 Expression* right = parse_expression_1(unary_prec[op]);
                 expr = calloc(1, sizeof(Expression));
                 expr->kind = EXPR_UNARY;
+                expr->line_num = line_num;
                 expr->u.unary.op = op;
                 expr->u.unary.right = right;
             } else {
@@ -1102,6 +1118,7 @@ Expression* parse_numeric_literal(void)
     }
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
+    expr->line_num = ctx.token.line_num;
     if(mpz_init_set_str(expr->u.int_lit, num_buffer, base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), base);
         error_exit();
