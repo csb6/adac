@@ -1063,6 +1063,9 @@ Expression* parse_primary_expression(void)
         case TOKEN_L_PAREN:
             next_token();
             expr = parse_expression();
+            if(expr->kind == EXPR_BINARY) {
+                expr->u.binary.is_parenthesized = true;
+            }
             expect_token(TOKEN_R_PAREN);
             next_token();
             break;

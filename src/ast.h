@@ -134,6 +134,7 @@ typedef struct {
     struct Expression_* left;
     struct Expression_* right;
     BinaryOperator op;
+    bool is_parenthesized;
 } BinaryExpr;
 
 typedef struct Expression_ {
