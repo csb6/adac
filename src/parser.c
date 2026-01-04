@@ -281,6 +281,10 @@ void parse_object_declaration(bool is_param)
         next_token();
         decl->init_expr = parse_expression();
     }
+    if(decl->is_constant && !decl->init_expr) {
+        error_print(decl->base.line_num, "Constant declaration '%s' is not initialized", ST(decl->name));
+        error_exit();
+    }
     push_declaration(&decl->base);
 }
 
