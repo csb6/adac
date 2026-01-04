@@ -126,6 +126,11 @@ enum {
 };
 
 typedef struct {
+    mpz_t value;
+    struct TypeDecl_* type; // Initially NULL, set in checker based on context
+} IntLiteral;
+
+typedef struct {
     struct Expression_* right;
     UnaryOperator op;
 } UnaryExpr;
@@ -142,7 +147,7 @@ typedef struct Expression_ {
     ExprKind kind;
     union {
         // 4.2: Literals
-        mpz_t int_lit;
+        IntLiteral int_lit;
         char char_lit;
         StringToken name;
         StringView string_lit;

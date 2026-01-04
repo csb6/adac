@@ -824,10 +824,11 @@ void parse_loop_statement(Statement* stmt)
         }
         stmt->u.loop.u.for_.range = range;
     } else {
-        stmt->u.loop.u.while_.condition = calloc(1, sizeof(Expression));
+        Expression* while_condition = calloc(1, sizeof(Expression));
         // TODO: set to boolean literal
-        stmt->u.loop.u.while_.condition->kind = EXPR_INT_LIT;
-        mpz_init_set_ui(stmt->u.loop.u.while_.condition->u.int_lit, 1);
+        while_condition->kind = EXPR_INT_LIT;
+        mpz_init_set_ui(while_condition->u.int_lit.value, 1);
+        stmt->u.loop.u.while_.condition = while_condition;
     }
 
     expect_token(TOKEN_LOOP);
@@ -1121,7 +1122,7 @@ Expression* parse_numeric_literal(void)
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = EXPR_INT_LIT;
     expr->line_num = ctx.token.line_num;
-    if(mpz_init_set_str(expr->u.int_lit, num_buffer, base) < 0) {
+    if(mpz_init_set_str(expr->u.int_lit.value, num_buffer, base) < 0) {
         print_parse_error("Invalid numeric literal: '%.*s' for base %u", SV(ctx.token.text), base);
         error_exit();
     }

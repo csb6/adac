@@ -377,7 +377,7 @@ void print_expression(const Expression* expr)
 {
     switch(expr->kind) {
         case EXPR_INT_LIT: {
-            char* num_str = mpz_get_str(NULL, 10, expr->u.int_lit);
+            char* num_str = mpz_get_str(NULL, 10, expr->u.int_lit.value);
             printf("%s", num_str);
             free(num_str);
             break;
