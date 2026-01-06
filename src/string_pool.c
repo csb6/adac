@@ -22,9 +22,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <string.h>
 
 #define DEFAULT_TABLE_CAPACITY 64
-#define DEFAULT_STRING_POOL_CAPACITY 512
 #define TABLE_GROWTH_FACTOR 2
-#define STRING_POOL_GROWTH_FACTOR 2
+#define DEFAULT_STRING_POOL_CAPACITY 512 // Must be a power of 2
 
 static const uint8_t downcase_table[256] = {
     0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,
@@ -106,10 +105,21 @@ bool string_equal(StringView a, const char* b)
 }
 
 static
+uint32_t next_largest_pow_2(uint32_t v)
+{
+    v |= (v >> 1);
+    v |= (v >> 2);
+    v |= (v >> 4);
+    v |= (v >> 8);
+    v |= (v >> 16);
+    return v + 1;
+}
+
+static
 StringToken append(StringView s)
 {
     if(string_pool_size + s.len + 1 > string_pool_capacity) {
-        string_pool_capacity *= STRING_POOL_GROWTH_FACTOR;
+        string_pool_capacity = next_largest_pow_2(string_pool_size + s.len + 1);
         string_pool = realloc(string_pool, string_pool_capacity);
     }
     StringToken token = string_pool_size;
