@@ -113,6 +113,8 @@ static uint32_t count_enum_literals(void);
 static uint8_t count_alternatives(void);
 static void print_unexpected_token_error(const Token* token);
 static bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz);
+static bool fold_unary_expression(UnaryOperator op, Expression* a);
+static bool fold_binary_expression(uint32_t line_num, Expression* a, BinaryOperator op, Expression* b);
 
 void parser_init(void)
 {
@@ -1025,13 +1027,15 @@ Expression* parse_expression_1(uint8_t min_precedence)
         uint32_t line_num = ctx.token.line_num;
         next_token();
         Expression* right = parse_expression_1(binary_prec[op] + 1);
-        Expression* expr = calloc(1, sizeof(Expression));
-        expr->kind = EXPR_BINARY;
-        expr->line_num = line_num;
-        expr->u.binary.left = left;
-        expr->u.binary.op = op;
-        expr->u.binary.right = right;
-        left = expr;
+        if(!fold_binary_expression(line_num, left, op, right)) {
+            Expression* expr = calloc(1, sizeof(Expression));
+            expr->kind = EXPR_BINARY;
+            expr->line_num = line_num;
+            expr->u.binary.left = left;
+            expr->u.binary.op = op;
+            expr->u.binary.right = right;
+            left = expr;
+        }
     }
     return left;
 }
@@ -1080,11 +1084,15 @@ Expression* parse_primary_expression(void)
                 uint32_t line_num = ctx.token.line_num;
                 next_token();
                 Expression* right = parse_expression_1(unary_prec[op]);
-                expr = calloc(1, sizeof(Expression));
-                expr->kind = EXPR_UNARY;
-                expr->line_num = line_num;
-                expr->u.unary.op = op;
-                expr->u.unary.right = right;
+                if(fold_unary_expression(op, right)) {
+                    expr = right;
+                } else {
+                    expr = calloc(1, sizeof(Expression));
+                    expr->kind = EXPR_UNARY;
+                    expr->line_num = line_num;
+                    expr->u.unary.op = op;
+                    expr->u.unary.right = right;
+                }
             } else {
                 print_unexpected_token_error(&ctx.token);
                 error_exit();
@@ -1328,5 +1336,80 @@ bool prepare_num_str(const StringView* text, char* buffer, int buffer_sz)
         ++c;
     }
     *b = '\0';
+    return true;
+}
+
+static
+bool fold_unary_expression(UnaryOperator op, Expression* a)
+{
+    if(a->kind != EXPR_INT_LIT) {
+        return false;
+    }
+
+    IntLiteral* int_lit = &a->u.int_lit;
+    switch(op) {
+        case OP_UNARY_MINUS:
+            mpz_neg(int_lit->value, int_lit->value);
+            break;
+        case OP_UNARY_PLUS:
+            // Do nothing (identity)
+            break;
+        case OP_ABS:
+            mpz_abs(int_lit->value, int_lit->value);
+            break;
+        default:
+            return false;
+    }
+    return true;
+}
+
+static
+bool fold_binary_expression(uint32_t line_num, Expression* a, BinaryOperator op, Expression* b)
+{
+    if(a->kind != EXPR_INT_LIT || b->kind != EXPR_INT_LIT) {
+        return false;
+    }
+
+    IntLiteral* lit_a = &a->u.int_lit;
+    IntLiteral* lit_b = &b->u.int_lit;
+    switch(op) {
+        case OP_PLUS:
+            mpz_add(lit_a->value, lit_a->value, lit_b->value);
+            break;
+        case OP_MINUS:
+            mpz_sub(lit_a->value, lit_a->value, lit_b->value);
+            break;
+        case OP_MULT:
+            mpz_mul(lit_a->value, lit_a->value, lit_b->value);
+            break;
+        case OP_DIVIDE:
+            mpz_tdiv_q(lit_a->value, lit_a->value, lit_b->value);
+            break;
+        case OP_MOD:
+            // Floor mod
+            mpz_fdiv_r(lit_a->value, lit_a->value, lit_b->value);
+            break;
+        case OP_REM:
+            // Truncating mod
+            mpz_tdiv_r(lit_a->value, lit_a->value, lit_b->value);
+            break;
+        case OP_EXP: {
+            if(!mpz_fits_ulong_p(lit_b->value)) {
+                char* b_str = mpz_get_str(NULL, 10, lit_b->value);
+                error_print(line_num, "Exponent '%s' is too big (must be able to fit into an unsigned long integer)", b_str);
+                free(b_str);
+                error_exit();
+            }
+            // TODO: handle negative exponents (ugh)
+            unsigned long b_value = mpz_get_ui(lit_b->value);
+            mpz_pow_ui(lit_a->value, lit_b->value, b_value);
+            break;
+        }
+        default:
+            // Operator cannot be folded
+            return false;
+    }
+    mpz_clear(lit_b->value);
+    free(b);
     return true;
 }
