@@ -1,0 +1,14 @@
+{
+    "files": [
+        {
+            "git": 1
+        }
+    ],
+    "lspclient": {
+        "servers": {
+            "c": {
+                "root": "./build"
+            }
+        }
+    }
+}
