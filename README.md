@@ -1,4 +1,4 @@
-# Ada compiler
+# adac
 
 My attempt to make a compiler for enough of the Ada '83 programming language to compile an early version
 of the GNAT Ada compiler, enabling GNAT to be bootstrapped.
@@ -6,6 +6,9 @@ of the GNAT Ada compiler, enabling GNAT to be bootstrapped.
 GNAT is written mostly in Ada. This causes a chicken-and-egg problem: an Ada compiler is required to build it. This means that a prebuilt binary of GNAT (built
 using earlier versions of GNAT, themselves built using a proprietary Ada compiler
 during GNAT's early development) is necessary to build GNAT. This project aims to avoid the need for this potentially malicious binary in the bootstrap process.
+
+Note that the compiler is intended to compile a subset of the Ada language, so it is not a certified Ada compiler and does not
+pass all ACATS tests.
 
 ## Progress
 
