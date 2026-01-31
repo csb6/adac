@@ -4,102 +4,196 @@
 /* Derivative works are permitted if accompanied by this statement.*/
 /* This grammar is thought to be correct as of May 1, 1994         */
 /* but as usual there is *no warranty* to that effect.             */
+/*                                                                 */
+/* Ada 83 grammar (adapted from the Ada 9X grammar)                */
+/* Copyright 2026 Cole Blakley                                     */
 /*******************************************************************/
 
-%token TIC
-%token DOT_DOT
-%token LT_LT
-%token BOX
-%token LT_EQ
-%token EXPON
-%token NE
-%token GT_GT
-%token GE
-%token IS_ASSIGNED
-%token RIGHT_SHAFT
-%token ABORT
-%token ABS
-%token ABSTRACT
-%token ACCEPT
-%token ACCESS
-%token ALIASED
-%token ALL
-%token AND
-%token ARRAY
-%token AT
-%token BEGiN
-%token BODY
-%token CASE
-%token CONSTANT
-%token DECLARE
-%token DELAY
-%token DELTA
-%token DIGITS
-%token DO
-%token ELSE
-%token ELSIF
-%token END
-%token ENTRY
-%token EXCEPTION
-%token EXIT
-%token FOR
-%token FUNCTION
-%token GENERIC
-%token GOTO
-%token IF
-%token IN
-%token IS
-%token LIMITED
-%token LOOP
-%token MOD
-%token NEW
-%token NOT
-%token NuLL
-%token OF
-%token OR
-%token OTHERS
-%token OUT
-%token PACKAGE
-%token PRAGMA
-%token PRIVATE
-%token PROCEDURE
-%token PROTECTED
-%token RAISE
-%token RANGE
-%token RECORD
-%token REM
-%token RENAMES
-%token REQUEUE
-%token RETURN
-%token REVERSE
-%token SELECT
-%token SEPARATE
-%token SUBTYPE
-%token TAGGED
-%token TASK
-%token TERMINATE
-%token THEN
-%token TYPE
-%token UNTIL
-%token USE
-%token WHEN
-%token WHILE
-%token WITH
-%token XOR
-%token char_lit
-%token identifier
-%token char_string
-%token numeric_lit
+/* Print descriptive error messages */
+%define parse.error detailed
+/* Improve syntax errors by doing exploratory parsing before
+   running semantic actions */
+%define parse.lac full
+/* Don't use globals */
+%define api.pure true
+%define api.header.include {"parser.h"}
+%locations
+%define api.location.type {SourceLocation}
+/* Add extra parameter to yyparse() and yylex() */
+%param {void* scanner}
+%parse-param {ParseContext* context}
 
-%{
-%}
+// Emitted in the header file before the definition of YYSTYPE.
+%code requires {
+	#include <stdint.h>
+	#include <stdbool.h>
+	#include <ctype.h>
+	#include "ast.h"
+
+	typedef uint32_t SourceLocation;
+
+	#define YYLLOC_DEFAULT(Cur, Rhs, N) \
+		do { \
+			if(N > 0) { \
+				(Cur) = YYRHSLOC(Rhs, 1); \
+		    } else { \
+				(Cur) = YYRHSLOC(Rhs, 0); \
+			} \
+		} while (0);
+
+	typedef struct {
+		Declaration* first;
+		Declaration* last;
+	} DeclList;
+
+	typedef struct {
+		DeclList scope_stack[32];
+		DeclList* symbol_table;
+		uint32_t symbol_table_capacity;
+		uint32_t symbol_table_size;
+		uint8_t curr_scope_idx;
+	} ParseContext;
+}
+
+// Emitted in the header file after the definition of YYSTYPE.
+%code provides {
+	void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
+}
+
+// Emitted in the implementation file
+%code {
+	#include <assert.h>
+	#include <stdlib.h>
+	#include <stdbool.h>
+	#include "error.h"
+	#include "string_pool.h"
+	#include "string_view.h"
+	#include "lexer.h"
+
+	static const char universal_integer_str[] = "universal_integer";
+	TypeDecl universal_int_type = {
+		.kind = TYPE_UNIV_INTEGER,
+		.name = 0 // Note: this is set the first time the parser is called (see initial-action)
+	};
+
+	static
+	Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right);
+
+	static
+	Expression* make_unary_expr(UnaryOperator op, Expression* right);
+
+	#define curr_scope (context->scope_stack + context->curr_scope_idx)
+
+	static
+	void begin_scope(ParseContext* context, uint32_t line_num);
+
+	static
+	void end_scope(ParseContext* context, uint32_t line_num);
+
+	static
+	void push_declaration(ParseContext* context, Declaration* decl);
+
+	static
+	Declaration* find_decl_in_scope(DeclList* scope, StringToken name);
+
+	static
+	TypeDecl* find_type_decl(ParseContext* context, StringToken name);
+
+	static
+	Declaration* find_first_overload(ParseContext* context, StringToken name);
+
+	static
+	void append_decl(DeclList* decl_list, Declaration* decl);
+
+	static
+	DeclList* find_bucket(ParseContext* context, StringToken name);
+
+	#define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
+
+	static
+	Expression* create_expr(ExprKind kind, uint32_t line_num);
+
+	static
+	Statement* create_stmt(StmtKind kind, uint32_t line_num);
+
+	static
+	TypeDecl* create_type_decl(TypeKind kind);
+
+	static
+	ObjectDecl* create_object_decl(StringToken name, uint32_t line_num);
+
+	static
+	int get_base(StringView num_str, uint32_t line_num);
+
+	static
+	bool prepare_num_str(StringView num_str, char* buffer, int buffer_sz);
+
+	static
+	uint32_t hash_fnv(StringToken token);
+
+	static
+	StringToken get_decl_name(const Declaration* decl);
+}
+
+%union {
+	UnaryOperator unary_op;
+	BinaryOperator binary_op;
+	Expression* expr;
+	Statement* stmt;
+	Declaration* decl;
+	TypeDecl* type_decl;
+	bool bool_;
+	ParamMode param_mode;
+	StringToken str_token;
+	char c;
+	StringView str; // Note: this StringView owns its allocated data
+}
+
+/* Terminals */
+%type <c> char_lit;
+%type <str_token> identifier goto_label
+%type <str> char_string numeric_lit
+/* Nonterminals */
+%type <unary_op> unary adding multiplying membership relational logical short_circuit
+%type <expr> used_char literal simple_expression relation primary term factor expression
+             parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
+             init_opt enum_id enum_id_s
+%type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
+             loop_stmt goto_stmt statement_s unlabeled compound_stmt
+%type <decl> decl object_decl number_decl type_decl subtype_decl
+%type <type_decl> type_completion type_def enumeration_type integer_type derived_type
+%type <bool_> reverse_opt object_qualifier_opt
+%type <param_mode> mode
+%type <str_token> def_id def_id_s subtype_ind name simple_name object_subtype_def
+
+/* Multi-character operators */
+%token DOT_DOT BOX LT_EQ EXPON NE GE IS_ASSIGNED RIGHT_SHAFT
+/* Keywords */
+%token ABORT ABS ACCEPT ACCESS ALL AND ARRAY AT BEGiN BODY CASE CONSTANT DECLARE DELAY DELTA DIGITS DO
+       ELSE ELSIF END ENTRY EXCEPTION EXIT FOR FUNCTION GENERIC GOTO IF IN IS LIMITED LOOP MOD NEW NOT
+       NuLL OF OR OTHERS OUT PACKAGE PRAGMA PRIVATE PROCEDURE RAISE RANGE RECORD REM RENAMES RETURN
+       REVERSE SELECT SEPARATE SUBTYPE TASK TERMINATE THEN TYPE USE WHEN WHILE WITH XOR
+/* Tokens using yylval */
+%token char_lit identifier char_string numeric_lit goto_label
+
+%initial-action {
+	@$ = 1;
+	memset(context, 0, sizeof(*context));
+	context->symbol_table = calloc(64, sizeof(DeclList));
+	context->symbol_table_capacity = 64;
+	context->symbol_table_size = 0;
+	if(!universal_int_type.name) {
+		StringView universal_int_str_view = { .value = universal_integer_str, .len = sizeof(universal_integer_str) };
+		universal_int_type.name = string_pool_to_token(universal_int_str_view);
+	}
+}
 
 %%
 
 goal_symbol : compilation
 	;
 
-pragma  : PRAGMA identifier ';'
+pragma : PRAGMA identifier ';'
 	| PRAGMA simple_name '(' pragma_arg_s ')' ';'
 	;
 
@@ -115,14 +209,12 @@ pragma_s :
 	| pragma_s pragma
 	;
 
-decl    : object_decl
+decl : object_decl
 	| number_decl
 	| type_decl
 	| subtype_decl
 	| subprog_decl
 	| pkg_decl
-	| task_decl
-	| prot_decl
 	| exception_decl
 	| rename_decl
 	| generic_decl
@@ -130,46 +222,94 @@ decl    : object_decl
 	| error ';'
 	;
 
-object_decl : def_id_s ':' object_qualifier_opt object_subtype_def init_opt ';'
-	;
+object_decl : def_id_s ':' object_qualifier_opt object_subtype_def init_opt ';' {
+	// TODO: support id list
+	ObjectDecl* decl = create_object_decl($1, @$);
+	Declaration* prev_decl = find_decl_in_scope(curr_scope, decl->name);
+	if(prev_decl) {
+		error_print(@$, "Redefinition of '%s' within same declarative region", ST(decl->name));
+        error_print(prev_decl->line_num, "Previous definition here");
+        error_exit();
+	}
+	decl->is_constant = $3;
+	TypeDecl* type_decl = find_type_decl(context, $4);
+	if(!type_decl) {
+		error_print(@$, "Unknown type: %s", ST($4));
+		error_exit();
+	}
+	decl->type = type_decl;
+	decl->init_expr = $5;
+	// TODO: handle deferred constants, which are legal and do not have initial expressions
+	if(decl->is_constant && !decl->init_expr) {
+		error_print(@$, "Constant declaration '%s' is not initialized", ST(decl->name));
+        error_exit();
+	}
+	push_declaration(context, &decl->base);
+	$$ = &decl->base;
+};
+
+number_decl : def_id_s ':' CONSTANT IS_ASSIGNED expression ';' {
+	// TODO: support id list
+	ObjectDecl* decl = create_object_decl($1, @$);
+	Declaration* prev_decl = find_decl_in_scope(curr_scope, decl->name);
+	if(prev_decl) {
+		error_print(@$, "Redefinition of '%s' within same declarative region", ST(decl->name));
+        error_print(prev_decl->line_num, "Previous definition here");
+        error_exit();
+	}
+	decl->is_constant = true;
+	decl->type = &universal_int_type;
+	decl->init_expr = $5;
+	push_declaration(context, &decl->base);
+	$$ = &decl->base;
+};
 
 def_id_s : def_id
-	| def_id_s ',' def_id
+	| def_id_s ',' def_id { $$ = $3; /*TODO: make list*/ }
 	;
 
-def_id  : identifier
+def_id : identifier
 	;
 
-object_qualifier_opt :
-	| ALIASED
-	| CONSTANT
-	| ALIASED CONSTANT
+object_qualifier_opt : { $$ = false; }
+	| CONSTANT         { $$ = true; }
 	;
 
 object_subtype_def : subtype_ind
 	| array_type
 	;
 
-init_opt :
-	| IS_ASSIGNED expression
+init_opt :                   { $$ = NULL; }
+	| IS_ASSIGNED expression { $$ = $2; }
 	;
 
-number_decl : def_id_s ':' CONSTANT IS_ASSIGNED expression ';'
-	;
-
-type_decl : TYPE identifier discrim_part_opt type_completion ';'
-	;
+type_decl : TYPE identifier discrim_part_opt type_completion ';' {
+	// TODO: discriminant
+	TypeDecl* decl = $4;
+	// Note: decl->base.kind is set by the specific type_completion
+	decl->base.line_num = @$;
+	decl->name = $2;
+	Declaration* prev_decl = find_decl_in_scope(curr_scope, decl->name);
+	if(prev_decl) {
+		error_print(@$, "Redefinition of '%s' within same declarative region", ST(decl->name));
+        error_print(prev_decl->line_num, "Previous definition here");
+        error_exit();
+	}
+	push_declaration(context, &decl->base);
+	$$ = &decl->base;
+};
 
 discrim_part_opt :
 	| discrim_part
 	| '(' BOX ')'
 	;
 
+// TODO: incomplete types (i.e. case 1)
 type_completion :
-	| IS type_def
+	| IS type_def { $$ = $2; }
 	;
 
-type_def : enumeration_type 
+type_def : enumeration_type
 	| integer_type
 	| real_type
 	| array_type
@@ -179,10 +319,28 @@ type_def : enumeration_type
 	| private_type
 	;
 
-subtype_decl : SUBTYPE identifier IS subtype_ind ';'
-	;
+subtype_decl : SUBTYPE identifier IS subtype_ind ';' {
+	TypeDecl* decl = create_type_decl(TYPE_SUBTYPE);
+	decl->base.line_num = @$;
+	decl->name = $2;
+	Declaration* prev_decl = find_decl_in_scope(curr_scope, decl->name);
+	if(prev_decl) {
+		error_print(@$, "Redefinition of '%s' within same declarative region", ST(decl->name));
+        error_print(prev_decl->line_num, "Previous definition here");
+        error_exit();
+	}
+	TypeDecl* base_type = find_type_decl(context, $4);
+	if(!base_type) {
+		error_print(@$, "Unknown base type: %s", ST($4));
+		error_exit();
+	}
+	decl->u.subtype.base = base_type;
+	push_declaration(context, &decl->base);
+	$$ = &decl->base;
+};
 
-subtype_ind : name constraint
+// TODO: propagate constraint somehow
+subtype_ind : name constraint { $$ = $1; }
 	| name
 	;
 
@@ -193,52 +351,62 @@ constraint : range_constraint
 decimal_digits_constraint : DIGITS expression range_constr_opt
 	;
 
-derived_type : NEW subtype_ind
-	| NEW subtype_ind WITH PRIVATE
-	| NEW subtype_ind WITH record_def
-	| ABSTRACT NEW subtype_ind WITH PRIVATE
-	| ABSTRACT NEW subtype_ind WITH record_def
+derived_type : NEW subtype_ind {
+	$$ = create_type_decl(TYPE_DERIVED);
+	TypeDecl* base_type = find_type_decl(context, $2);
+	if(!base_type) {
+		error_print(@$, "Unknown base type: %s", ST($2));
+		error_exit();
+	}
+	$$->u.subtype.base = base_type;
+};
+
+range_constraint : RANGE range { $$ = $2; }
 	;
 
-range_constraint : RANGE range
+range_constr_opt :     { $$ = NULL; }
+	| range_constraint
 	;
 
-range : simple_expression DOT_DOT simple_expression
-	| name TIC RANGE
-	| name TIC RANGE '(' expression ')'
+range : simple_expression DOT_DOT simple_expression { $$ = make_binary_expr($1, OP_RANGE, $3); }
+	| name '\'' RANGE
+	| name '\'' RANGE '(' expression ')'
 	;
 
-enumeration_type : '(' enum_id_s ')'
+enumeration_type : '(' enum_id_s ')' {
+	$$ = create_type_decl(TYPE_ENUM);
+	// TODO: set literals
+};
 
 enum_id_s : enum_id
-	| enum_id_s ',' enum_id
+	| enum_id_s ',' enum_id { $$ = $3; /* TODO: make list */ }
 	;
 
-enum_id : identifier
-	| char_lit
-	;
+enum_id : identifier {
+	$$ = create_expr(EXPR_NAME, @$);
+	$$->u.name = $1;
+}
+	| char_lit {
+	$$ = create_expr(EXPR_CHAR_LIT, @$);
+	$$->u.char_lit = $1;
+};
 
-integer_type : range_spec
+integer_type : range_constraint {
+	$$ = create_type_decl(TYPE_INTEGER);
+	$$->u.int_.range = $1;
+}
 	| MOD expression
-	;
-	
-
-range_spec : range_constraint
-	;
-
-range_spec_opt :
-	| range_spec
 	;
 
 real_type : float_type
 	| fixed_type
 	;
 
-float_type : DIGITS expression range_spec_opt
+float_type : DIGITS expression range_constr_opt
 	;
 
-fixed_type : DELTA expression range_spec
-	| DELTA expression DIGITS expression range_spec_opt
+fixed_type : DELTA expression range_constraint
+	| DELTA expression DIGITS expression range_constr_opt
 	;
 
 array_type : unconstr_array_type
@@ -251,11 +419,7 @@ unconstr_array_type : ARRAY '(' index_s ')' OF component_subtype_def
 constr_array_type : ARRAY iter_index_constraint OF component_subtype_def
 	;
 
-component_subtype_def : aliased_opt subtype_ind
-	;
-
-aliased_opt : 
-	| ALIASED
+component_subtype_def : subtype_ind
 	;
 
 index_s : index
@@ -276,20 +440,11 @@ discrete_range : name range_constr_opt
 	| range
 	;
 
-range_constr_opt :
-	| range_constraint
-	;
-
-record_type : tagged_opt limited_opt record_def
+record_type : limited_opt record_def
 	;
 
 record_def : RECORD pragma_s comp_list END RECORD
 	| NuLL RECORD
-	;
-
-tagged_opt :
-	| TAGGED
-	| ABSTRACT TAGGED
 	;
 
 comp_list : comp_decl_s variant_part_opt
@@ -349,20 +504,13 @@ discrete_with_range : name range_constraint
 
 access_type : ACCESS subtype_ind
 	| ACCESS CONSTANT subtype_ind
-	| ACCESS ALL subtype_ind
-	| ACCESS prot_opt PROCEDURE formal_part_opt
-	| ACCESS prot_opt FUNCTION formal_part_opt RETURN mark
-	;
-
-prot_opt :
-	| PROTECTED
 	;
 
 decl_part :
 	| decl_item_or_body_s1
 	;
 
-decl_item_s : 
+decl_item_s :
 	| decl_item_s1
 	;
 
@@ -386,8 +534,6 @@ decl_item_or_body : body
 
 body : subprog_body
 	| pkg_body
-	| task_body
-	| prot_body
 	;
 
 name : simple_name
@@ -398,7 +544,7 @@ name : simple_name
 	;
 
 mark : simple_name
-	| mark TIC attribute_id
+	| mark '\'' attribute_id
 	| mark '.' simple_name
 	;
 
@@ -413,8 +559,10 @@ c_name_list : compound_name
 	 | c_name_list ',' compound_name
 	;
 
-used_char : char_lit
-	;
+used_char : char_lit {
+	$$ = create_expr(EXPR_CHAR_LIT, @$);
+	$$->u.char_lit = $1;
+};
 
 operator_symbol : char_string
 	;
@@ -438,7 +586,7 @@ selected_comp : name '.' simple_name
 	| name '.' ALL
 	;
 
-attribute : name TIC attribute_id
+attribute : name '\'' attribute_id
 	;
 
 attribute_id : identifier
@@ -447,7 +595,25 @@ attribute_id : identifier
 	| ACCESS
 	;
 
-literal : numeric_lit
+literal : numeric_lit {
+    // TODO: support non-integer numeric literals
+    int base = get_base($1, @$);
+
+    char num_buffer[128];
+    num_buffer[0] = '\0';
+    if(!prepare_num_str($1, num_buffer, sizeof(num_buffer))) {
+        error_print(@$, "Numeric literal is too long to be processed (max supported is 127 characters)");
+        error_exit();
+    }
+
+    // Note: don't overwrite $$ here since we are still using its value
+	Expression* expr = create_expr(EXPR_INT_LIT, @$);
+	if(mpz_init_set_str(expr->u.int_lit.value, num_buffer, base) < 0) {
+		error_print(@$, "Invalid numeric literal: '%.*s' for base %u", SV($1), base);
+        error_exit();
+	}
+	$$ = expr;
+}
 	| used_char
 	| NuLL
 	;
@@ -467,65 +633,66 @@ comp_assoc : choice_s RIGHT_SHAFT expression
 	;
 
 expression : relation
-	| expression logical relation
-	| expression short_circuit relation
+	| expression logical relation       { $$ = make_binary_expr($1, $2, $3); }
+	| expression short_circuit relation { $$ = make_binary_expr($1, $2, $3); }
 	;
 
-logical : AND
-	| OR
-	| XOR
+logical : AND { $$ = OP_AND; }
+	| OR      { $$ = OP_OR; }
+	| XOR     { $$ = OP_XOR; }
 	;
 
-short_circuit : AND THEN
-	| OR ELSE
+short_circuit : AND THEN { $$ = OP_AND_THEN; }
+	| OR ELSE            { $$ = OP_OR_ELSE; }
 	;
 
+// TODO: constant folding of literals
 relation : simple_expression
-	| simple_expression relational simple_expression
-	| simple_expression membership range
-	| simple_expression membership name
+	| simple_expression relational simple_expression { $$ = make_binary_expr($1, $2, $3); }
+	| simple_expression membership range             { $$ = make_binary_expr($1, $2, $3); }
+	| simple_expression membership name              { $$ = $1; /*TODO*/ }
 	;
 
-relational : '='
-	| NE
-	| '<'
-	| LT_EQ
-	| '>'
-	| GE
+relational : '=' { $$ = OP_EQ; }
+	| NE         { $$ = OP_NEQ; }
+	| '<'        { $$ = OP_LT; }
+	| LT_EQ      { $$ = OP_LTE; }
+	| '>'        { $$ = OP_GT; }
+	| GE         { $$ = OP_GTE; }
 	;
 
-membership : IN
-	| NOT IN
+membership : IN { $$ = OP_IN; }
+	| NOT IN    { $$ = OP_NOT_IN; }
 	;
 
-simple_expression : unary term
-	| term
-	| simple_expression adding term
+simple_expression : term
+	| unary term                    { $$ = make_unary_expr($1, $2); }
+	| simple_expression adding term { $$ = make_binary_expr($1, $2, $3); }
 	;
 
-unary   : '+'
-	| '-'
+unary : '+' { $$ = OP_UNARY_PLUS; }
+	| '-'   { $$ = OP_UNARY_MINUS; }
 	;
 
-adding  : '+'
-	| '-'
-	| '&'
+adding : '+' { $$ = OP_PLUS; }
+	| '-'    { $$ = OP_MINUS; }
+	| '&'    { $$ = OP_AMP; }
 	;
 
-term    : factor
-	| term multiplying factor
+term : factor
+	| term multiplying factor { $$ = make_binary_expr($1, $2, $3); }
 	;
 
-multiplying : '*'
-	| '/'
-	| MOD
-	| REM
+multiplying : '*' { $$ = OP_MULT; }
+	| '/'         { $$ = OP_DIVIDE; }
+	| MOD         { $$ = OP_MOD; }
+	| REM         { $$ = OP_REM; }
 	;
 
 factor : primary
-	| NOT primary
-	| ABS primary
-	| primary EXPON primary
+	| NOT primary           { $$ = make_unary_expr(OP_NOT, $2); }
+	| ABS primary           { $$ = make_unary_expr(OP_ABS, $2); }
+	| primary EXPON primary { $$ = make_binary_expr($1, OP_EXP, $3); }
 	;
 
 primary : literal
@@ -536,10 +703,10 @@ primary : literal
 	;
 
 parenthesized_primary : aggregate
-	| '(' expression ')'
+	| '(' expression ')'          { $$ = $2; }
 	;
 
-qualified : name TIC parenthesized_primary
+qualified : name '\'' parenthesized_primary
 	;
 
 allocator : NEW name
@@ -547,11 +714,11 @@ allocator : NEW name
 	;
 
 statement_s : statement
-	| statement_s statement
+	| statement_s statement { $$ = $1; /* TODO (currently causes segfault) $$->next = $2;*/ }
 	;
 
 statement : unlabeled
-	| label statement
+	| goto_label statement
 	;
 
 unlabeled : simple_stmt
@@ -565,11 +732,8 @@ simple_stmt : null_stmt
 	| return_stmt
 	| goto_stmt
 	| procedure_call
-	| delay_stmt
-	| abort_stmt
 	| raise_stmt
 	| code_stmt
-	| requeue_stmt
 	| error ';'
 	;
 
@@ -577,18 +741,16 @@ compound_stmt : if_stmt
 	| case_stmt
 	| loop_stmt
 	| block
-	| accept_stmt
-	| select_stmt
 	;
 
-label : LT_LT identifier GT_GT
+null_stmt : NuLL ';' { $$ = create_stmt(STMT_NULL, @$); }
 	;
 
-null_stmt : NuLL ';'
-	;
-
-assign_stmt : name IS_ASSIGNED expression ';'
-	;
+// TODO: name
+assign_stmt : name IS_ASSIGNED expression ';' {
+	$$ = create_stmt(STMT_ASSIGN, @$);
+	$$->u.assign.expr = $3;
+};
 
 if_stmt : IF cond_clause_s else_opt END IF ';'
 	;
@@ -600,7 +762,7 @@ cond_clause_s : cond_clause
 cond_clause : cond_part statement_s
 	;
 
-cond_part : condition THEN
+cond_part : condition THEN { $$ = $1; }
 	;
 
 condition : expression
@@ -623,26 +785,46 @@ alternative_s :
 alternative : WHEN choice_s RIGHT_SHAFT statement_s
 	;
 
-loop_stmt : label_opt iteration basic_loop id_opt ';'
+// TODO: label_opt and id_opt
+loop_stmt : label_opt loop_content id_opt ';' { $$ = $2; }
 	;
 
 label_opt :
 	| identifier ':'
 	;
 
-iteration :
-	| WHILE condition
-	| iter_part reverse_opt discrete_range
-	;
+loop_content : basic_loop {
+	$$ = create_stmt(STMT_LOOP, @$);
+	$$->u.loop.kind = LOOP_WHILE;
+	$$->u.loop.stmts = $1;
+	// Create condition so this becomes a 'while True' loop
+	// TODO: should be a boolean literal
+	Expression* condition = create_expr(EXPR_INT_LIT, @$);
+	mpz_init_set_ui(condition->u.int_lit.value, 1);
+	$$->u.loop.u.while_.condition = condition;
+}
+	| WHILE condition basic_loop {
+	$$ = create_stmt(STMT_LOOP, @$);
+	$$->u.loop.kind = LOOP_WHILE;
+	$$->u.loop.stmts = $3;
+	$$->u.loop.u.while_.condition = $2;
+}
+	| iter_part reverse_opt discrete_range basic_loop {
+	// TODO: identifier
+	$$ = create_stmt(STMT_LOOP, @$);
+	$$->u.loop.kind = LOOP_FOR;
+	$$->u.loop.reverse = $2;
+	$$->u.loop.stmts = $4;
+};
 
 iter_part : FOR identifier IN
 	;
 
-reverse_opt :
-	| REVERSE
+reverse_opt : { $$ = false; }
+	| REVERSE { $$ = true; }
 	;
 
-basic_loop : LOOP statement_s END LOOP
+basic_loop : LOOP statement_s END LOOP { $$ = $2; }
 	;
 
 id_opt :
@@ -659,46 +841,52 @@ block_decl :
 block_body : BEGiN handled_stmt_s
 	;
 
-handled_stmt_s : statement_s except_handler_part_opt 
-	; 
+handled_stmt_s : statement_s except_handler_part_opt
+	;
 
 except_handler_part_opt :
 	| except_handler_part
 	;
 
-exit_stmt : EXIT name_opt when_opt ';'
-	;
+exit_stmt : EXIT name_opt when_opt ';' {
+	$$ = create_stmt(STMT_EXIT, @$);
+	// TODO: name_opt
+	$$->u.exit.condition = $3;
+};
 
 name_opt :
 	| name
 	;
 
-when_opt :
-	| WHEN condition
+when_opt :           { $$ = NULL; }
+	| WHEN condition { $$ = $2; }
 	;
 
-return_stmt : RETURN ';'
-	| RETURN expression ';'
-	;
+return_stmt : RETURN ';'    { $$ = create_stmt(STMT_RETURN, @$); }
+	| RETURN expression ';' {
+	$$ = create_stmt(STMT_RETURN, @$);
+	$$->u.return_.expr = $2;
+};
 
-goto_stmt : GOTO name ';'
-	;
+// TODO: name
+goto_stmt : GOTO name ';' {
+	$$ = create_stmt(STMT_GOTO, @$);
+};
 
 subprog_decl : subprog_spec ';'
 	| generic_subp_inst ';'
-	| subprog_spec_is_push ABSTRACT ';'
 	;
 
-subprog_spec : PROCEDURE compound_name formal_part_opt
+subprog_spec : PROCEDURE simple_name formal_part_opt
 	| FUNCTION designator formal_part_opt RETURN name
 	| FUNCTION designator  /* for generic inst and generic rename */
 	;
 
-designator : compound_name
+designator : simple_name
 	| char_string
 	;
 
-formal_part_opt : 
+formal_part_opt :
 	| formal_part
 	;
 
@@ -713,11 +901,10 @@ param : def_id_s ':' mode mark init_opt
 	| error
 	;
 
-mode :
-	| IN
-	| OUT
-	| IN OUT
-	| ACCESS
+mode :       { $$ = PARAM_MODE_IN; }
+	| IN     { $$ = PARAM_MODE_IN; }
+	| OUT    { $$ = PARAM_MODE_OUT; }
+	| IN OUT { $$ = PARAM_MODE_IN_OUT; }
 	;
 
 subprog_spec_is_push : subprog_spec IS
@@ -734,7 +921,7 @@ pkg_decl : pkg_spec ';'
 	| generic_pkg_inst ';'
 	;
 
-pkg_spec : PACKAGE compound_name IS 
+pkg_spec : PACKAGE compound_name IS
 	     decl_item_s private_part END c_id_opt
 	;
 
@@ -742,7 +929,7 @@ private_part :
 	| PRIVATE decl_item_s
 	;
 
-c_id_opt : 
+c_id_opt :
 	| compound_name
 	;
 
@@ -754,7 +941,7 @@ body_opt :
 	| block_body
 	;
 
-private_type : tagged_opt limited_opt PRIVATE
+private_type : limited_opt PRIVATE
 	;
 
 limited_opt :
@@ -762,7 +949,6 @@ limited_opt :
 	;
 
 use_clause : USE name_s ';'
-	| USE TYPE name_s ';'
 	;
 
 name_s : name
@@ -781,155 +967,6 @@ rename_unit : PACKAGE compound_name renames ';'
 	;
 
 renames : RENAMES name
-	;
-
-task_decl : task_spec ';'
-	;
-
-task_spec : TASK simple_name task_def
-	| TASK TYPE simple_name discrim_part_opt task_def
-	;
-
-task_def :
-	| IS entry_decl_s rep_spec_s task_private_opt END id_opt
-	;
-
-task_private_opt :
-	| PRIVATE entry_decl_s rep_spec_s
-	;
-
-task_body : TASK BODY simple_name IS
-	       decl_part block_body END id_opt ';'
-	;
-
-prot_decl : prot_spec ';'
-	;
-
-prot_spec : PROTECTED identifier prot_def
-	| PROTECTED TYPE simple_name discrim_part_opt prot_def
-	;
-
-prot_def : IS prot_op_decl_s prot_private_opt END id_opt
-	;
-
-prot_private_opt :
-	| PRIVATE prot_elem_decl_s 
-
-
-prot_op_decl_s : 
-	| prot_op_decl_s prot_op_decl
-	;
-
-prot_op_decl : entry_decl
-	| subprog_spec ';'
-	| rep_spec
-	| pragma
-	;
-
-prot_elem_decl_s : 
-	| prot_elem_decl_s prot_elem_decl
-	;
-
-prot_elem_decl : prot_op_decl | comp_decl ;
-
-prot_body : PROTECTED BODY simple_name IS
-	       prot_op_body_s END id_opt ';'
-	;
-
-prot_op_body_s : pragma_s
-	| prot_op_body_s prot_op_body pragma_s
-	;
-
-prot_op_body : entry_body
-	| subprog_body
-	| subprog_spec ';'
-	;
-
-entry_decl_s : pragma_s
-	| entry_decl_s entry_decl pragma_s
-	;
-
-entry_decl : ENTRY identifier formal_part_opt ';'
-	| ENTRY identifier '(' discrete_range ')' formal_part_opt ';'
-	;
-
-entry_body : ENTRY identifier formal_part_opt WHEN condition entry_body_part
-	| ENTRY identifier '(' iter_part discrete_range ')' 
-		formal_part_opt WHEN condition entry_body_part
-	;
-
-entry_body_part : ';'
-	| IS decl_part block_body END id_opt ';'
-	;
-
-rep_spec_s :
-	| rep_spec_s rep_spec pragma_s
-	;
-
-entry_call : procedure_call
-	;
-
-accept_stmt : accept_hdr ';'
-	| accept_hdr DO handled_stmt_s END id_opt ';'
-	;
-
-accept_hdr : ACCEPT entry_name formal_part_opt
-	;
-
-entry_name : simple_name
-	| entry_name '(' expression ')'
-	;
-
-delay_stmt : DELAY expression ';'
-	| DELAY UNTIL expression ';'
-	;
-
-select_stmt : select_wait
-	| async_select
-	| timed_entry_call
-	| cond_entry_call
-	;
-
-select_wait : SELECT guarded_select_alt or_select else_opt
-	      END SELECT ';'
-	;
-
-guarded_select_alt : select_alt
-	| WHEN condition RIGHT_SHAFT select_alt
-	;
-
-or_select :
-	| or_select OR guarded_select_alt
-	;
-
-select_alt : accept_stmt stmts_opt
-	| delay_stmt stmts_opt
-	| TERMINATE ';'
-	;
-
-delay_or_entry_alt : delay_stmt stmts_opt
-	| entry_call stmts_opt
-
-async_select : SELECT delay_or_entry_alt
-	       THEN ABORT statement_s
-	       END SELECT ';'
-	;
-
-timed_entry_call : SELECT entry_call stmts_opt 
-		   OR delay_stmt stmts_opt
-	           END SELECT ';'
-	;
-
-cond_entry_call : SELECT entry_call stmts_opt 
-		  ELSE statement_s
-	          END SELECT ';'
-	;
-
-stmts_opt :
-	| statement_s
-	;
-
-abort_stmt : ABORT name_s ';'
 	;
 
 compilation :
@@ -972,14 +1009,10 @@ subunit : SEPARATE '(' compound_name ')'
 
 subunit_body : subprog_body
 	| pkg_body
-	| task_body
-	| prot_body
 	;
 
-body_stub : TASK BODY simple_name IS SEPARATE ';'
-	| PACKAGE BODY compound_name IS SEPARATE ';'
+body_stub : PACKAGE BODY compound_name IS SEPARATE ';'
 	| subprog_spec IS SEPARATE ';'
-	| PROTECTED BODY simple_name IS SEPARATE ';'
 	;
 
 exception_decl : def_id_s ':' EXCEPTION ';'
@@ -1004,10 +1037,6 @@ except_choice : name
 raise_stmt : RAISE name_opt ';'
 	;
 
-requeue_stmt : REQUEUE name ';'
-	| REQUEUE name WITH ABORT ';'
-	;
-
 generic_decl : generic_formal_part subprog_spec ';'
 	| generic_formal_part pkg_spec ';'
 	;
@@ -1018,9 +1047,9 @@ generic_formal_part : GENERIC
 
 generic_formal : param ';'
 	| TYPE simple_name generic_discrim_part_opt IS generic_type_def ';'
-	| WITH PROCEDURE simple_name 
+	| WITH PROCEDURE simple_name
 	    formal_part_opt subp_default ';'
-	| WITH FUNCTION designator 
+	| WITH FUNCTION designator
 	    formal_part_opt RETURN name subp_default ';'
 	| WITH PACKAGE simple_name IS NEW name '(' BOX ')' ';'
 	| WITH PACKAGE simple_name IS NEW name ';'
@@ -1051,7 +1080,6 @@ generic_type_def : '(' BOX ')'
 
 generic_derived_type : NEW subtype_ind
 	| NEW subtype_ind WITH PRIVATE
-	| ABSTRACT NEW subtype_ind WITH PRIVATE
 	;
 
 generic_subp_inst : subprog_spec IS generic_inst
@@ -1089,3 +1117,234 @@ code_stmt : qualified ';'
 	;
 
 %%
+
+static
+Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right)
+{
+	Expression* expr = create_expr(EXPR_BINARY, left->line_num);
+	expr->u.binary.left = left;
+	expr->u.binary.op = op;
+	expr->u.binary.right = right;
+	return expr;
+}
+
+static
+Expression* make_unary_expr(UnaryOperator op, Expression* right)
+{
+	Expression* expr = create_expr(EXPR_UNARY, right->line_num);
+	expr->kind = EXPR_UNARY;
+	expr->u.unary.op = op;
+	expr->u.unary.right = right;
+	return expr;
+}
+
+static
+void begin_scope(ParseContext* context, uint32_t line_num)
+{
+	if(context->curr_scope_idx + 1 >= cnt_of_array(context->scope_stack)) {
+		error_print(line_num, "Too many nested scopes (maximum is %u nested scopes)", cnt_of_array(context->scope_stack));
+		error_exit();
+    }
+    ++context->curr_scope_idx;
+}
+
+static
+void end_scope(ParseContext* context, uint32_t line_num)
+{
+    if(context->curr_scope_idx == 0) {
+        error_print(line_num, "Attempted to exit top-level region");
+        error_exit();
+    }
+    --context->curr_scope_idx;
+    // TODO: go through all decls in curr_scope, remove named ones from
+    // symbol table
+}
+
+static
+void push_declaration(ParseContext* context, Declaration* decl)
+{
+	append_decl(curr_scope, decl);
+	StringToken name = get_decl_name(decl);
+	// Add named declarations to the symbol table
+	if(name) {
+		// TODO: resize table when it hits threshold
+		// (note that some collisions are expected since many decls
+		// will have same name, so those collisions shouldn't count
+		// towards resizing threshold)
+		DeclList* bucket = find_bucket(context, name);
+		// Prepend new declaration to the bucket's list
+		decl->next_in_bucket = bucket->first;
+		bucket->first = decl;
+		++context->symbol_table_size;
+	}
+}
+
+static
+Declaration* find_decl_in_scope(DeclList* scope, StringToken name)
+{
+	for(Declaration* decl = scope->first; decl; decl = decl->next) {
+		if(get_decl_name(decl) == name) {
+			return decl;
+		}
+	}
+	return NULL;
+}
+
+static
+TypeDecl* find_type_decl(ParseContext* context, StringToken name)
+{
+	DeclList* bucket = find_bucket(context, name);
+	for(Declaration* decl = bucket->first; decl; decl = decl->next_in_bucket) {
+		if(decl->kind == DECL_TYPE && get_decl_name(decl) == name) {
+			return (TypeDecl*)decl;
+		}
+	}
+	return NULL;
+}
+
+static
+Declaration* find_first_overload(ParseContext* context, StringToken name)
+{
+	DeclList* bucket = find_bucket(context, name);
+	for(Declaration* decl = bucket->first; decl; decl = decl->next_in_bucket) {
+		if(get_decl_name(decl) == name) {
+			return decl;
+		}
+	}
+	return NULL;
+}
+
+static
+void append_decl(DeclList* decl_list, Declaration* decl)
+{
+	if(decl_list->last) {
+		decl_list->last->next = decl;
+	} else {
+		decl_list->first = decl;
+	}
+	decl_list->last = decl;
+}
+
+static
+DeclList* find_bucket(ParseContext* context, StringToken name)
+{
+	uint32_t hash = hash_fnv(name);
+	uint32_t idx = hash % context->symbol_table_capacity;
+	return context->symbol_table + idx;
+}
+
+static
+Expression* create_expr(ExprKind kind, uint32_t line_num)
+{
+	Expression* expr = calloc(1, sizeof(Expression));
+	expr->kind = kind;
+	expr->line_num = line_num;
+	return expr;
+}
+
+static
+Statement* create_stmt(StmtKind kind, uint32_t line_num)
+{
+	Statement* stmt = calloc(1, sizeof(Statement));
+	stmt->kind = kind;
+	stmt->line_num = line_num;
+	return stmt;
+}
+
+static
+TypeDecl* create_type_decl(TypeKind kind)
+{
+	TypeDecl* decl = calloc(1, sizeof(TypeDecl));
+	decl->base.kind = DECL_TYPE;
+	decl->kind = kind;
+	return decl;
+}
+
+static
+ObjectDecl* create_object_decl(StringToken name, uint32_t line_num)
+{
+	ObjectDecl* decl = calloc(1, sizeof(ObjectDecl));
+	decl->base.kind = DECL_OBJECT;
+	decl->base.line_num = line_num;
+	decl->name = name;
+	return decl;
+}
+
+static
+int get_base(StringView num_str, uint32_t line_num)
+{
+    int base = 10;
+    const char* hash_mark = memchr(num_str.value, '#', num_str.len);
+    if(hash_mark) {
+        base = 0;
+        for(const char* c = num_str.value; c != hash_mark; ++c) {
+            if(*c != '_') {
+                base = base * 10 + (*c - '0');
+            }
+        }
+        if(base < 1 || base > 16) {
+            error_print(line_num, "Numeric literal has invalid base (%d). Bases must be in range [1, 16]", base);
+            error_exit();
+        }
+    }
+    return base;
+}
+
+static
+bool prepare_num_str(StringView num_str, char* buffer, int buffer_sz)
+{
+    const char* num_str_end = num_str.value + num_str.len;
+    const char* buffer_end = buffer + buffer_sz - 1; // Leave space for null terminator
+    const char* c = num_str.value;
+    char* b = buffer;
+    while(c < num_str_end) {
+        // TODO: handle exponent notation
+        if(isalnum(*c)) {
+            *b = *c;
+            ++b;
+            if(b >= buffer_end) {
+                return false;
+            }
+        }
+        ++c;
+    }
+    *b = '\0';
+    return true;
+}
+
+// FNV-1 hash (32-bit variant)
+static
+uint32_t hash_fnv(StringToken token)
+{
+	uint32_t hash = 2166136261;
+	const char* bytes = (const char*)&token;
+	for(int i = 0; i < 4; ++i) {
+		hash *= 16777619;
+		hash ^= bytes[i];
+	}
+	return hash;
+}
+
+static
+StringToken get_decl_name(const Declaration* decl)
+{
+    StringToken name = 0;
+    switch(decl->kind) {
+        case DECL_TYPE:
+            name = ((TypeDecl*)decl)->name;
+            break;
+        case DECL_OBJECT:
+            name = ((ObjectDecl*)decl)->name;
+            break;
+        case DECL_SUBPROGRAM:
+            name = ((SubprogramDecl*)decl)->name;
+            break;
+        case DECL_LABEL:
+            name = ((LabelDecl*)decl)->name;
+            break;
+        default:
+			// This kind of declaration has no associated name
+			break;
+    }
+    return name;
+}

@@ -17,32 +17,51 @@ option(ENABLE_UBSAN "Enable Undefined Behavior Sanitizer" OFF)
 option(ENABLE_GCC_ANALYZER "Enable GCC static analyzer" OFF)
 option(ENABLE_CLANG_ANALYZER "Enable Clang static analyzer" OFF)
 
-add_custom_target(gen_keyword_hash
-    COMMAND
-        gperf --ignore-case --compare-strncmp --readonly-tables --language='ANSI-C' --struct-type
-        --hash-function-name="hash_keyword" --lookup-function-name="is_keyword"
-        --output-file="${CMAKE_SOURCE_DIR}/keywords.c"
-        ${CMAKE_SOURCE_DIR}/keywords.gperf)
-
+# Misc utilities
 add_library(util STATIC src/util/error.c src/util/file_buffer.c src/util/string_view.c)
 target_include_directories(util PUBLIC src/util)
 target_compile_options(util PRIVATE "${FLAGS}")
 
-add_executable(lexer_gen
-    src/lexer_gen/main.c
-    src/lexer_gen/lexer.c src/lexer_gen/parser.c src/lexer_gen/checker.c src/lexer_gen/generator.c
-    src/lexer_gen/debug.c)
-target_include_directories(lexer_gen PRIVATE src/lexer_gen)
-target_compile_options(lexer_gen PRIVATE "${FLAGS}")
-target_link_libraries(lexer_gen PUBLIC util)
-
+# Arbitrary precision arithmetic library
 add_library(mini-gmp OBJECT third_party/mini-gmp/mini-gmp.c)
 target_include_directories(mini-gmp PUBLIC third_party/mini-gmp)
 
-add_executable(adac src/main.c src/token.c src/lexer.c src/parser.c src/debug.c src/string_pool.c)
+# Perfect hash function for recognizing Ada keywords
+add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/keywords.c
+    COMMAND gperf --ignore-case --compare-strncmp --readonly-tables --language='ANSI-C' --struct-type
+        --hash-function-name="hash_keyword" --lookup-function-name="is_keyword"
+        --output-file="keywords.c" keywords.gperf
+    DEPENDS src/keywords.gperf
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Ada 83 lexer
+find_package(FLEX)
+if(FLEX_FOUND)
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/lex.yy.c ${CMAKE_CURRENT_SOURCE_DIR}/src/lexer.h
+                       COMMAND "${FLEX_EXECUTABLE}" --header-file=lexer.h lexer83.l
+                       DEPENDS src/lexer83.l src/keywords.c
+                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src)
+else()
+    message(STATUS "Flex not found - using the checked-in Flex-generated files instead")
+endif()
+
+# Ada 83 parser
+find_package(BISON)
+if(BISON_FOUND)
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/grammar83.tab.c ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.h
+                       COMMAND "${BISON_EXECUTABLE}" --header=parser.h --warnings=deprecated grammar83.y
+                       DEPENDS src/lex.yy.c src/grammar83.y
+                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src)
+else()
+    message(STATUS "Bison not found - using the checked-in Bison-generated files instead")
+endif()
+
+# Compiler driver
+add_executable(adac src/main.c src/grammar83.tab.c src/lex.yy.c src/string_pool.c)
 target_include_directories(adac PRIVATE src)
 target_compile_options(adac PRIVATE "${FLAGS}")
-target_link_libraries(adac PRIVATE mini-gmp util)
+target_link_libraries(adac PUBLIC util mini-gmp)
+
 if(ENABLE_ASAN)
     target_compile_options(adac PRIVATE "-fsanitize=address")
     target_link_options(adac PRIVATE "-fsanitize=address")
@@ -57,15 +76,20 @@ if(ENABLE_GCC_ANALYZER)
     target_compile_options(adac PRIVATE "-fanalyzer" "-Wno-analyzer-possible-null-dereference" "--param" "analyzer-max-svalue-depth=10000")
 endif()
 if(ENABLE_CLANG_ANALYZER)
-    target_compile_options(lexer_gen PRIVATE "--analyze")
     target_compile_options(util PRIVATE "--analyze")
     target_compile_options(adac PRIVATE "--analyze")
 endif()
-
-add_custom_target(gen_lexer
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/gen_lexer_table.py > ${CMAKE_SOURCE_DIR}/src/lexer_table.c)
 
 add_executable(string_pool_test tests/string_pool_test.c src/string_pool.c)
 target_include_directories(string_pool_test PUBLIC src)
 target_compile_options(string_pool_test PRIVATE "${FLAGS}")
 target_link_libraries(string_pool_test PUBLIC util)
+
+# Custom lexer generator (not current being used)
+add_executable(lexer_gen
+    src/lexer_gen/main.c
+    src/lexer_gen/lexer.c src/lexer_gen/parser.c src/lexer_gen/checker.c src/lexer_gen/generator.c
+    src/lexer_gen/debug.c)
+target_include_directories(lexer_gen PRIVATE src/lexer_gen)
+target_compile_options(lexer_gen PRIVATE "${FLAGS}")
+target_link_libraries(lexer_gen PUBLIC util)

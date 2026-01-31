@@ -1,82 +1,42 @@
-/*
-adac - Ada compiler
-Copyright (C) 2025  Cole Blakley
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-*/
-#include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
-#include "ast.h"
+#include <stdbool.h>
 #include "error.h"
 #include "parser.h"
-#include "debug.h"
+#include "lexer.h"
 #include "string_pool.h"
-#include "string_view.h"
-#include "file_buffer.h"
 
-static
-void usage(const char* exe)
+void yyerror(YYLTYPE* yyloc, yyscan_t scanner, ParseContext* parse_ctx, const char* msg)
 {
-    fprintf(stderr, "Usage: %s main_unit\n", exe);
+    (void)scanner;
+    (void)parse_ctx;
+    error_print(*yyloc, msg);
 }
 
-static
-bool ends_with(StringView s, const char* suffix)
-{
-    size_t suffix_len = strlen(suffix);
-    return suffix_len <= s.len
-        && memcmp(s.value + (s.len - suffix_len), suffix, suffix_len) == 0;
-}
-
-int main(int argc, char** argv)
+int main(int argc, const char** argv)
 {
     if(argc != 2) {
-        usage(argv[0]);
+        fprintf(stderr, "Usage: %s input_file\n", argv[0]);
         return 1;
     }
+    const char* input_file_path = argv[1];
+    FILE* input_file = fopen(input_file_path, "rb");
+    if(!input_file) {
+        perror(input_file_path);
+        return 1;
+    }
+    yyscan_t lexer;
+    error_set_source_file_path(input_file_path);
+    yylex_init(&lexer);
+    yyset_in(input_file, lexer);
 
     string_pool_init();
-    parser_init();
-    const char* source_file_path = argv[1];
-    StringView source_file_path_view = {.value = source_file_path, .len = strlen(source_file_path)};
-
-    if(ends_with(source_file_path_view, ".ads")) {
-        fprintf(stderr, "Error: Specification files are parsed on demand as needed - no need to pass %s explicitly\n", source_file_path);
+    ParseContext parse_ctx = {0};
+    int parse_status = yyparse(lexer, &parse_ctx);
+    if(parse_status != 0) {
+        fprintf(stderr, "Compilation failed\n");
         return 1;
     }
-    if(!ends_with(source_file_path_view, ".adb")) {
-        fprintf(stderr, "Error: Unrecognized source file extension (must be .adb)\n");
-        return 1;
-    }
-
-    FileBuffer file_buffer;
-    if(!file_buffer_open(&file_buffer, source_file_path)) {
-        return 1;
-    }
-    error_set_source_file_path(source_file_path);
-    CompilationUnit* main_unit = parser_parse(file_buffer.start, file_buffer.end);
-    if(main_unit == NULL) {
-        fprintf(stderr, "Error: Failed to parse %s\n", source_file_path);
-        return 1;
-    }
-    print_compilation_unit(main_unit);
-    putchar('\n');
-
-    if(!file_buffer_close(&file_buffer)) {
-        return 1;
-    }
+    yylex_destroy(lexer);
 
     return 0;
 }

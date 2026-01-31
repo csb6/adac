@@ -1,4 +1,4 @@
-/* ANSI-C code produced by gperf version 3.0.3 */
+/* ANSI-C code produced by gperf version 3.2.1 */
 /* Command-line: gperf --ignore-case --compare-strncmp --readonly-tables --language=ANSI-C --struct-type --hash-function-name=hash_keyword --lookup-function-name=is_keyword --output-file=keywords.c keywords.gperf  */
 /* Computed positions: -k'1,3,$' */
 
@@ -26,12 +26,14 @@
       && ('w' == 119) && ('x' == 120) && ('y' == 121) && ('z' == 122) \
       && ('{' == 123) && ('|' == 124) && ('}' == 125) && ('~' == 126))
 /* The character set is not based on ISO-646.  */
-#error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gnu-gperf@gnu.org>."
+#error "gperf generated tables don't work with this execution character set. Please report a bug to <bug-gperf@gnu.org>."
 #endif
 
+#line 1 "keywords.gperf"
 
-#include "token.h"
-struct keyword_token { const char* name; TokenKind kind; };
+#include "parser.h"
+#line 4 "keywords.gperf"
+struct keyword_token { const char* name; enum yytokentype kind; };
 
 #define TOTAL_KEYWORDS 63
 #define MIN_WORD_LENGTH 2
@@ -42,7 +44,7 @@ struct keyword_token { const char* name; TokenKind kind; };
 
 #ifndef GPERF_DOWNCASE
 #define GPERF_DOWNCASE 1
-static unsigned char gperf_downcase[256] =
+static const unsigned char gperf_downcase[256] =
   {
       0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,
      15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
@@ -68,7 +70,7 @@ static unsigned char gperf_downcase[256] =
 #ifndef GPERF_CASE_STRNCMP
 #define GPERF_CASE_STRNCMP 1
 static int
-gperf_case_strncmp (register const char *s1, register const char *s2, register unsigned int n)
+gperf_case_strncmp (register const char *s1, register const char *s2, register size_t n)
 {
   for (; n > 0;)
     {
@@ -93,7 +95,7 @@ inline
 #endif
 #endif
 static unsigned int
-hash_keyword (register const char *str, register unsigned int len)
+hash_keyword (register const char *str, register size_t len)
 {
   static const unsigned char asso_values[] =
     {
@@ -130,6 +132,11 @@ hash_keyword (register const char *str, register unsigned int len)
     {
       default:
         hval += asso_values[(unsigned char)str[2]];
+#if (defined __cplusplus && (__cplusplus >= 201703L || (__cplusplus >= 201103L && defined __clang__ && __clang_major__ + (__clang_minor__ >= 9) > 3))) || (defined __STDC_VERSION__ && __STDC_VERSION__ >= 202000L && ((defined __GNUC__ && __GNUC__ >= 10) || (defined __clang__ && __clang_major__ >= 9)))
+      [[fallthrough]];
+#elif (defined __GNUC__ && __GNUC__ >= 7) || (defined __clang__ && __clang_major__ >= 10)
+      __attribute__ ((__fallthrough__));
+#endif
       /*FALLTHROUGH*/
       case 2:
       case 1:
@@ -140,103 +147,173 @@ hash_keyword (register const char *str, register unsigned int len)
 }
 
 const struct keyword_token *
-is_keyword (register const char *str, register unsigned int len)
+is_keyword (register const char *str, register size_t len)
 {
+#if (defined __GNUC__ && __GNUC__ + (__GNUC_MINOR__ >= 6) > 4) || (defined __clang__ && __clang_major__ >= 3)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
   static const struct keyword_token wordlist[] =
     {
       {""}, {""}, {""},
-      {"xor", TOKEN_XOR},
+#line 68 "keywords.gperf"
+      {"xor", XOR},
       {""}, {""}, {""},
-      {"or", TOKEN_OR},
-      {"out", TOKEN_OUT},
-      {"terminate", TOKEN_TERMINATE},
+#line 14 "keywords.gperf"
+      {"or", OR},
+#line 23 "keywords.gperf"
+      {"out", OUT},
+#line 31 "keywords.gperf"
+      {"terminate", TERMINATE},
       {""}, {""},
-      {"reverse", TOKEN_REVERSE},
-      {"use", TOKEN_USE},
-      {"else", TOKEN_ELSE},
-      {"entry", TOKEN_ENTRY},
-      {"for", TOKEN_FOR},
+#line 67 "keywords.gperf"
+      {"reverse", REVERSE},
+#line 47 "keywords.gperf"
+      {"use", USE},
+#line 36 "keywords.gperf"
+      {"else", ELSE},
+#line 45 "keywords.gperf"
+      {"entry", ENTRY},
+#line 61 "keywords.gperf"
+      {"for", FOR},
       {""}, {""},
-      {"case", TOKEN_CASE},
-      {"of", TOKEN_OF},
+#line 60 "keywords.gperf"
+      {"case", CASE},
+#line 9 "keywords.gperf"
+      {"of", OF},
       {""},
-      {"at", TOKEN_AT},
-      {"not", TOKEN_NOT},
-      {"then", TOKEN_THEN},
-      {"range", TOKEN_RANGE},
-      {"return", TOKEN_RETURN},
+#line 35 "keywords.gperf"
+      {"at", AT},
+#line 62 "keywords.gperf"
+      {"not", NOT},
+#line 34 "keywords.gperf"
+      {"then", THEN},
+#line 50 "keywords.gperf"
+      {"range", RANGE},
+#line 63 "keywords.gperf"
+      {"return", RETURN},
       {""},
-      {"elsif", TOKEN_ELSIF},
-      {"task", TOKEN_TASK},
-      {"abort", TOKEN_ABORT},
-      {"accept", TOKEN_ACCEPT},
+#line 39 "keywords.gperf"
+      {"elsif", ELSIF},
+#line 27 "keywords.gperf"
+      {"task", TASK},
+#line 6 "keywords.gperf"
+      {"abort", ABORT},
+#line 16 "keywords.gperf"
+      {"accept", ACCEPT},
       {""},
-      {"constant", TOKEN_CONSTANT},
-      {"exception", TOKEN_EXCEPTION},
-      {"array", TOKEN_ARRAY},
-      {"select", TOKEN_SELECT},
-      {"renames", TOKEN_RENAMES},
+#line 64 "keywords.gperf"
+      {"constant", CONSTANT},
+#line 49 "keywords.gperf"
+      {"exception", EXCEPTION},
+#line 32 "keywords.gperf"
+      {"array", ARRAY},
+#line 10 "keywords.gperf"
+      {"select", SELECT},
+#line 58 "keywords.gperf"
+      {"renames", RENAMES},
       {""},
-      {"when", TOKEN_WHEN},
+#line 54 "keywords.gperf"
+      {"when", WHEN},
       {""},
-      {"access", TOKEN_ACCESS},
-      {"do", TOKEN_DO},
-      {"abs", TOKEN_ABS},
-      {"type", TOKEN_TYPE},
+#line 20 "keywords.gperf"
+      {"access", ACCESS},
+#line 25 "keywords.gperf"
+      {"do", DO},
+#line 11 "keywords.gperf"
+      {"abs", ABS},
+#line 38 "keywords.gperf"
+      {"type", TYPE},
       {""},
-      {"record", TOKEN_RECORD},
-      {"declare", TOKEN_DECLARE},
+#line 53 "keywords.gperf"
+      {"record", RECORD},
+#line 7 "keywords.gperf"
+      {"declare", DECLARE},
       {""},
-      {"exit", TOKEN_EXIT},
-      {"raise", TOKEN_RAISE},
+#line 51 "keywords.gperf"
+      {"exit", EXIT},
+#line 46 "keywords.gperf"
+      {"raise", RAISE},
       {""},
-      {"package", TOKEN_PACKAGE},
-      {"new", TOKEN_NEW},
-      {"procedure", TOKEN_PROCEDURE},
+#line 30 "keywords.gperf"
+      {"package", PACKAGE},
+#line 57 "keywords.gperf"
+      {"new", NEW},
+#line 41 "keywords.gperf"
+      {"procedure", PROCEDURE},
       {""}, {""},
-      {"is", TOKEN_IS},
-      {"separate", TOKEN_SEPARATE},
-      {"goto", TOKEN_GOTO},
-      {"if", TOKEN_IF},
-      {"function", TOKEN_FUNCTION},
-      {"subtype", TOKEN_SUBTYPE},
-      {"all", TOKEN_ALL},
-      {"null", TOKEN_NULL},
-      {"while", TOKEN_WHILE},
+#line 29 "keywords.gperf"
+      {"is", IS},
+#line 15 "keywords.gperf"
+      {"separate", SEPARATE},
+#line 13 "keywords.gperf"
+      {"goto", GOTO},
+#line 22 "keywords.gperf"
+      {"if", IF},
+#line 65 "keywords.gperf"
+      {"function", FUNCTION},
+#line 19 "keywords.gperf"
+      {"subtype", SUBTYPE},
+#line 24 "keywords.gperf"
+      {"all", ALL},
+#line 66 "keywords.gperf"
+      {"null", NuLL},
+#line 56 "keywords.gperf"
+      {"while", WHILE},
       {""},
-      {"in", TOKEN_IN},
+#line 26 "keywords.gperf"
+      {"in", IN},
       {""},
-      {"loop", TOKEN_LOOP},
-      {"delay", TOKEN_DELAY},
+#line 43 "keywords.gperf"
+      {"loop", LOOP},
+#line 12 "keywords.gperf"
+      {"delay", DELAY},
       {""}, {""},
-      {"end", TOKEN_END},
-      {"with", TOKEN_WITH},
+#line 42 "keywords.gperf"
+      {"end", END},
+#line 59 "keywords.gperf"
+      {"with", WITH},
       {""},
-      {"others", TOKEN_OTHERS},
+#line 18 "keywords.gperf"
+      {"others", OTHERS},
       {""}, {""}, {""},
-      {"delta", TOKEN_DELTA},
+#line 17 "keywords.gperf"
+      {"delta", DELTA},
       {""},
-      {"generic", TOKEN_GENERIC},
-      {"rem", TOKEN_REM},
+#line 8 "keywords.gperf"
+      {"generic", GENERIC},
+#line 55 "keywords.gperf"
+      {"rem", REM},
       {""}, {""},
-      {"pragma", TOKEN_PRAGMA},
+#line 33 "keywords.gperf"
+      {"pragma", PRAGMA},
       {""}, {""}, {""}, {""}, {""},
-      {"private", TOKEN_PRIVATE},
-      {"and", TOKEN_AND},
-      {"body", TOKEN_BODY},
+#line 37 "keywords.gperf"
+      {"private", PRIVATE},
+#line 28 "keywords.gperf"
+      {"and", AND},
+#line 48 "keywords.gperf"
+      {"body", BODY},
       {""}, {""}, {""}, {""}, {""}, {""},
-      {"digits", TOKEN_DIGITS},
-      {"limited", TOKEN_LIMITED},
+#line 21 "keywords.gperf"
+      {"digits", DIGITS},
+#line 40 "keywords.gperf"
+      {"limited", LIMITED},
       {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
       {""},
-      {"mod", TOKEN_MOD},
+#line 52 "keywords.gperf"
+      {"mod", MOD},
       {""}, {""}, {""}, {""}, {""}, {""},
-      {"begin", TOKEN_BEGIN}
+#line 44 "keywords.gperf"
+      {"begin", BEGiN}
     };
+#if (defined __GNUC__ && __GNUC__ + (__GNUC_MINOR__ >= 6) > 4) || (defined __clang__ && __clang_major__ >= 3)
+#pragma GCC diagnostic pop
+#endif
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
     {
-      unsigned int key = hash_keyword (str, len);
+      register unsigned int key = hash_keyword (str, len);
 
       if (key <= MAX_HASH_VALUE)
         {
@@ -246,5 +323,5 @@ is_keyword (register const char *str, register unsigned int len)
             return &wordlist[key];
         }
     }
-  return 0;
+  return (struct keyword_token *) 0;
 }

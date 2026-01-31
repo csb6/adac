@@ -164,7 +164,8 @@ enum {
 };
 
 typedef struct Declaration_ {
-    struct Declaration_* next;
+    struct Declaration_* next; // Next decl in region
+    struct Declaration_* next_in_bucket; // Next declaration in symbol table bucket
     uint32_t line_num;
     DeclKind kind;
 } Declaration;
