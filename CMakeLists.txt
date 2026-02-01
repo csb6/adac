@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.25)
 
 project(AdaCompiler LANGUAGES C)
 
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -27,12 +29,17 @@ add_library(mini-gmp OBJECT third_party/mini-gmp/mini-gmp.c)
 target_include_directories(mini-gmp PUBLIC third_party/mini-gmp)
 
 # Perfect hash function for recognizing Ada keywords
-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/keywords.c
-    COMMAND gperf --ignore-case --compare-strncmp --readonly-tables --language='ANSI-C' --struct-type
-        --hash-function-name="hash_keyword" --lookup-function-name="is_keyword"
-        --output-file="keywords.c" keywords.gperf
-    DEPENDS src/keywords.gperf
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src)
+find_package(Gperf)
+if(Gperf_FOUND)
+    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/keywords.c
+        COMMAND "${Gperf_EXECUTABLE}" --ignore-case --compare-strncmp --readonly-tables --language='ANSI-C' --struct-type
+            --hash-function-name="hash_keyword" --lookup-function-name="is_keyword"
+            --output-file="keywords.c" keywords.gperf
+        DEPENDS src/keywords.gperf
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src)
+else()
+    message(STATUS "Gperf not found - using the checked-in Gperf-generated files instead")
+endif()
 
 # Ada 83 lexer
 find_package(FLEX)
