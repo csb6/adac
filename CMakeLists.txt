@@ -87,10 +87,18 @@ if(ENABLE_CLANG_ANALYZER)
     target_compile_options(adac PRIVATE "--analyze")
 endif()
 
+# Tests
+
 add_executable(string_pool_test tests/string_pool_test.c src/string_pool.c)
 target_include_directories(string_pool_test PUBLIC src)
 target_compile_options(string_pool_test PRIVATE "${FLAGS}")
 target_link_libraries(string_pool_test PUBLIC util)
+
+add_executable(array_test tests/array_test.c)
+target_compile_options(array_test PRIVATE "${FLAGS}")
+target_link_libraries(array_test PUBLIC util)
+
+# Tools
 
 # Counts lines of code (requires cloc tool to be installed)
 add_custom_target(cloc cloc --by-file --fullpath --not-match-d=src/lexer_gen --exclude-ext=tab.c,yy.c src
