@@ -5,7 +5,7 @@ procedure IntTypeTest is
     type BigInteger is range 1 .. 12_000_000_000;
     small_int: SmallInteger := 1 + 2 * (+4) * abs 1 / 3**12-1;
     big_int: constant BigInteger := 10;
-    c: constant := 1_000;
+    c, c2: constant := 1_000;
 
     type CharType is ('a', 'b', 'c');
     type EnumType is (A, B, C);

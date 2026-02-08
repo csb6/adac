@@ -189,7 +189,7 @@ void print_type_decl(const TypeDecl* type_decl)
         case TYPE_ENUM:
             putchar('(');
             for(uint32_t i = 0; i < type_decl->u.enum_.literal_count; ++i) {
-                print_expression(type_decl->u.enum_.literals + i);
+                print_expression(type_decl->u.enum_.literals[i]);
                 putchar(' ');
             }
             putchar(')');
@@ -232,10 +232,10 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             }
             break;
         case STMT_CALL:
-            printf("%s", ST(stmt->u.call.subprogram->name));
-            if(stmt->u.call.subprogram->param_count > 0) {
+            printf("%s", ST(stmt->u.call.procedure->name));
+            if(stmt->u.call.procedure->param_count > 0) {
                 putchar('(');
-                for(uint8_t i = 0; i < stmt->u.call.subprogram->param_count; ++i) {
+                for(uint8_t i = 0; i < stmt->u.call.procedure->param_count; ++i) {
                     print_expression(stmt->u.call.args[i]);
                     printf(", ");
                 }

@@ -47,36 +47,42 @@ extern int yydebug;
 /* "%code requires" blocks.  */
 #line 27 "grammar83.y"
 
-	#include <stdint.h>
-	#include <stdbool.h>
-	#include <ctype.h>
-	#include "ast.h"
+    #include <stdint.h>
+    #include <stdbool.h>
+    #include <ctype.h>
+    #include "array.h"
+    #include "ast.h"
 
-	typedef uint32_t SourceLocation;
+    typedef uint32_t SourceLocation;
 
-	#define YYLLOC_DEFAULT(Cur, Rhs, N) \
-		do { \
-			if(N > 0) { \
-				(Cur) = YYRHSLOC(Rhs, 1); \
-		    } else { \
-				(Cur) = YYRHSLOC(Rhs, 0); \
-			} \
-		} while (0);
+    typedef Expression* ExprPtr;
+    DEFINE_ARRAY_TYPE(ExprPtr)
 
-	typedef struct {
-		Declaration* first;
-		Declaration* last;
-	} DeclList;
+    DEFINE_ARRAY_TYPE(StringToken)
 
-	typedef struct {
-		DeclList scope_stack[32];
-		DeclList* symbol_table;
-		uint32_t symbol_table_capacity;
-		uint32_t symbol_table_size;
-		uint8_t curr_scope_idx;
-	} ParseContext;
+    #define YYLLOC_DEFAULT(Cur, Rhs, N) \
+        do { \
+            if(N > 0) { \
+                (Cur) = YYRHSLOC(Rhs, 1); \
+            } else { \
+                (Cur) = YYRHSLOC(Rhs, 0); \
+            } \
+        } while (0);
 
-#line 80 "parser.h"
+    typedef struct {
+        Declaration* first;
+        Declaration* last;
+    } DeclList;
+
+    typedef struct {
+        DeclList scope_stack[32];
+        Declaration** symbol_table; // array of Declaration*
+        uint32_t symbol_table_capacity;
+        uint32_t symbol_table_size;
+        uint8_t curr_scope_idx;
+    } ParseContext;
+
+#line 86 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -171,21 +177,23 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 138 "grammar83.y"
+#line 161 "grammar83.y"
 
-	UnaryOperator unary_op;
-	BinaryOperator binary_op;
-	Expression* expr;
-	Statement* stmt;
-	Declaration* decl;
-	TypeDecl* type_decl;
-	bool bool_;
-	ParamMode param_mode;
-	StringToken str_token;
-	char c;
-	StringView str; // Note: this StringView owns its allocated data
+    UnaryOperator unary_op;
+    BinaryOperator binary_op;
+    Expression* expr;
+    Statement* stmt;
+    TypeDecl* type_decl;
+    SubprogramDecl* subprogram_decl;
+    bool bool_;
+    ParamMode param_mode;
+    StringToken str_token;
+    char c;
+    StringView str; // Note: this StringView owns its allocated data
+    Array_ExprPtr expr_array;
+    Array_StringToken str_token_array;
 
-#line 189 "parser.h"
+#line 197 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -202,10 +210,10 @@ typedef SourceLocation YYLTYPE;
 int yyparse (void* scanner, ParseContext* context);
 
 /* "%code provides" blocks.  */
-#line 59 "grammar83.y"
+#line 65 "grammar83.y"
 
-	void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
+    void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 210 "parser.h"
+#line 218 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

@@ -60,7 +60,7 @@ typedef struct {
 
 // 3.5.1: Enumeration Types
 typedef struct {
-    struct Expression_* literals;
+    struct Expression_** literals;
     uint32_t literal_count;
 } EnumType;
 
@@ -97,7 +97,7 @@ extern struct TypeDecl_ universal_int_type;
 typedef uint8_t ExprKind;
 enum {
     EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_NAME, EXPR_STRING_LIT,
-    EXPR_UNARY, EXPR_BINARY
+    EXPR_UNARY, EXPR_BINARY, EXPR_OBJECT, EXPR_CALL,
 };
 
 typedef uint8_t UnaryOperator;
@@ -135,12 +135,25 @@ typedef struct {
     UnaryOperator op;
 } UnaryExpr;
 
+// TODO: merge this with FunctionCall (this will simplify overloading process)
 typedef struct {
     struct Expression_* left;
     struct Expression_* right;
     BinaryOperator op;
-    bool is_parenthesized;
 } BinaryExpr;
+
+typedef struct {
+    struct Expression_** args; // array of Expression*
+    uint32_t arg_count;
+    StringToken name;
+    bool is_function;
+    bool is_subprogram;
+} NameExpr;
+
+typedef struct {
+    struct SubprogramDecl_* subprogram;
+    struct Expression_** args; // array of Expression*
+} CallExpr;
 
 typedef struct Expression_ {
     uint32_t line_num;
@@ -149,10 +162,12 @@ typedef struct Expression_ {
         // 4.2: Literals
         IntLiteral int_lit;
         char char_lit;
-        StringToken name;
         StringView string_lit;
         UnaryExpr unary;
         BinaryExpr binary;
+        NameExpr name;
+        struct ObjectDecl* object;
+        CallExpr call;
     } u;
 } Expression;
 
@@ -165,7 +180,7 @@ enum {
 
 typedef struct Declaration_ {
     struct Declaration_* next; // Next decl in region
-    struct Declaration_* next_in_bucket; // Next declaration in symbol table bucket
+    struct Declaration_* next_overload; // Next declaration with same name
     uint32_t line_num;
     DeclKind kind;
 } Declaration;
@@ -223,7 +238,7 @@ typedef struct {
 typedef uint8_t StmtKind;
 enum {
     STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
-    STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP,
+    STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP, STMT_NAME,
 };
 
 typedef struct {
@@ -232,7 +247,7 @@ typedef struct {
 } AssignStmt;
 
 typedef struct {
-    SubprogramDecl* subprogram;
+    SubprogramDecl* procedure; // Always will be a procedure
     Expression** args; // array of Expression*
 } CallStmt;
 
@@ -318,6 +333,7 @@ typedef struct Statement_ {
     StmtKind kind;
     union {
         AssignStmt assign;
+        NameExpr name;
         CallStmt call;
         ReturnStmt return_;
         ExitStmt exit;
