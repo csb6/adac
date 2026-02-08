@@ -192,8 +192,9 @@ union YYSTYPE
     StringView str; // Note: this StringView owns its allocated data
     Array_ExprPtr expr_array;
     Array_StringToken str_token_array;
+    NameExpr name;
 
-#line 197 "parser.h"
+#line 198 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -214,6 +215,6 @@ int yyparse (void* scanner, ParseContext* context);
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 218 "parser.h"
+#line 219 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

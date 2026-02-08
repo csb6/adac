@@ -172,6 +172,7 @@
     StringView str; // Note: this StringView owns its allocated data
     Array_ExprPtr expr_array;
     Array_StringToken str_token_array;
+    NameExpr name;
 }
 
 /* Terminals */
@@ -182,7 +183,7 @@
 %type <unary_op> unary adding multiplying membership relational logical short_circuit
 %type <expr> used_char literal simple_expression relation primary term factor expression
              parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
-             init_opt enum_id name
+             init_opt enum_id
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
              loop_stmt goto_stmt statement_s unlabeled compound_stmt procedure_call handled_stmt_s
              block_body block
@@ -192,6 +193,7 @@
 %type <str_token> subtype_ind simple_name object_subtype_def designator operator_symbol
 %type <str_token_array> def_id_s
 %type <expr_array> enum_id_s
+%type <name> name
 
 /* Multi-character operators */
 %token DOT_DOT BOX LT_EQ EXPON NE GE IS_ASSIGNED RIGHT_SHAFT
@@ -368,13 +370,10 @@ subtype_decl :
 subtype_ind :
     name constraint {
         // TODO: propagate constraint somehow
-        $$ = $1->u.name.name;
-        free($1);
+        $$ = $1.name;
     }
-  | name {
-        $$ = $1->u.name.name;
-        free($1);
-    };
+  | name { $$ = $1.name; }
+  ;
 
 constraint :
     range_constraint
@@ -620,15 +619,15 @@ body :
 
 name :
     simple_name {
-        $$ = create_expr(EXPR_NAME, @$);
-        $$->u.name.name = $1;
+        memset(&$$, 0, sizeof($$));
+        $$.name = $1;
     }
   | indexed_comp
   | selected_comp
   | attribute
   | operator_symbol {
-        $$ = create_expr(EXPR_NAME, @$);
-        $$->u.name.name = $1;
+        memset(&$$, 0, sizeof($$));
+        $$.name = $1;
         //TODO: lookup operator, determine its arity, and allocate args array
     };
 
@@ -759,8 +758,11 @@ relation :
     simple_expression
   | simple_expression relational simple_expression { $$ = make_binary_expr($1, $2, $3); }
   | simple_expression membership range             { $$ = make_binary_expr($1, $2, $3); }
-  | simple_expression membership name              { $$ = $1; /*TODO*/ }
-    ;
+  | simple_expression membership name              {
+        Expression* right = create_expr(EXPR_NAME, @3);
+        right->u.name = $3;
+        $$ = make_binary_expr($1, $2, right);
+    };
 
 relational :
     '='   { $$ = OP_EQ; }
@@ -814,7 +816,10 @@ factor :
 
 primary :
     literal
-  | name
+  | name {
+        $$ = create_expr(EXPR_NAME, @$);
+        $$->u.name = $1;
+    }
   | allocator
   | qualified
   | parenthesized_primary
@@ -1039,12 +1044,11 @@ return_stmt :
 
 goto_stmt :
     GOTO name ';' {
-        if($2->u.name.arg_count != 0) {
+        if($2.arg_count != 0) {
             error_print(@2, "Invalid label name (must be a simple name)");
             error_exit();
         }
-        StringToken label_name = $2->u.name.name;
-        free($2);
+        StringToken label_name = $2.name;
 
         $$ = create_stmt(STMT_GOTO, @$);
         LabelDecl* label = find_label(context, label_name);
@@ -1125,11 +1129,9 @@ subprog_body :
 procedure_call :
     name ';' {
         $$ = create_stmt(STMT_NAME, @$);
+        $$->u.name = $1;
         $$->u.name.is_function = false;
         $$->u.name.is_subprogram = true;
-        assert($1->kind == EXPR_NAME);
-        $$->u.name = $1->u.name;
-        free($1);
     };
 
 pkg_decl :
