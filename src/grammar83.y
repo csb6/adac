@@ -1390,7 +1390,6 @@ static
 Expression* make_unary_expr(UnaryOperator op, Expression* right)
 {
     Expression* expr = create_expr(EXPR_UNARY, right->line_num);
-    expr->kind = EXPR_UNARY;
     expr->u.unary.op = op;
     expr->u.unary.right = right;
     return expr;
