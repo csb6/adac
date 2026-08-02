@@ -12,21 +12,10 @@ pass all ACATS tests.
 
 ## Progress
 
-- The lexer is largely complete, although it does not currently support:
-  - Based literals with points
-  - Substitution of '#' with '"' within based literals
-
-- The parser is in the early stages. It currently supports:
-  - Integer, enumeration, subtype, and derived type definitions (although no constraints are supported besides ranges on integer types)
-  - Object (and constant) declarations
-  - Subprogram declarations and bodies
-  - Null, assignment, procedure call, return, block, if, case, exit, loop, and goto statements
-  - Binary/unary expressions
-  - Integer, string, and character literals
-  - Some checking for redefinitions of names within same region
-  - Package specifications containing the supported kinds of declarations
-
-No semantic analysis or code generation is currently implemented.
+- The lexer is largely complete. It uses a Lex grammar specification.
+- The parser can successfully parse all of the source files of GNAT 1.67. It uses a Bison grammar specification.
+  - However, construction of the AST and semantic analysis is still far from complete
+- Code generation has not been started. The plan is to generate C source code.
 
 ## Building
 
@@ -40,7 +29,7 @@ The build system is CMake:
 
 However, if you don't want to use CMake, it is also possible to build this project using a manual compiler
 invocation. Reference CMakeLists.txt to see the source files needed. It should be as simple as passing
-all of the .c files (except `keywords.c` and `lexer_table.c`) into the compiler driver.
+all of the .c files (except `keywords.c`) into the compiler driver.
 
 Note: [`gperf`](https://www.gnu.org/software/gperf/) is not a compile-time or runtime dependency because the output of gperf (`keywords.c`) is checked into
 the source tree. To regenerate `keywords.c`, you can run the `gen_keyword_hash` custom command (e.g. `ninja gen_keyword_hash`)
