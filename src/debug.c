@@ -231,16 +231,8 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
                 print_expression(stmt->u.exit.condition);
             }
             break;
-        case STMT_CALL:
-            printf("%s", ST(stmt->u.call.procedure->name));
-            if(stmt->u.call.procedure->param_count > 0) {
-                putchar('(');
-                for(uint8_t i = 0; i < stmt->u.call.procedure->param_count; ++i) {
-                    print_expression(stmt->u.call.args[i]);
-                    printf(", ");
-                }
-                putchar(')');
-            }
+        case STMT_EXPR:
+            print_expression(&stmt->u.expr);
             break;
         case STMT_BLOCK:
             if(stmt->u.block.decls) {
@@ -271,6 +263,7 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             break;
         default:
             printf("Unhandled statement");
+            break;
     }
     printf(";\n");
 }

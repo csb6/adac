@@ -135,7 +135,6 @@ typedef struct {
     UnaryOperator op;
 } UnaryExpr;
 
-// TODO: merge this with FunctionCall (this will simplify overloading process)
 typedef struct {
     struct Expression_* left;
     struct Expression_* right;
@@ -145,10 +144,14 @@ typedef struct {
 typedef struct {
     struct Expression_** args; // array of Expression*
     uint32_t arg_count;
+    // Bitset representing which of up to 32 available overloads are viable
+    // candidates
+    // Note: assumes overloads won't be added/removed when bitset is in use
+    uint32_t overload_candidates;
     StringToken name;
-    bool is_function;
-    bool is_subprogram;
 } NameExpr;
+
+#define MAX_OVERLOAD_CANDIDATES 32u
 
 typedef struct {
     struct SubprogramDecl_* subprogram;
@@ -166,7 +169,7 @@ typedef struct Expression_ {
         UnaryExpr unary;
         BinaryExpr binary;
         NameExpr name;
-        struct ObjectDecl* object;
+        struct ObjectDecl_* object;
         CallExpr call;
     } u;
 } Expression;
@@ -208,7 +211,7 @@ typedef struct TypeDecl_ {
 } TypeDecl;
 
 // 3.2: Objects and Named Numbers
-typedef struct {
+typedef struct ObjectDecl_ {
     Declaration base;
     TypeDecl* type;
     Expression* init_expr;
@@ -237,19 +240,14 @@ typedef struct {
 
 typedef uint8_t StmtKind;
 enum {
-    STMT_NULL, STMT_ASSIGN, STMT_CALL, STMT_EXIT, STMT_RETURN, STMT_GOTO,
-    STMT_RAISE, STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP, STMT_NAME,
+    STMT_NULL, STMT_ASSIGN, STMT_EXPR, STMT_EXIT, STMT_RETURN, STMT_GOTO,
+    STMT_BLOCK, STMT_IF, STMT_CASE, STMT_LOOP
 };
 
 typedef struct {
     ObjectDecl* dest; // TODO: array/record components
     Expression* expr;
 } AssignStmt;
-
-typedef struct {
-    SubprogramDecl* procedure; // Always will be a procedure
-    Expression** args; // array of Expression*
-} CallStmt;
 
 typedef struct {
     Expression* expr;
@@ -333,8 +331,7 @@ typedef struct Statement_ {
     StmtKind kind;
     union {
         AssignStmt assign;
-        NameExpr name;
-        CallStmt call;
+        Expression expr; // Must be a NameExpr or a CallExpr
         ReturnStmt return_;
         ExitStmt exit;
         BlockStmt block;

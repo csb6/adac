@@ -52,13 +52,17 @@
         Declaration* last;
     } DeclList;
 
-    typedef struct {
+    typedef struct ParseContext_ {
         DeclList scope_stack[32];
         Declaration** symbol_table; // array of Declaration*
         uint32_t symbol_table_capacity;
         uint32_t symbol_table_size;
         uint8_t curr_scope_idx;
     } ParseContext;
+
+    Declaration** find_bucket(ParseContext* context, StringToken name);
+
+    ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 }
 
 // Emitted in the header file after the definition of YYSTYPE.
@@ -115,9 +119,6 @@
 
     static
     void append_decl(DeclList* decl_list, Declaration* decl);
-
-    static
-    Declaration** find_bucket(ParseContext* context, StringToken name);
 
     #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -415,6 +416,7 @@ enumeration_type :
         $$ = create_type_decl(TYPE_ENUM);
         $$->u.enum_.literals = $2.data;
         $$->u.enum_.literal_count = array_ExprPtr_size(&$2);
+        // TODO: add all enum literals into symbol table scope
     };
 
 enum_id_s :
@@ -1128,10 +1130,10 @@ subprog_body :
 
 procedure_call :
     name ';' {
-        $$ = create_stmt(STMT_NAME, @$);
-        $$->u.name = $1;
-        $$->u.name.is_function = false;
-        $$->u.name.is_subprogram = true;
+        $$ = create_stmt(STMT_EXPR, @$);
+        $$->u.expr.kind = EXPR_NAME;
+        $$->u.expr.line_num = @$;
+        $$->u.expr.u.name = $1;
     };
 
 pkg_decl :
@@ -1461,6 +1463,19 @@ TypeDecl* find_type_decl(ParseContext* context, StringToken name)
     return NULL;
 }
 
+ObjectDecl* find_object_decl(ParseContext* context, StringToken name)
+{
+    Declaration** bucket = find_bucket(context, name);
+    if(bucket) {
+        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+            if(decl->kind == DECL_OBJECT) {
+                return (ObjectDecl*)decl;
+            }
+        }
+    }
+    return NULL;
+}
+
 static
 LabelDecl* find_label(ParseContext* context, StringToken name)
 {
@@ -1486,7 +1501,6 @@ void append_decl(DeclList* decl_list, Declaration* decl)
     decl_list->last = decl;
 }
 
-static
 Declaration** find_bucket(ParseContext* context, StringToken name)
 {
     uint32_t hash = hash_fnv(name);
