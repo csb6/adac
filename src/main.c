@@ -32,11 +32,12 @@ int main(int argc, const char** argv)
     string_pool_init();
     ParseContext parse_ctx = {0};
     int parse_status = yyparse(lexer, &parse_ctx);
+    yylex_destroy(lexer);
+    fclose(input_file);
     if(parse_status != 0) {
         fprintf(stderr, "Compilation failed\n");
         return 1;
     }
-    yylex_destroy(lexer);
 
     return 0;
 }

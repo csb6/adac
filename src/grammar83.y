@@ -187,7 +187,7 @@
              init_opt enum_id
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
              loop_stmt goto_stmt statement_s unlabeled compound_stmt procedure_call handled_stmt_s
-             block_body block
+             block_body block cond_clause cond_clause_s else_opt if_stmt
 %type <type_decl> type_completion type_def enumeration_type integer_type derived_type
 %type <bool_> reverse_opt object_qualifier_opt block_decl
 %type <param_mode> mode
@@ -895,17 +895,22 @@ assign_stmt :
     };
 
 if_stmt :
-    IF cond_clause_s else_opt END IF ';'
-    ;
+    IF cond_clause_s else_opt END IF ';' {
+        $$ = $2;
+        $$->u.if_.else_ = $3;
+    };
 
 cond_clause_s :
     cond_clause
-  | cond_clause_s ELSIF cond_clause
-    ;
+  | cond_clause_s ELSIF cond_clause { $1->u.if_.else_ = $3; }
+  ;
 
 cond_clause :
-    cond_part statement_s
-    ;
+    cond_part statement_s {
+        $$ = create_stmt(STMT_IF, @$);
+        $$->u.if_.condition = $1;
+        $$->u.if_.stmts = $2;
+    };
 
 cond_part :
     condition THEN { $$ = $1; }
@@ -916,8 +921,8 @@ condition :
     ;
 
 else_opt :
-    %empty
-  | ELSE statement_s
+    %empty           { $$ = NULL; }
+  | ELSE statement_s { $$ = $2; }
     ;
 
 case_stmt :
