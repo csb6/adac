@@ -220,7 +220,7 @@
 
 %%
 
-goal_symbol : compilation
+goal_symbol : comp_unit
     ;
 
 pragma :
@@ -1204,20 +1204,9 @@ renames :
     RENAMES name
     ;
 
-compilation :
-    %empty
-  | compilation comp_unit
-  | pragma pragma_s
-    ;
-
 comp_unit :
-    context_spec private_opt unit pragma_s
-  | private_opt unit pragma_s
-    ;
-
-private_opt :
-    %empty
-  | PRIVATE
+    context_spec unit pragma_s
+  | unit pragma_s
     ;
 
 context_spec :
