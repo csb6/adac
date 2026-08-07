@@ -643,14 +643,9 @@ simple_name :
     identifier
     ;
 
-compound_name :
+simple_name_list :
     simple_name
-  | compound_name '.' simple_name
-    ;
-
-c_name_list :
-    compound_name
-  | c_name_list ',' compound_name
+  | simple_name_list ',' simple_name
     ;
 
 used_char :
@@ -1147,7 +1142,7 @@ pkg_decl :
     ;
 
 pkg_spec :
-    PACKAGE compound_name IS decl_item_s private_part END c_id_opt
+    PACKAGE simple_name IS decl_item_s private_part END simple_name_opt
     ;
 
 private_part :
@@ -1155,13 +1150,13 @@ private_part :
   | PRIVATE decl_item_s
     ;
 
-c_id_opt :
+simple_name_opt :
     %empty
-  | compound_name
+  | simple_name
     ;
 
 pkg_body :
-    PACKAGE BODY compound_name IS decl_part body_opt END c_id_opt ';'
+    PACKAGE BODY simple_name IS decl_part body_opt END simple_name_opt ';'
     ;
 
 body_opt :
@@ -1194,9 +1189,9 @@ rename_decl :
     ;
 
 rename_unit :
-    PACKAGE compound_name renames ';'
+    PACKAGE simple_name renames ';'
   | subprog_spec renames ';'
-  | generic_formal_part PACKAGE compound_name renames ';'
+  | generic_formal_part PACKAGE simple_name renames ';'
   | generic_formal_part subprog_spec renames ';'
     ;
 
@@ -1216,7 +1211,7 @@ context_spec :
     ;
 
 with_clause :
-    WITH c_name_list ';'
+    WITH simple_name_list ';'
     ;
 
 use_clause_opt :
@@ -1235,7 +1230,7 @@ unit :
     ;
 
 subunit :
-    SEPARATE '(' compound_name ')' subunit_body
+    SEPARATE '(' simple_name ')' subunit_body
     ;
 
 subunit_body :
@@ -1244,7 +1239,7 @@ subunit_body :
     ;
 
 body_stub :
-    PACKAGE BODY compound_name IS SEPARATE ';'
+    PACKAGE BODY simple_name IS SEPARATE ';'
   | subprog_spec IS SEPARATE ';'
     ;
 
@@ -1331,7 +1326,7 @@ generic_subp_inst :
     ;
 
 generic_pkg_inst :
-    PACKAGE compound_name IS generic_inst
+    PACKAGE simple_name IS generic_inst
     ;
 
 generic_inst :
