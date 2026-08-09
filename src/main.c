@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include "debug.h"
 #include "error.h"
 #include "parser.h"
 #include "lexer.h"
@@ -10,6 +11,7 @@ void yyerror(YYLTYPE* yyloc, yyscan_t scanner, ParseContext* parse_ctx, const ch
     (void)scanner;
     (void)parse_ctx;
     error_print(*yyloc, msg);
+    error_exit();
 }
 
 int main(int argc, const char** argv)
@@ -38,6 +40,7 @@ int main(int argc, const char** argv)
         fprintf(stderr, "Compilation failed\n");
         return 1;
     }
+    print_compilation_unit(parse_ctx.comp_unit);
 
     return 0;
 }

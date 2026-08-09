@@ -33,7 +33,7 @@ static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
 static void print_params(const Declaration* params, uint8_t param_count);
-static void print_choice(const Choice* choice);
+static void print_choices(const Choices* choices);
 static const char* param_mode_str(ParamMode mode);
 static void print_indent(uint8_t size);
 
@@ -44,7 +44,7 @@ void print_compilation_unit(const CompilationUnit* unit)
             print_package_spec(&unit->u.package_spec);
             break;
         case COMP_UNIT_SUBPROGRAM:
-            print_subprogram_decl(&unit->u.subprogram_decl, 0);
+            print_subprogram_decl(unit->u.subprogram_decl, 0);
             break;
         default:
             printf("Unhandled compilation unit\n");
@@ -101,17 +101,20 @@ void print_subprogram_decl(const SubprogramDecl* decl, uint8_t indent_level)
 {
     print_indent(indent_level);
     printf("%s %s", decl->return_type ? "function" : "procedure", ST(decl->name));
-    print_params(decl->decls, decl->param_count);
+    if(decl->param_count > 0) {
+        print_params(decl->decls, decl->param_count);
+    }
     if(decl->return_type) {
         printf(" return %s", ST(decl->return_type->name));
     }
 
     Declaration* inner_decl = decl->decls;
+    // Skip over parameters (already printed above)
     for(uint8_t i = 0; i < decl->param_count; ++i) {
         inner_decl = inner_decl->next;
     }
     // Only print body if it exists
-    if(inner_decl || decl->stmts) {
+    if(decl->stmts) {
         printf(" is\n");
         while(inner_decl) {
             print_declaration(inner_decl, indent_level+1);
@@ -119,7 +122,7 @@ void print_subprogram_decl(const SubprogramDecl* decl, uint8_t indent_level)
         }
         print_indent(indent_level);
         printf("begin\n");
-        for(const Statement* stmt = decl->stmts; stmt != NULL; stmt = stmt->next) {
+        for(const Statement* stmt = decl->stmts; stmt; stmt = stmt->next) {
             print_statement(stmt, indent_level+1);
         }
         print_indent(indent_level);
@@ -274,7 +277,7 @@ void print_if_statement(const IfStmt* stmt, uint8_t indent_level)
     printf("if ");
     print_expression(stmt->condition);
     printf(" then\n");
-    for(const Statement* s = stmt->stmts; s != NULL; s = s->next) {
+    for(const Statement* s = stmt->stmts; s; s = s->next) {
         print_statement(s, indent_level+1);
     }
     const Statement* block = stmt->else_;
@@ -284,15 +287,14 @@ void print_if_statement(const IfStmt* stmt, uint8_t indent_level)
             printf("elsif ");
             print_expression(block->u.if_.condition);
             printf(" then\n");
-            for(const Statement* s = block->u.if_.stmts; s != NULL; s = s->next) {
+            for(const Statement* s = block->u.if_.stmts; s; s = s->next) {
                 print_statement(s, indent_level+1);
             }
             block = block->u.if_.else_;
         } else {
             print_indent(indent_level);
-            assert(block->kind == STMT_BLOCK);
             printf("else\n");
-            for(const Statement* s = block->u.block.stmts; s != NULL; s = s->next) {
+            for(const Statement* s = block; s; s = s->next) {
                 print_statement(s, indent_level+1);
             }
             block = NULL;
@@ -308,12 +310,12 @@ void print_case_statement(const CaseStmt* stmt, uint8_t indent_level)
     printf("case ");
     print_expression(stmt->expr);
     printf(" is\n");
-    for(const Case* case_ = stmt->cases; case_ != NULL; case_ = case_->next) {
+    for(const Alternative* case_ = stmt->cases; case_; case_ = case_->next) {
         print_indent(indent_level+1);
         printf("when ");
-        print_choice(&case_->choice);
+        print_choices(&case_->choices);
         printf(" =>\n");
-        for(const Statement* s = case_->stmts; s != NULL; s = s->next) {
+        for(const Statement* s = case_->stmts; s; s = s->next) {
             print_statement(s, indent_level+2);
         }
     }
@@ -322,22 +324,22 @@ void print_case_statement(const CaseStmt* stmt, uint8_t indent_level)
 }
 
 static
-void print_choice(const Choice* choice)
+void print_choices(const Choices* choices)
 {
-    for(uint8_t i = 0; i < choice->count; ++i) {
-        const Alternative* alt = &choice->alternatives[i];
-        switch(alt->kind) {
-            case ALT_EXPR:
-                print_expression(alt->u.expr);
+    for(uint8_t i = 0; i < choices->count; ++i) {
+        const Choice* choice = &choices->choices[i];
+        switch(choice->kind) {
+            case CHOICE_EXPR:
+                print_expression(choice->u.expr);
                 break;
-            case ALT_OTHERS:
+            case CHOICE_OTHERS:
                 printf("others");
                 break;
             default:
-                printf("Unknown alternative");
+                printf("Unknown choice");
                 break;
         }
-        if(i < choice->count - 1) {
+        if(i < choices->count - 1) {
             printf(" | ");
         }
     }
@@ -379,7 +381,15 @@ void print_expression(const Expression* expr)
             printf("'%c'", expr->u.char_lit);
             break;
         case EXPR_NAME:
-            printf("%s", ST(expr->u.name));
+            printf("%s", ST(expr->u.name.name));
+            if(expr->u.name.arg_count > 0) {
+                putchar('(');
+                for(uint32_t i = 0; i < expr->u.name.arg_count; ++i) {
+                    print_expression(expr->u.name.args[i]);
+                    printf(", ");
+                }
+                putchar(')');
+            }
             break;
         case EXPR_STRING_LIT:
             printf("\"%.*s\"", SV(expr->u.string_lit));

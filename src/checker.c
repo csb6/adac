@@ -66,10 +66,10 @@ void resolve_stmt(ParseContext* context, Statement* stmt)
             break;
         case STMT_CASE:
             gather_candidates(context, stmt->u.case_.expr);
-            for(Case* c = stmt->u.case_.cases; c; c = c->next) {
-                for(uint32_t i = 0; i < c->choice.count; ++i) {
-                    if(c->choice.alternatives[i].kind == ALT_EXPR) {
-                        gather_candidates(context, c->choice.alternatives[i].u.expr);
+            for(Alternative* c = stmt->u.case_.cases; c; c = c->next) {
+                for(uint32_t i = 0; i < c->choices.count; ++i) {
+                    if(c->choices.choices[i].kind == CHOICE_EXPR) {
+                        gather_candidates(context, c->choices.choices[i].u.expr);
                     }
                 }
                 for(Statement* s = c->stmts; s; s = s->next) {

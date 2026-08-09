@@ -51,14 +51,22 @@ extern int yydebug;
     #include <stdbool.h>
     #include <ctype.h>
     #include "array.h"
+    #include "linked_list.h"
     #include "ast.h"
 
     typedef uint32_t SourceLocation;
 
     typedef Expression* ExprPtr;
     DEFINE_ARRAY_TYPE(ExprPtr)
-
     DEFINE_ARRAY_TYPE(StringToken)
+    DEFINE_ARRAY_TYPE(Choice)
+
+    typedef Declaration Decl;
+    DEFINE_LINKED_LIST_TYPE(Decl)
+    typedef Statement Stmt;
+    DEFINE_LINKED_LIST_TYPE(Stmt)
+    typedef Alternative Alt;
+    DEFINE_LINKED_LIST_TYPE(Alt)
 
     #define YYLLOC_DEFAULT(Cur, Rhs, N) \
         do { \
@@ -69,12 +77,8 @@ extern int yydebug;
             } \
         } while (0);
 
-    typedef struct {
-        Declaration* first;
-        Declaration* last;
-    } DeclList;
-
     typedef struct ParseContext_ {
+        CompilationUnit* comp_unit;
         DeclList scope_stack[32];
         Declaration** symbol_table; // array of Declaration*
         uint32_t symbol_table_capacity;
@@ -86,7 +90,7 @@ extern int yydebug;
 
     ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 
-#line 90 "parser.h"
+#line 94 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -181,14 +185,22 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 162 "grammar83.y"
+#line 170 "grammar83.y"
 
     UnaryOperator unary_op;
     BinaryOperator binary_op;
     Expression* expr;
     Statement* stmt;
+    StmtList stmt_list;
+    AltList case_list;
+    Choice choice;
+    Array_Choice choice_array;
+    Alternative* case_;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
+    Declaration* decl;
+    DeclList decl_list;
+    CompilationUnit* comp_unit;
     bool bool_;
     ParamMode param_mode;
     StringToken str_token;
@@ -198,7 +210,7 @@ union YYSTYPE
     Array_StringToken str_token_array;
     NameExpr name;
 
-#line 202 "parser.h"
+#line 214 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -215,10 +227,10 @@ typedef SourceLocation YYLTYPE;
 int yyparse (void* scanner, ParseContext* context);
 
 /* "%code provides" blocks.  */
-#line 69 "grammar83.y"
+#line 73 "grammar83.y"
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 223 "parser.h"
+#line 235 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

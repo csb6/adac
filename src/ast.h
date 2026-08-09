@@ -265,36 +265,36 @@ typedef struct {
 typedef struct IfStmt_ {
     Expression* condition;
     struct Statement_* stmts;
-    struct Statement_* else_; // Either an IfStmt (for elsif block) or a BlockStmt (for else block)
+    struct Statement_* else_; // Either an IfStmt (for elsif block) or a linked list of Statements (for else block)
 } IfStmt;
 
-typedef uint8_t AltKind;
+typedef uint8_t ChoiceKind;
 enum {
     // TODO: component_simple_name
-    ALT_EXPR, ALT_OTHERS
+    CHOICE_EXPR, CHOICE_OTHERS
 };
 
 typedef struct {
-    AltKind kind;
+    ChoiceKind kind;
     union {
         Expression* expr;
     } u;
+} Choice;
+
+typedef struct {
+    Choice* choices;
+    uint8_t count;
+} Choices;
+
+typedef struct Alternative_ {
+    Choices choices;
+    struct Statement_* stmts;
+    struct Alternative_* next;
 } Alternative;
 
 typedef struct {
-    Alternative* alternatives;
-    uint8_t count;
-} Choice;
-
-typedef struct Case_ {
-    Choice choice;
-    struct Statement_* stmts;
-    struct Case_* next;
-} Case;
-
-typedef struct {
     Expression* expr;
-    Case* cases;
+    Alternative* cases;
 } CaseStmt;
 
 typedef uint8_t LoopKind;
@@ -369,7 +369,7 @@ enum {
 typedef struct CompilationUnit_ {
     CompilationUnitKind kind;
     union {
-        SubprogramDecl subprogram_decl;
+        SubprogramDecl* subprogram_decl;
         PackageSpec package_spec;
         PackageBody package_body;
         // TODO: secondary_unit, generics

@@ -29,14 +29,22 @@
     #include <stdbool.h>
     #include <ctype.h>
     #include "array.h"
+    #include "linked_list.h"
     #include "ast.h"
 
     typedef uint32_t SourceLocation;
 
     typedef Expression* ExprPtr;
     DEFINE_ARRAY_TYPE(ExprPtr)
-
     DEFINE_ARRAY_TYPE(StringToken)
+    DEFINE_ARRAY_TYPE(Choice)
+
+    typedef Declaration Decl;
+    DEFINE_LINKED_LIST_TYPE(Decl)
+    typedef Statement Stmt;
+    DEFINE_LINKED_LIST_TYPE(Stmt)
+    typedef Alternative Alt;
+    DEFINE_LINKED_LIST_TYPE(Alt)
 
     #define YYLLOC_DEFAULT(Cur, Rhs, N) \
         do { \
@@ -47,12 +55,8 @@
             } \
         } while (0);
 
-    typedef struct {
-        Declaration* first;
-        Declaration* last;
-    } DeclList;
-
     typedef struct ParseContext_ {
+        CompilationUnit* comp_unit;
         DeclList scope_stack[32];
         Declaration** symbol_table; // array of Declaration*
         uint32_t symbol_table_capacity;
@@ -84,6 +88,10 @@
 
     DEFINE_ARRAY_OPS(ExprPtr)
     DEFINE_ARRAY_OPS(StringToken)
+    DEFINE_ARRAY_OPS(Choice)
+    DEFINE_LINKED_LIST_OPS(Decl)
+    DEFINE_LINKED_LIST_OPS(Stmt)
+    DEFINE_LINKED_LIST_OPS(Alt)
 
     static const char universal_integer_str[] = "universal_integer";
     TypeDecl universal_int_type = {
@@ -117,9 +125,6 @@
     static
     LabelDecl* find_label(ParseContext* context, StringToken name);
 
-    static
-    void append_decl(DeclList* decl_list, Declaration* decl);
-
     #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
 
     static
@@ -144,6 +149,9 @@
     LabelDecl* create_label(StringToken name, uint32_t line_num);
 
     static
+    CompilationUnit* create_comp_unit(CompilationUnitKind kind);
+
+    static
     int get_base(StringView num_str, uint32_t line_num);
 
     static
@@ -164,8 +172,16 @@
     BinaryOperator binary_op;
     Expression* expr;
     Statement* stmt;
+    StmtList stmt_list;
+    AltList case_list;
+    Choice choice;
+    Array_Choice choice_array;
+    Alternative* case_;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
+    Declaration* decl;
+    DeclList decl_list;
+    CompilationUnit* comp_unit;
     bool bool_;
     ParamMode param_mode;
     StringToken str_token;
@@ -186,15 +202,24 @@
              parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
              init_opt enum_id
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
-             loop_stmt goto_stmt statement_s unlabeled compound_stmt procedure_call handled_stmt_s
-             block_body block cond_clause cond_clause_s else_opt if_stmt
+             loop_stmt goto_stmt unlabeled compound_stmt procedure_call handled_stmt_s
+             block_body block cond_clause cond_clause_s else_opt if_stmt case_hdr case_stmt
+%type <stmt_list> statement_s
+%type <case_> alternative
+%type <decl> body decl_item_s decl_part type_decl subtype_decl block_decl
+%type <decl_list> decl decl_item_s1 decl_item_or_body_s1 decl_item object_decl number_decl decl_item_or_body
+%type <case_list> alternative_s
+%type <choice> choice
+%type <choice_array> choice_s
 %type <type_decl> type_completion type_def enumeration_type integer_type derived_type
-%type <bool_> reverse_opt object_qualifier_opt block_decl
+%type <subprogram_decl> subprog_decl subprog_spec subprog_spec_is_push subprog_body
+%type <bool_> reverse_opt object_qualifier_opt
 %type <param_mode> mode
 %type <str_token> subtype_ind simple_name object_subtype_def designator operator_symbol
 %type <str_token_array> def_id_s
 %type <expr_array> enum_id_s
 %type <name> name
+%type <comp_unit> comp_unit unit pkg_spec pkg_body pkg_decl
 
 /* Multi-character operators */
 %token DOT_DOT BOX LT_EQ EXPON NE GE IS_ASSIGNED RIGHT_SHAFT
@@ -220,7 +245,7 @@
 
 %%
 
-goal_symbol : comp_unit
+goal_symbol : comp_unit { context->comp_unit = $1; }
     ;
 
 pragma :
@@ -246,9 +271,18 @@ pragma_s :
 decl :
     object_decl
   | number_decl
-  | type_decl
-  | subtype_decl
-  | subprog_decl
+  | type_decl    {
+        memset(&$$, 0, sizeof($$));
+        DeclList_append(&$$, $1);
+    }
+  | subtype_decl {
+        memset(&$$, 0, sizeof($$));
+        DeclList_append(&$$, $1);
+    }
+  | subprog_decl {
+        memset(&$$, 0, sizeof($$));
+        DeclList_append(&$$, &$1->base);
+    }
   | pkg_decl
   | exception_decl
   | rename_decl
@@ -265,6 +299,7 @@ object_decl :
             error_exit();
         }
 
+        memset(&$$, 0, sizeof($$));
         uint32_t name_count = array_StringToken_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
@@ -277,12 +312,14 @@ object_decl :
                 error_print(@$, "Constant declaration '%s' is not initialized", ST(decl->name));
                 error_exit();
             }
+            DeclList_append(&$$, &decl->base);
             push_declaration(context, &decl->base);
         }
     };
 
 number_decl :
     def_id_s ':' CONSTANT IS_ASSIGNED expression ';' {
+        memset(&$$, 0, sizeof($$));
         uint32_t name_count = array_StringToken_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
@@ -290,6 +327,7 @@ number_decl :
             decl->is_constant = true;
             decl->type = &universal_int_type;
             decl->init_expr = $5;
+            DeclList_append(&$$, &decl->base);
             push_declaration(context, &decl->base);
         }
     };
@@ -327,6 +365,7 @@ type_decl :
         decl->name = $2;
         check_for_redefinition(context, decl->name, @$);
         push_declaration(context, &decl->base);
+        $$ = &decl->base;
     };
 
 discrim_part_opt :
@@ -365,6 +404,7 @@ subtype_decl :
         }
         decl->u.subtype.base = base_type;
         push_declaration(context, &decl->base);
+        $$ = &decl->base;
     };
 
 // TODO: support other name variants (e.g. indexed, compound)
@@ -424,8 +464,10 @@ enum_id_s :
         array_ExprPtr_init(&$$);
         array_ExprPtr_append(&$$, $1);
     }
-  | enum_id_s ',' enum_id { array_ExprPtr_append(&$$, $3); }
-    ;
+  | enum_id_s ',' enum_id {
+        $$ = $1;
+        array_ExprPtr_append(&$$, $3);
+    };
 
 enum_id :
     identifier {
@@ -562,15 +604,23 @@ variant :
     ;
 
 choice_s :
-    choice
-  | choice_s '|' choice
-    ;
+    choice              {
+        array_Choice_init(&$$);
+        array_Choice_append(&$$, $1);
+    }
+  | choice_s '|' choice {
+        $$ = $1;
+        array_Choice_append(&$$, $3);
+    };
 
 choice :
-    expression
+    expression           {
+        $$.kind = CHOICE_EXPR;
+        $$.u.expr = $1;
+    }
   | discrete_with_range
-  | OTHERS
-    ;
+  | OTHERS               { $$.kind = CHOICE_OTHERS; }
+  ;
 
 discrete_with_range :
     name range_constraint
@@ -583,19 +633,21 @@ access_type :
     ;
 
 decl_part :
-    %empty
-  | decl_item_or_body_s1
+    %empty               { $$ = NULL; }
+  | decl_item_or_body_s1 { $$ = $1.first; }
     ;
 
 decl_item_s :
-    %empty
-  | decl_item_s1
+    %empty       { $$ = NULL; }
+  | decl_item_s1 { $$ = $1.first; }
     ;
 
 decl_item_s1 :
     decl_item
-  | decl_item_s1 decl_item
-    ;
+  | decl_item_s1 decl_item {
+        DeclList_splice(&$1, &$2);
+        $$ = $1;
+    };
 
 decl_item :
     decl
@@ -606,16 +658,21 @@ decl_item :
 
 decl_item_or_body_s1 :
     decl_item_or_body
-  | decl_item_or_body_s1 decl_item_or_body
-    ;
+  | decl_item_or_body_s1 decl_item_or_body {
+        DeclList_splice(&$1, &$2);
+        $$ = $1;
+    };
 
 decl_item_or_body :
-    body
+    body      {
+        memset(&$$, 0, sizeof($$));
+        DeclList_append(&$$, $1);
+    }
   | decl_item
     ;
 
 body :
-    subprog_body
+    subprog_body { $$ = &$1->base; }
   | pkg_body
     ;
 
@@ -837,11 +894,13 @@ allocator :
     ;
 
 statement_s :
-    statement
+    statement             {
+        memset(&$$, 0, sizeof($$));
+        StmtList_append(&$$, $1);
+    }
   | statement_s statement {
+        StmtList_append(&$1, $2);
         $$ = $1;
-        $$->next = $2;
-        $$ = $2;
     };
 
 statement :
@@ -892,19 +951,26 @@ assign_stmt :
 if_stmt :
     IF cond_clause_s else_opt END IF ';' {
         $$ = $2;
-        $$->u.if_.else_ = $3;
+        Statement* branch = $2;
+        while(branch->u.if_.else_) {
+            branch = branch->u.if_.else_;
+            assert(branch->kind == STMT_IF);
+        }
+        branch->u.if_.else_ = $3;
     };
 
 cond_clause_s :
     cond_clause
-  | cond_clause_s ELSIF cond_clause { $1->u.if_.else_ = $3; }
-  ;
+  | cond_clause_s ELSIF cond_clause {
+        $$ = $1;
+        $$->u.if_.else_ = $3;
+    };
 
 cond_clause :
     cond_part statement_s {
         $$ = create_stmt(STMT_IF, @$);
         $$->u.if_.condition = $1;
-        $$->u.if_.stmts = $2;
+        $$->u.if_.stmts = $2.first;
     };
 
 cond_part :
@@ -917,25 +983,36 @@ condition :
 
 else_opt :
     %empty           { $$ = NULL; }
-  | ELSE statement_s { $$ = $2; }
+  | ELSE statement_s { $$ = $2.first; }
     ;
 
 case_stmt :
-    case_hdr pragma_s alternative_s END CASE ';'
-    ;
+    case_hdr pragma_s alternative_s END CASE ';' {
+        $$ = $1;
+        // TODO: pragmas
+        $$->u.case_.cases = $3.first;
+    };
 
 case_hdr :
-    CASE expression IS
-    ;
+    CASE expression IS {
+        $$ = create_stmt(STMT_CASE, @$);
+        $$->u.case_.expr = $2;
+    };
 
 alternative_s :
-    %empty
-  | alternative_s alternative
-    ;
+    %empty                    { memset(&$$, 0, sizeof($$)); }
+  | alternative_s alternative {
+        $$ = $1;
+        AltList_append(&$$, $2);
+    };
 
 alternative :
-    WHEN choice_s RIGHT_SHAFT statement_s
-    ;
+    WHEN choice_s RIGHT_SHAFT statement_s {
+        $$ = calloc(1, sizeof(Alternative));
+        $$->choices.choices = $2.data;
+        $$->choices.count = array_Choice_size(&$2);
+        $$->stmts = $4.first;
+    };
 
 // TODO: label_opt and id_opt
 loop_stmt :
@@ -982,7 +1059,7 @@ reverse_opt :
     ;
 
 basic_loop :
-    LOOP statement_s END LOOP { $$ = $2; }
+    LOOP statement_s END LOOP { $$ = $2.first; }
     ;
 
 id_opt :
@@ -994,6 +1071,7 @@ id_opt :
 block :
     label_opt block_decl block_body END id_opt ';' {
         $$ = create_stmt(STMT_BLOCK, @$);
+        $$->u.block.decls = $2;
         $$->u.block.stmts = $3;
         // Close scope if needed (i.e. if there was a declaration section)
         if($2) {
@@ -1002,8 +1080,8 @@ block :
     };
 
 block_decl :
-    %empty  { $$ = false; }
-  | DECLARE { begin_scope(context, @1); } decl_part { $$ = true; }
+    %empty                                          { $$ = NULL; }
+  | DECLARE { begin_scope(context, @1); } decl_part { $$ = $3; }
     ;
 
 block_body :
@@ -1012,7 +1090,7 @@ block_body :
 
 // TODO: exception handler
 handled_stmt_s :
-    statement_s except_handler_part_opt { $$ = $1; }
+    statement_s except_handler_part_opt { $$ = $1.first; }
     ;
 
 except_handler_part_opt :
@@ -1069,23 +1147,24 @@ goto_stmt :
     };
 
 subprog_decl :
-    subprog_spec ';'
+    subprog_spec ';'      { $$ = $1; }
   | generic_subp_inst ';'
     ;
 
+// TODO: process formal_part_opt
 subprog_spec :
     PROCEDURE simple_name <subprogram_decl>{
         begin_scope(context, @2);
         // TODO: check for name conflict
         $<subprogram_decl>$ = create_subprogram_decl($2, @2);
     }
-    formal_part_opt
+    formal_part_opt             { $$ = $3; }
   | FUNCTION designator <subprogram_decl>{
         begin_scope(context, @2);
         // TODO: check for name conflict
         $<subprogram_decl>$ = create_subprogram_decl($2, @2);
     }
-    formal_part_opt RETURN name
+    formal_part_opt RETURN name { $$ = $3; }
   | FUNCTION designator  /* for generic inst and generic rename */
     ;
 
@@ -1121,12 +1200,15 @@ mode :
     ;
 
 subprog_spec_is_push :
-    subprog_spec IS
+    subprog_spec IS { $$ = $1; }
     ;
 
 subprog_body :
-    subprog_spec_is_push decl_part block_body END id_opt ';'
-    ;
+    subprog_spec_is_push decl_part block_body END id_opt ';' {
+        $$ = $1;
+        $$->decls = $2;
+        $$->stmts = $3;
+    };
 
 procedure_call :
     name ';' {
@@ -1136,14 +1218,20 @@ procedure_call :
         $$->u.expr.u.name = $1;
     };
 
+// TODO: make this a Declaration too somehow
 pkg_decl :
-    pkg_spec ';'
+    pkg_spec ';'         { $$ = $1; }
   | generic_pkg_inst ';'
     ;
 
 pkg_spec :
-    PACKAGE simple_name IS decl_item_s private_part END simple_name_opt
-    ;
+    PACKAGE simple_name IS decl_item_s private_part END simple_name_opt {
+        $$ = create_comp_unit(COMP_UNIT_PACKAGE_SPEC);
+        $$->u.package_spec.name = $2;
+        $$->u.package_spec.decls = $4;
+        // TODO: private part
+        // TODO: check simple_name_opt matches
+    };
 
 private_part :
     %empty
@@ -1156,8 +1244,13 @@ simple_name_opt :
     ;
 
 pkg_body :
-    PACKAGE BODY simple_name IS decl_part body_opt END simple_name_opt ';'
-    ;
+    PACKAGE BODY simple_name IS decl_part body_opt END simple_name_opt ';' {
+        $$ = create_comp_unit(COMP_UNIT_PACKAGE_BODY);
+        $$->u.package_body.name = $3;
+        // TODO: decl_part
+        // TODO: body_opt
+        // TODO: check simple_name_opt matches
+    };
 
 body_opt :
     %empty
@@ -1200,8 +1293,8 @@ renames :
     ;
 
 comp_unit :
-    context_spec unit pragma_s
-  | unit pragma_s
+    context_spec unit pragma_s { $$ = $2; }
+  | unit pragma_s              { $$ = $1; }
     ;
 
 context_spec :
@@ -1222,8 +1315,14 @@ use_clause_opt :
 unit :
     pkg_decl
   | pkg_body
-  | subprog_decl
-  | subprog_body
+  | subprog_decl {
+        $$ = create_comp_unit(COMP_UNIT_SUBPROGRAM);
+        $$->u.subprogram_decl = $1;
+    }
+  | subprog_body {
+        $$ = create_comp_unit(COMP_UNIT_SUBPROGRAM);
+        $$->u.subprogram_decl = $1;
+    }
   | subunit
   | generic_decl
   | rename_unit
@@ -1411,7 +1510,7 @@ void end_scope(ParseContext* context, uint32_t line_num)
 static
 void push_declaration(ParseContext* context, Declaration* decl)
 {
-    append_decl(curr_scope, decl);
+    DeclList_append(curr_scope, decl);
     StringToken name = get_decl_name(decl);
     // Add named declarations to the symbol table
     if(name) {
@@ -1477,17 +1576,6 @@ LabelDecl* find_label(ParseContext* context, StringToken name)
         }
     }
     return NULL;
-}
-
-static
-void append_decl(DeclList* decl_list, Declaration* decl)
-{
-    if(decl_list->last) {
-        decl_list->last->next = decl;
-    } else {
-        decl_list->first = decl;
-    }
-    decl_list->last = decl;
 }
 
 Declaration** find_bucket(ParseContext* context, StringToken name)
@@ -1572,6 +1660,14 @@ LabelDecl* create_label(StringToken name, uint32_t line_num)
     label->base.line_num = line_num;
     label->name = name;
     return label;
+}
+
+static
+CompilationUnit* create_comp_unit(CompilationUnitKind kind)
+{
+    CompilationUnit* comp_unit = calloc(1, sizeof(CompilationUnit));
+    comp_unit->kind = kind;
+    return comp_unit;
 }
 
 static
