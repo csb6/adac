@@ -217,7 +217,8 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
             printf("null");
             break;
         case STMT_ASSIGN:
-            printf("%s := ", ST(stmt->u.assign.dest->name));
+            print_expression(&stmt->u.assign.dest);
+            printf(" := ");
             print_expression(stmt->u.assign.expr);
             break;
         case STMT_RETURN:

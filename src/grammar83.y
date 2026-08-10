@@ -941,10 +941,12 @@ null_stmt :
     NuLL ';' { $$ = create_stmt(STMT_NULL, @$); }
     ;
 
-// TODO: name
 assign_stmt :
     name IS_ASSIGNED expression ';' {
         $$ = create_stmt(STMT_ASSIGN, @$);
+        $$->u.assign.dest.kind = EXPR_NAME;
+        $$->u.assign.dest.line_num = @$;
+        $$->u.assign.dest.u.name = $1;
         $$->u.assign.expr = $3;
     };
 

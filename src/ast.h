@@ -245,7 +245,7 @@ enum {
 };
 
 typedef struct {
-    ObjectDecl* dest; // TODO: array/record components
+    Expression dest; // Must be a NameExpr
     Expression* expr;
 } AssignStmt;
 
