@@ -194,7 +194,7 @@ void print_type_decl(const TypeDecl* type_decl)
             putchar('(');
             for(uint32_t i = 0; i < type_decl->u.enum_.literal_count; ++i) {
                 print_expression(type_decl->u.enum_.literals[i]);
-                putchar(' ');
+                printf(", ");
             }
             putchar(')');
             break;
