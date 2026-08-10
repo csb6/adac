@@ -201,7 +201,7 @@
 %type <unary_op> unary adding multiplying membership relational logical short_circuit
 %type <expr> used_char literal simple_expression relation primary term factor expression
              parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
-             init_opt enum_id
+             discrete_range init_opt enum_id
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
              loop_stmt goto_stmt unlabeled compound_stmt procedure_call handled_stmt_s
              block_body block cond_clause cond_clause_s else_opt if_stmt case_hdr case_stmt
@@ -1046,11 +1046,11 @@ loop_content :
         $$->u.loop.u.while_.condition = $2;
     }
   | iter_part reverse_opt discrete_range basic_loop {
-        // TODO: range
         $$ = create_stmt(STMT_LOOP, @$);
         $$->u.loop.kind = LOOP_FOR;
         $$->u.loop.reverse = $2;
         $$->u.loop.u.for_.var = $1;
+        $$->u.loop.u.for_.range = $3;
         $$->u.loop.stmts = $4;
     };
 

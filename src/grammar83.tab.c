@@ -3516,11 +3516,11 @@ yyreduce:
   case 260: /* loop_content: iter_part reverse_opt discrete_range basic_loop  */
 #line 1048 "grammar83.y"
                                                     {
-        // TODO: range
         (yyval.stmt) = create_stmt(STMT_LOOP, (yyloc));
         (yyval.stmt)->u.loop.kind = LOOP_FOR;
         (yyval.stmt)->u.loop.reverse = (yyvsp[-2].bool_);
         (yyval.stmt)->u.loop.u.for_.var = (yyvsp[-3].object_decl);
+        (yyval.stmt)->u.loop.u.for_.range = (yyvsp[-1].expr);
         (yyval.stmt)->u.loop.stmts = (yyvsp[0].stmt);
     }
 #line 3527 "grammar83.tab.c"
