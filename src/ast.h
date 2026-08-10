@@ -308,7 +308,7 @@ typedef struct {
 } WhileLoop;
 
 typedef struct {
-    ObjectDecl* var;
+    ObjectDecl var;
     Expression* range;
 } ForLoop;
 

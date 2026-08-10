@@ -49,6 +49,7 @@ void print_compilation_unit(const CompilationUnit* unit)
         default:
             printf("Unhandled compilation unit\n");
     }
+    putchar('\n');
 }
 
 static
@@ -354,7 +355,7 @@ void print_loop_statement(const LoopStmt* loop, uint8_t indent_level)
         print_expression(loop->u.while_.condition);
     } else {
         assert(loop->kind == LOOP_FOR);
-        printf("for %s in ", ST(loop->u.for_.var->name));
+        printf("for %s in ", ST(loop->u.for_.var.name));
         if(loop->reverse) {
             printf("reverse ");
         }

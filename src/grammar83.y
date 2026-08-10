@@ -177,6 +177,7 @@
     Choice choice;
     ChoiceArray choice_array;
     Alternative* case_;
+    ObjectDecl object_decl;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
     Declaration* decl;
@@ -212,6 +213,7 @@
 %type <choice> choice
 %type <choice_array> choice_s
 %type <type_decl> type_completion type_def enumeration_type integer_type derived_type
+%type <object_decl> iter_part
 %type <subprogram_decl> subprog_decl subprog_spec subprog_spec_is_push subprog_body
 %type <bool_> reverse_opt object_qualifier_opt
 %type <param_mode> mode
@@ -1044,16 +1046,21 @@ loop_content :
         $$->u.loop.u.while_.condition = $2;
     }
   | iter_part reverse_opt discrete_range basic_loop {
-        // TODO: identifier
+        // TODO: range
         $$ = create_stmt(STMT_LOOP, @$);
         $$->u.loop.kind = LOOP_FOR;
         $$->u.loop.reverse = $2;
+        $$->u.loop.u.for_.var = $1;
         $$->u.loop.stmts = $4;
     };
 
 iter_part :
-    FOR identifier IN
-    ;
+    FOR identifier IN {
+        memset(&$$, 0, sizeof($$));
+        $$.base.kind = DECL_OBJECT;
+        $$.base.line_num = @$;
+        $$.name = $2;
+    };
 
 reverse_opt :
     %empty  { $$ = false; }
