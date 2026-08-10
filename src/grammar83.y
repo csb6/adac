@@ -175,7 +175,7 @@
     StmtList stmt_list;
     AltList case_list;
     Choice choice;
-    Array_Choice choice_array;
+    ChoiceArray choice_array;
     Alternative* case_;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
@@ -187,8 +187,8 @@
     StringToken str_token;
     char c;
     StringView str; // Note: this StringView owns its allocated data
-    Array_ExprPtr expr_array;
-    Array_StringToken str_token_array;
+    ExprPtrArray expr_array;
+    StringTokenArray str_token_array;
     NameExpr name;
 }
 
@@ -300,7 +300,7 @@ object_decl :
         }
 
         memset(&$$, 0, sizeof($$));
-        uint32_t name_count = array_StringToken_size(&$1);
+        uint32_t name_count = StringTokenArray_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
             check_for_redefinition(context, decl->name, @$);
@@ -320,7 +320,7 @@ object_decl :
 number_decl :
     def_id_s ':' CONSTANT IS_ASSIGNED expression ';' {
         memset(&$$, 0, sizeof($$));
-        uint32_t name_count = array_StringToken_size(&$1);
+        uint32_t name_count = StringTokenArray_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
             check_for_redefinition(context, decl->name, @$);
@@ -334,10 +334,10 @@ number_decl :
 
 def_id_s :
     identifier {
-        array_StringToken_init(&$$);
-        array_StringToken_append(&$$, $1);
+        StringTokenArray_init(&$$);
+        StringTokenArray_append(&$$, $1);
     }
-  | def_id_s ',' identifier { array_StringToken_append(&$$, $3); }
+  | def_id_s ',' identifier { StringTokenArray_append(&$$, $3); }
     ;
 
 // boolean attribute indicates whether object is a constant or not
@@ -455,18 +455,18 @@ enumeration_type :
     '(' enum_id_s ')' {
         $$ = create_type_decl(TYPE_ENUM);
         $$->u.enum_.literals = $2.data;
-        $$->u.enum_.literal_count = array_ExprPtr_size(&$2);
+        $$->u.enum_.literal_count = ExprPtrArray_size(&$2);
         // TODO: add all enum literals into symbol table scope
     };
 
 enum_id_s :
     enum_id {
-        array_ExprPtr_init(&$$);
-        array_ExprPtr_append(&$$, $1);
+        ExprPtrArray_init(&$$);
+        ExprPtrArray_append(&$$, $1);
     }
   | enum_id_s ',' enum_id {
         $$ = $1;
-        array_ExprPtr_append(&$$, $3);
+        ExprPtrArray_append(&$$, $3);
     };
 
 enum_id :
@@ -605,12 +605,12 @@ variant :
 
 choice_s :
     choice              {
-        array_Choice_init(&$$);
-        array_Choice_append(&$$, $1);
+        ChoiceArray_init(&$$);
+        ChoiceArray_append(&$$, $1);
     }
   | choice_s '|' choice {
         $$ = $1;
-        array_Choice_append(&$$, $3);
+        ChoiceArray_append(&$$, $3);
     };
 
 choice :
@@ -1010,7 +1010,7 @@ alternative :
     WHEN choice_s RIGHT_SHAFT statement_s {
         $$ = calloc(1, sizeof(Alternative));
         $$->choices.choices = $2.data;
-        $$->choices.count = array_Choice_size(&$2);
+        $$->choices.count = ChoiceArray_size(&$2);
         $$->stmts = $4.first;
     };
 

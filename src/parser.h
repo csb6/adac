@@ -194,7 +194,7 @@ union YYSTYPE
     StmtList stmt_list;
     AltList case_list;
     Choice choice;
-    Array_Choice choice_array;
+    ChoiceArray choice_array;
     Alternative* case_;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
@@ -206,8 +206,8 @@ union YYSTYPE
     StringToken str_token;
     char c;
     StringView str; // Note: this StringView owns its allocated data
-    Array_ExprPtr expr_array;
-    Array_StringToken str_token_array;
+    ExprPtrArray expr_array;
+    StringTokenArray str_token_array;
     NameExpr name;
 
 #line 214 "parser.h"

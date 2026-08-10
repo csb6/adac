@@ -2760,7 +2760,7 @@ yyreduce:
         }
 
         memset(&(yyval.decl_list), 0, sizeof((yyval.decl_list)));
-        uint32_t name_count = array_StringToken_size(&(yyvsp[-5].str_token_array));
+        uint32_t name_count = StringTokenArray_size(&(yyvsp[-5].str_token_array));
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl((yyvsp[-5].str_token_array).data[i], (yyloc));
             check_for_redefinition(context, decl->name, (yyloc));
@@ -2783,7 +2783,7 @@ yyreduce:
 #line 321 "grammar83.y"
                                                      {
         memset(&(yyval.decl_list), 0, sizeof((yyval.decl_list)));
-        uint32_t name_count = array_StringToken_size(&(yyvsp[-5].str_token_array));
+        uint32_t name_count = StringTokenArray_size(&(yyvsp[-5].str_token_array));
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl((yyvsp[-5].str_token_array).data[i], (yyloc));
             check_for_redefinition(context, decl->name, (yyloc));
@@ -2800,15 +2800,15 @@ yyreduce:
   case 24: /* def_id_s: identifier  */
 #line 336 "grammar83.y"
                {
-        array_StringToken_init(&(yyval.str_token_array));
-        array_StringToken_append(&(yyval.str_token_array), (yyvsp[0].str_token));
+        StringTokenArray_init(&(yyval.str_token_array));
+        StringTokenArray_append(&(yyval.str_token_array), (yyvsp[0].str_token));
     }
 #line 2807 "grammar83.tab.c"
     break;
 
   case 25: /* def_id_s: def_id_s ',' identifier  */
 #line 340 "grammar83.y"
-                            { array_StringToken_append(&(yyval.str_token_array), (yyvsp[0].str_token)); }
+                            { StringTokenArray_append(&(yyval.str_token_array), (yyvsp[0].str_token)); }
 #line 2813 "grammar83.tab.c"
     break;
 
@@ -2928,7 +2928,7 @@ yyreduce:
                       {
         (yyval.type_decl) = create_type_decl(TYPE_ENUM);
         (yyval.type_decl)->u.enum_.literals = (yyvsp[-1].expr_array).data;
-        (yyval.type_decl)->u.enum_.literal_count = array_ExprPtr_size(&(yyvsp[-1].expr_array));
+        (yyval.type_decl)->u.enum_.literal_count = ExprPtrArray_size(&(yyvsp[-1].expr_array));
         // TODO: add all enum literals into symbol table scope
     }
 #line 2935 "grammar83.tab.c"
@@ -2937,8 +2937,8 @@ yyreduce:
   case 60: /* enum_id_s: enum_id  */
 #line 463 "grammar83.y"
             {
-        array_ExprPtr_init(&(yyval.expr_array));
-        array_ExprPtr_append(&(yyval.expr_array), (yyvsp[0].expr));
+        ExprPtrArray_init(&(yyval.expr_array));
+        ExprPtrArray_append(&(yyval.expr_array), (yyvsp[0].expr));
     }
 #line 2944 "grammar83.tab.c"
     break;
@@ -2947,7 +2947,7 @@ yyreduce:
 #line 467 "grammar83.y"
                           {
         (yyval.expr_array) = (yyvsp[-2].expr_array);
-        array_ExprPtr_append(&(yyval.expr_array), (yyvsp[0].expr));
+        ExprPtrArray_append(&(yyval.expr_array), (yyvsp[0].expr));
     }
 #line 2953 "grammar83.tab.c"
     break;
@@ -2982,8 +2982,8 @@ yyreduce:
   case 107: /* choice_s: choice  */
 #line 607 "grammar83.y"
                         {
-        array_Choice_init(&(yyval.choice_array));
-        array_Choice_append(&(yyval.choice_array), (yyvsp[0].choice));
+        ChoiceArray_init(&(yyval.choice_array));
+        ChoiceArray_append(&(yyval.choice_array), (yyvsp[0].choice));
     }
 #line 2989 "grammar83.tab.c"
     break;
@@ -2992,7 +2992,7 @@ yyreduce:
 #line 611 "grammar83.y"
                         {
         (yyval.choice_array) = (yyvsp[-2].choice_array);
-        array_Choice_append(&(yyval.choice_array), (yyvsp[0].choice));
+        ChoiceArray_append(&(yyval.choice_array), (yyvsp[0].choice));
     }
 #line 2998 "grammar83.tab.c"
     break;
@@ -3472,7 +3472,7 @@ yyreduce:
                                           {
         (yyval.case_) = calloc(1, sizeof(Alternative));
         (yyval.case_)->choices.choices = (yyvsp[-2].choice_array).data;
-        (yyval.case_)->choices.count = array_Choice_size(&(yyvsp[-2].choice_array));
+        (yyval.case_)->choices.count = ChoiceArray_size(&(yyvsp[-2].choice_array));
         (yyval.case_)->stmts = (yyvsp[0].stmt_list).first;
     }
 #line 3479 "grammar83.tab.c"
