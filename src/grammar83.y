@@ -709,11 +709,6 @@ simple_name :
     identifier
     ;
 
-simple_name_list :
-    simple_name
-  | simple_name_list ',' simple_name
-    ;
-
 used_char :
     char_lit {
         $$ = create_expr(EXPR_CHAR_LIT, @$);
@@ -1323,7 +1318,7 @@ context_spec :
     ;
 
 with_clause :
-    WITH simple_name_list ';'
+    WITH def_id_s ';'
     ;
 
 use_clause_opt :
