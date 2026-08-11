@@ -221,7 +221,7 @@
 %type <pkg_body> pkg_body
 %type <bool_> reverse_opt object_qualifier_opt
 %type <param_mode> mode
-%type <str_token> subtype_ind simple_name object_subtype_def designator operator_symbol
+%type <str_token> subtype_ind object_subtype_def designator operator_symbol
 %type <str_token_array> def_id_s
 %type <expr_array> enum_id_s
 %type <name> name
@@ -256,7 +256,7 @@ goal_symbol : comp_unit { context->comp_unit = $1; }
 
 pragma :
     PRAGMA identifier ';'
-  | PRAGMA simple_name '(' pragma_arg_s ')' ';'
+  | PRAGMA identifier '(' pragma_arg_s ')' ';'
     ;
 
 pragma_arg_s :
@@ -266,7 +266,7 @@ pragma_arg_s :
 
 pragma_arg :
     expression
-  | simple_name RIGHT_SHAFT expression
+  | identifier RIGHT_SHAFT expression
     ;
 
 pragma_s :
@@ -600,7 +600,7 @@ access_opt :
     ;
 
 variant_part :
-    CASE simple_name IS pragma_s variant_s END CASE ';'
+    CASE identifier IS pragma_s variant_s END CASE ';'
     ;
 
 variant_s :
@@ -686,7 +686,7 @@ body :
     ;
 
 name :
-    simple_name {
+    identifier {
         memset(&$$, 0, sizeof($$));
         $$.name = $1;
     }
@@ -700,13 +700,9 @@ name :
     };
 
 mark :
-    simple_name
-  | mark '\'' attribute_id
-  | mark '.' simple_name
-    ;
-
-simple_name :
     identifier
+  | mark '\'' attribute_id
+  | mark '.' identifier
     ;
 
 used_char :
@@ -736,7 +732,7 @@ value :
     ;
 
 selected_comp :
-    name '.' simple_name
+    name '.' identifier
   | name '.' used_char
   | name '.' operator_symbol
   | name '.' ALL
@@ -1164,7 +1160,7 @@ subprog_decl :
 
 // TODO: process formal_part_opt
 subprog_spec :
-    PROCEDURE simple_name <subprogram_decl>{
+    PROCEDURE identifier <subprogram_decl>{
         begin_scope(context, @2);
         // TODO: check for name conflict
         $<subprogram_decl>$ = create_subprogram_decl($2, @2);
@@ -1180,7 +1176,7 @@ subprog_spec :
     ;
 
 designator :
-    simple_name
+    identifier
   | char_string { $$ = string_pool_to_token($1); }
     ;
 
@@ -1235,14 +1231,14 @@ pkg_decl :
     ;
 
 pkg_spec :
-    PACKAGE simple_name IS decl_item_s private_part END simple_name_opt {
+    PACKAGE identifier IS decl_item_s private_part END identifier_opt {
         $$ = calloc(1, sizeof(PackageSpec));
         $$->base.kind = DECL_PKG_SPEC;
         $$->base.line_num = @$;
         $$->name = $2;
         $$->decls = $4;
         // TODO: private part
-        // TODO: check simple_name_opt matches
+        // TODO: check identifier_opt matches
     };
 
 private_part :
@@ -1250,20 +1246,20 @@ private_part :
   | PRIVATE decl_item_s
     ;
 
-simple_name_opt :
+identifier_opt :
     %empty
-  | simple_name
+  | identifier
     ;
 
 pkg_body :
-    PACKAGE BODY simple_name IS decl_part body_opt END simple_name_opt ';' {
+    PACKAGE BODY identifier IS decl_part body_opt END identifier_opt ';' {
         $$ = calloc(1, sizeof(PackageBody));
         $$->base.kind = DECL_PKG_BODY;
         $$->base.line_num = @$;
         $$->name = $3;
         $$->decls = $5;
         // TODO: body_opt
-        // TODO: check simple_name_opt matches
+        // TODO: check identifier_opt matches
     };
 
 body_opt :
@@ -1296,9 +1292,9 @@ rename_decl :
     ;
 
 rename_unit :
-    PACKAGE simple_name renames ';'
+    PACKAGE identifier renames ';'
   | subprog_spec renames ';'
-  | generic_formal_part PACKAGE simple_name renames ';'
+  | generic_formal_part PACKAGE identifier renames ';'
   | generic_formal_part subprog_spec renames ';'
     ;
 
@@ -1349,7 +1345,7 @@ unit :
     ;
 
 subunit :
-    SEPARATE '(' simple_name ')' subunit_body
+    SEPARATE '(' identifier ')' subunit_body
     ;
 
 subunit_body :
@@ -1358,7 +1354,7 @@ subunit_body :
     ;
 
 body_stub :
-    PACKAGE BODY simple_name IS SEPARATE ';'
+    PACKAGE BODY identifier IS SEPARATE ';'
   | subprog_spec IS SEPARATE ';'
     ;
 
@@ -1402,11 +1398,11 @@ generic_formal_part :
 
 generic_formal :
     param ';'
-  | TYPE simple_name generic_discrim_part_opt IS generic_type_def ';'
-  | WITH PROCEDURE simple_name formal_part_opt subp_default ';'
+  | TYPE identifier generic_discrim_part_opt IS generic_type_def ';'
+  | WITH PROCEDURE identifier formal_part_opt subp_default ';'
   | WITH FUNCTION designator formal_part_opt RETURN name subp_default ';'
-  | WITH PACKAGE simple_name IS NEW name '(' BOX ')' ';'
-  | WITH PACKAGE simple_name IS NEW name ';'
+  | WITH PACKAGE identifier IS NEW name '(' BOX ')' ';'
+  | WITH PACKAGE identifier IS NEW name ';'
   | use_clause
     ;
 
@@ -1445,7 +1441,7 @@ generic_subp_inst :
     ;
 
 generic_pkg_inst :
-    PACKAGE simple_name IS generic_inst
+    PACKAGE identifier IS generic_inst
     ;
 
 generic_inst :
