@@ -178,7 +178,8 @@ typedef struct Expression_ {
 
 typedef uint8_t DeclKind;
 enum {
-    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL
+    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL, DECL_PKG_SPEC,
+    DECL_PKG_BODY
 };
 
 typedef struct Declaration_ {
@@ -235,6 +236,20 @@ typedef struct {
     struct Statement_* target;
     StringToken name;
 } LabelDecl;
+
+// 7.1: Package Structure
+typedef struct PackageSpec_ {
+    Declaration base;
+    StringToken name;
+    Declaration* decls; // TODO: support representation_clause/use_clause in this list
+} PackageSpec;
+
+typedef struct {
+    Declaration base;
+    StringToken name;
+    Declaration* decls;
+    struct Statement_* stmts;
+} PackageBody;
 
 /* STATEMENTS */
 
@@ -343,20 +358,6 @@ typedef struct Statement_ {
     struct Statement_* next;
 } Statement;
 
-/* PACKAGES */
-
-// 7.1: Package Structure
-typedef struct PackageSpec_ {
-    StringToken name;
-    Declaration* decls; // TODO: support representation_clause/use_clause in this list
-} PackageSpec;
-
-typedef struct {
-    StringToken name;
-    Declaration* decls;
-    Statement* stmts;
-} PackageBody;
-
 /* COMPILATION UNITS */
 
 typedef uint8_t CompilationUnitKind;
@@ -370,8 +371,8 @@ typedef struct CompilationUnit_ {
     CompilationUnitKind kind;
     union {
         SubprogramDecl* subprogram_decl;
-        PackageSpec package_spec;
-        PackageBody package_body;
+        PackageSpec* package_spec;
+        PackageBody* package_body;
         // TODO: secondary_unit, generics
     } u;
 } CompilationUnit;

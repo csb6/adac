@@ -199,6 +199,8 @@ union YYSTYPE
     ObjectDecl object_decl;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
+    PackageSpec* pkg_spec;
+    PackageBody* pkg_body;
     Declaration* decl;
     DeclList decl_list;
     CompilationUnit* comp_unit;
@@ -211,7 +213,7 @@ union YYSTYPE
     StringTokenArray str_token_array;
     NameExpr name;
 
-#line 215 "parser.h"
+#line 217 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -232,6 +234,6 @@ int yyparse (void* scanner, ParseContext* context);
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 236 "parser.h"
+#line 238 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

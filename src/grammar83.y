@@ -180,6 +180,8 @@
     ObjectDecl object_decl;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
+    PackageSpec* pkg_spec;
+    PackageBody* pkg_body;
     Declaration* decl;
     DeclList decl_list;
     CompilationUnit* comp_unit;
@@ -215,13 +217,15 @@
 %type <type_decl> type_completion type_def enumeration_type integer_type derived_type
 %type <object_decl> iter_part
 %type <subprogram_decl> subprog_decl subprog_spec subprog_spec_is_push subprog_body
+%type <pkg_spec> pkg_spec pkg_decl
+%type <pkg_body> pkg_body
 %type <bool_> reverse_opt object_qualifier_opt
 %type <param_mode> mode
 %type <str_token> subtype_ind simple_name object_subtype_def designator operator_symbol
 %type <str_token_array> def_id_s
 %type <expr_array> enum_id_s
 %type <name> name
-%type <comp_unit> comp_unit unit pkg_spec pkg_body pkg_decl
+%type <comp_unit> comp_unit unit
 
 /* Multi-character operators */
 %token DOT_DOT BOX LT_EQ EXPON NE GE IS_ASSIGNED RIGHT_SHAFT
@@ -285,7 +289,10 @@ decl :
         memset(&$$, 0, sizeof($$));
         DeclList_append(&$$, &$1->base);
     }
-  | pkg_decl
+  | pkg_decl     {
+        memset(&$$, 0, sizeof($$));
+        DeclList_append(&$$, &$1->base);
+    }
   | exception_decl
   | rename_decl
   | generic_decl
@@ -675,7 +682,7 @@ decl_item_or_body :
 
 body :
     subprog_body { $$ = &$1->base; }
-  | pkg_body
+  | pkg_body     { $$ = &$1->base; }
     ;
 
 name :
@@ -1227,7 +1234,6 @@ procedure_call :
         $$->u.expr.u.name = $1;
     };
 
-// TODO: make this a Declaration too somehow
 pkg_decl :
     pkg_spec ';'         { $$ = $1; }
   | generic_pkg_inst ';'
@@ -1235,9 +1241,11 @@ pkg_decl :
 
 pkg_spec :
     PACKAGE simple_name IS decl_item_s private_part END simple_name_opt {
-        $$ = create_comp_unit(COMP_UNIT_PACKAGE_SPEC);
-        $$->u.package_spec.name = $2;
-        $$->u.package_spec.decls = $4;
+        $$ = calloc(1, sizeof(PackageSpec));
+        $$->base.kind = DECL_PKG_SPEC;
+        $$->base.line_num = @$;
+        $$->name = $2;
+        $$->decls = $4;
         // TODO: private part
         // TODO: check simple_name_opt matches
     };
@@ -1254,9 +1262,11 @@ simple_name_opt :
 
 pkg_body :
     PACKAGE BODY simple_name IS decl_part body_opt END simple_name_opt ';' {
-        $$ = create_comp_unit(COMP_UNIT_PACKAGE_BODY);
-        $$->u.package_body.name = $3;
-        // TODO: decl_part
+        $$ = calloc(1, sizeof(PackageBody));
+        $$->base.kind = DECL_PKG_BODY;
+        $$->base.line_num = @$;
+        $$->name = $3;
+        $$->decls = $5;
         // TODO: body_opt
         // TODO: check simple_name_opt matches
     };
@@ -1322,8 +1332,14 @@ use_clause_opt :
     ;
 
 unit :
-    pkg_decl
-  | pkg_body
+    pkg_decl     {
+        $$ = create_comp_unit(COMP_UNIT_PACKAGE_SPEC);
+        $$->u.package_spec = $1;
+    }
+  | pkg_body     {
+        $$ = create_comp_unit(COMP_UNIT_PACKAGE_BODY);
+        $$->u.package_body = $1;
+    }
   | subprog_decl {
         $$ = create_comp_unit(COMP_UNIT_SUBPROGRAM);
         $$->u.subprogram_decl = $1;

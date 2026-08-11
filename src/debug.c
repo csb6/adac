@@ -21,7 +21,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include "ast.h"
 
-static void print_package_spec(const struct PackageSpec_* package_spec);
+static void print_package_spec(const PackageSpec* package_spec, uint8_t indent_level);
+static void print_package_body(const PackageBody* package_body, uint8_t indent_level);
 static void print_subprogram_decl(const struct SubprogramDecl_* decl, uint8_t indent_level);
 static void print_declaration(const Declaration* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
@@ -41,7 +42,10 @@ void print_compilation_unit(const CompilationUnit* unit)
 {
     switch(unit->kind) {
         case COMP_UNIT_PACKAGE_SPEC:
-            print_package_spec(&unit->u.package_spec);
+            print_package_spec(unit->u.package_spec, 0);
+            break;
+        case COMP_UNIT_PACKAGE_BODY:
+            print_package_body(unit->u.package_body, 0);
             break;
         case COMP_UNIT_SUBPROGRAM:
             print_subprogram_decl(unit->u.subprogram_decl, 0);
@@ -49,17 +53,7 @@ void print_compilation_unit(const CompilationUnit* unit)
         default:
             printf("Unhandled compilation unit\n");
     }
-    putchar('\n');
-}
-
-static
-void print_package_spec(const PackageSpec* package_spec)
-{
-    printf("package %s is\n", ST(package_spec->name));
-    for(const Declaration* decl = package_spec->decls; decl != NULL; decl = decl->next) {
-        print_declaration(decl, 1);
-    }
-    printf("end %s;", ST(package_spec->name));
+    printf(";\n");
 }
 
 static
@@ -91,10 +85,48 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
             print_indent(indent_level);
             printf("(Scope contains label: %s)", ST(((const LabelDecl*)decl)->name));
             break;
+        case DECL_PKG_SPEC:
+            print_package_spec((const PackageSpec*)decl, indent_level);
+            break;
+        case DECL_PKG_BODY:
+            print_package_body((const PackageBody*)decl, indent_level);
+            break;
         default:
             printf("Unknown declaration");
     }
     printf(";\n");
+}
+
+static
+void print_package_spec(const PackageSpec* package_spec, uint8_t indent_level)
+{
+    print_indent(indent_level);
+    printf("package %s is\n", ST(package_spec->name));
+    for(const Declaration* decl = package_spec->decls; decl; decl = decl->next) {
+        print_declaration(decl, indent_level+1);
+    }
+    print_indent(indent_level);
+    printf("end %s", ST(package_spec->name));
+}
+
+static
+void print_package_body(const PackageBody* package_body, uint8_t indent_level)
+{
+    print_indent(indent_level);
+    printf("package body %s is\n", ST(package_body->name));
+    for(const Declaration* decl = package_body->decls; decl; decl = decl->next) {
+        print_declaration(decl, indent_level+1);
+    }
+    if(package_body->stmts) {
+        print_indent(indent_level);
+        printf("begin\n");
+        for(const Statement* stmt = package_body->stmts; stmt; stmt = stmt->next) {
+            print_statement(stmt, indent_level+1);
+        }
+        print_indent(indent_level);
+    }
+    print_indent(indent_level);
+    printf("end %s", ST(package_body->name));
 }
 
 static
