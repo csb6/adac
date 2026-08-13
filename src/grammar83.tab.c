@@ -4129,9 +4129,19 @@ void end_scope(ParseContext* context, uint32_t line_num)
         error_print(line_num, "Attempted to exit top-level region");
         error_exit();
     }
+    // Remove all named declarations from the symbol table
+    for(Declaration* decl = curr_scope->first; decl; decl = decl->next) {
+        StringToken name = get_decl_name(decl);
+        if(name) {
+            // Will always be the first overload of the set since we are in the
+            // innermost scope and will have just added it to the set
+            Declaration** first_overload = find_bucket(context, name);
+            Declaration* second_overload = (*first_overload)->next_overload;
+            (*first_overload)->next_overload = NULL;
+            *first_overload = second_overload;
+        }
+    }
     --context->curr_scope_idx;
-    // TODO: go through all decls in curr_scope, remove named ones from
-    // symbol table
 }
 
 static
