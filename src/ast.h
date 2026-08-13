@@ -98,7 +98,7 @@ extern struct TypeDecl_ universal_int_type;
 typedef uint8_t ExprKind;
 enum {
     EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_NAME, EXPR_STRING_LIT,
-    EXPR_UNARY, EXPR_BINARY, EXPR_OBJECT, EXPR_CALL,
+    EXPR_UNARY, EXPR_BINARY, EXPR_OBJECT, EXPR_CALL, EXPR_QUALIFIED,
 };
 
 typedef uint8_t UnaryOperator;
@@ -159,6 +159,11 @@ typedef struct {
     struct Expression_** args; // array of Expression*
 } CallExpr;
 
+typedef struct {
+    struct Expression_* expr;
+    struct TypeDecl_* type;
+} QualifiedExpr;
+
 typedef struct Expression_ {
     uint32_t line_num;
     ExprKind kind;
@@ -172,6 +177,7 @@ typedef struct Expression_ {
         NameExpr name;
         struct ObjectDecl_* object;
         CallExpr call;
+        QualifiedExpr qualified;
     } u;
 } Expression;
 

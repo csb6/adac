@@ -14,7 +14,7 @@ procedure IntTypeTest is
     char: CharType := 'c';
     e: EnumType := A;
     bool: Boolean := True and then False;
-    bool2: boOlean := False or else True and True not in False;
+    bool2: boOlean := False or else True and True not in False and Boolean'(False);
 
     subtype NewBoolean is Boolean;
     nb: NewBoolean := False;

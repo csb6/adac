@@ -448,6 +448,11 @@ void print_expression(const Expression* expr)
             print_expression(expr->u.binary.right);
             putchar(')');
             break;
+        case EXPR_QUALIFIED:
+            printf("%s'(", ST(expr->u.qualified.type->name));
+            print_expression(expr->u.qualified.expr);
+            putchar(')');
+            break;
         default:
             printf("Unhandled expression");
     }

@@ -203,7 +203,7 @@
 %type <unary_op> unary adding multiplying membership relational logical short_circuit
 %type <expr> used_char literal simple_expression relation primary term factor expression
              parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
-             discrete_range init_opt
+             discrete_range init_opt qualified
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
              loop_stmt goto_stmt unlabeled compound_stmt procedure_call handled_stmt_s
              block_body block cond_clause cond_clause_s else_opt if_stmt case_hdr case_stmt
@@ -900,8 +900,18 @@ parenthesized_primary :
     ;
 
 qualified :
-    name '\'' parenthesized_primary
-    ;
+    name '\'' parenthesized_primary {
+        // TODO: support other kinds of names
+        assert($1.arg_count == 0);
+        TypeDecl* type_decl = find_type_decl(context, $1.name);
+        if(!type_decl) {
+            error_print(@$, "Unknown type: %s", ST($1.name));
+            error_exit();
+        }
+        $$ = create_expr(EXPR_QUALIFIED, @$);
+        $$->u.qualified.type = type_decl;
+        $$->u.qualified.expr = $3;
+    };
 
 allocator :
     NEW name
