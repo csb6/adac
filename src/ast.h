@@ -28,6 +28,7 @@ struct Declaration_;
 struct TypeDecl_;
 struct Statement_;
 struct Expression_;
+struct EnumLiteral_;
 
 /* TYPES */
 
@@ -60,7 +61,7 @@ typedef struct {
 
 // 3.5.1: Enumeration Types
 typedef struct {
-    struct Expression_** literals;
+    struct EnumLiteral_* literals;
     uint32_t literal_count;
 } EnumType;
 
@@ -178,7 +179,7 @@ typedef struct Expression_ {
 
 typedef uint8_t DeclKind;
 enum {
-    DECL_OBJECT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL, DECL_PKG_SPEC,
+    DECL_OBJECT, DECL_ENUM_LIT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL, DECL_PKG_SPEC,
     DECL_PKG_BODY
 };
 
@@ -220,6 +221,14 @@ typedef struct ObjectDecl_ {
     bool is_constant;
     ParamMode mode; // Only used if ObjectDecl is a formal parameter
 } ObjectDecl;
+
+// Represents a single enum value within an enum type
+typedef struct EnumLiteral_ {
+    Declaration base;
+    TypeDecl* type; // Must be an EnumType
+    StringToken name;
+    bool is_char_lit;
+} EnumLiteral;
 
 typedef struct SubprogramDecl_ {
     Declaration base;

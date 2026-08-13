@@ -56,8 +56,7 @@ extern int yydebug;
 
     typedef uint32_t SourceLocation;
 
-    typedef Expression* ExprPtr;
-    DEFINE_ARRAY_TYPE(ExprPtr)
+    DEFINE_ARRAY_TYPE(EnumLiteral)
     DEFINE_ARRAY_TYPE(StringToken)
     DEFINE_ARRAY_TYPE(Choice)
 
@@ -90,7 +89,7 @@ extern int yydebug;
 
     ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 
-#line 94 "parser.h"
+#line 93 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -185,7 +184,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 170 "grammar83.y"
+#line 169 "grammar83.y"
 
     UnaryOperator unary_op;
     BinaryOperator binary_op;
@@ -209,7 +208,8 @@ union YYSTYPE
     StringToken str_token;
     char c;
     StringView str; // Note: this StringView owns its allocated data
-    ExprPtrArray expr_array;
+    EnumLiteral enum_literal;
+    EnumLiteralArray enum_literals;
     StringTokenArray str_token_array;
     NameExpr name;
 
@@ -230,7 +230,7 @@ typedef SourceLocation YYLTYPE;
 int yyparse (void* scanner, ParseContext* context);
 
 /* "%code provides" blocks.  */
-#line 73 "grammar83.y"
+#line 72 "grammar83.y"
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 

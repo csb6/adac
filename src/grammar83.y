@@ -34,8 +34,7 @@
 
     typedef uint32_t SourceLocation;
 
-    typedef Expression* ExprPtr;
-    DEFINE_ARRAY_TYPE(ExprPtr)
+    DEFINE_ARRAY_TYPE(EnumLiteral)
     DEFINE_ARRAY_TYPE(StringToken)
     DEFINE_ARRAY_TYPE(Choice)
 
@@ -86,7 +85,7 @@
 
     #define TABLE_GROWTH_FACTOR 2
 
-    DEFINE_ARRAY_OPS(ExprPtr)
+    DEFINE_ARRAY_OPS(EnumLiteral)
     DEFINE_ARRAY_OPS(StringToken)
     DEFINE_ARRAY_OPS(Choice)
     DEFINE_LINKED_LIST_OPS(Decl)
@@ -190,7 +189,8 @@
     StringToken str_token;
     char c;
     StringView str; // Note: this StringView owns its allocated data
-    ExprPtrArray expr_array;
+    EnumLiteral enum_literal;
+    EnumLiteralArray enum_literals;
     StringTokenArray str_token_array;
     NameExpr name;
 }
@@ -203,7 +203,7 @@
 %type <unary_op> unary adding multiplying membership relational logical short_circuit
 %type <expr> used_char literal simple_expression relation primary term factor expression
              parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
-             discrete_range init_opt enum_id
+             discrete_range init_opt
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
              loop_stmt goto_stmt unlabeled compound_stmt procedure_call handled_stmt_s
              block_body block cond_clause cond_clause_s else_opt if_stmt case_hdr case_stmt
@@ -223,7 +223,8 @@
 %type <param_mode> mode
 %type <str_token> subtype_ind object_subtype_def designator operator_symbol
 %type <str_token_array> def_id_s
-%type <expr_array> enum_id_s
+%type <enum_literal> enum_id
+%type <enum_literals> enum_id_s
 %type <name> name
 %type <comp_unit> comp_unit unit
 
@@ -464,28 +465,42 @@ enumeration_type :
     '(' enum_id_s ')' {
         $$ = create_type_decl(TYPE_ENUM);
         $$->u.enum_.literals = $2.data;
-        $$->u.enum_.literal_count = ExprPtrArray_size(&$2);
-        // TODO: add all enum literals into symbol table scope
+        uint32_t literal_count = EnumLiteralArray_size(&$2);
+        $$->u.enum_.literal_count = literal_count;
+        for(uint32_t i = 0; i < literal_count; ++i) {
+            push_declaration(context, &$$->u.enum_.literals[i].base);
+        }
     };
 
 enum_id_s :
     enum_id {
-        ExprPtrArray_init(&$$);
-        ExprPtrArray_append(&$$, $1);
+        EnumLiteralArray_init(&$$);
+        EnumLiteralArray_append(&$$, $1);
     }
   | enum_id_s ',' enum_id {
         $$ = $1;
-        ExprPtrArray_append(&$$, $3);
+        EnumLiteralArray_append(&$$, $3);
     };
 
 enum_id :
     identifier {
-        $$ = create_expr(EXPR_NAME, @$);
-        $$->u.name.name = $1;
+        memset(&$$, 0, sizeof($$));
+        $$.base.kind = DECL_ENUM_LIT;
+        $$.base.line_num = @$;
+        $$.name = $1;
+        $$.is_char_lit = false;
     }
   | char_lit {
-        $$ = create_expr(EXPR_CHAR_LIT, @$);
-        $$->u.char_lit = $1;
+        memset(&$$, 0, sizeof($$));
+        $$.base.kind = DECL_ENUM_LIT;
+        $$.base.line_num = @$;
+        char buffer[3] = {0};
+        buffer[0] = '\'';
+        buffer[1] = $1;
+        buffer[2] = '\'';
+        StringView literal_text = { .value = buffer, .len = sizeof(buffer) };
+        $$.name = string_pool_to_token(literal_text);
+        $$.is_char_lit = true;
     };
 
 integer_type :
@@ -1771,6 +1786,9 @@ StringToken get_decl_name(const Declaration* decl)
             break;
         case DECL_OBJECT:
             name = ((ObjectDecl*)decl)->name;
+            break;
+        case DECL_ENUM_LIT:
+            name = ((EnumLiteral*)decl)->name;
             break;
         case DECL_SUBPROGRAM:
             name = ((SubprogramDecl*)decl)->name;

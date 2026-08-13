@@ -26,6 +26,7 @@ static void print_package_body(const PackageBody* package_body, uint8_t indent_l
 static void print_subprogram_decl(const struct SubprogramDecl_* decl, uint8_t indent_level);
 static void print_declaration(const Declaration* decl, uint8_t indent_level);
 static void print_type_decl(const TypeDecl* type);
+static void print_enum_literal(const EnumLiteral* literal);
 static void print_statement(const Statement* stmt, uint8_t indent_level);
 static void print_if_statement(const IfStmt* stmt, uint8_t indent_level);
 static void print_case_statement(const CaseStmt* stmt, uint8_t indent_level);
@@ -225,7 +226,7 @@ void print_type_decl(const TypeDecl* type_decl)
         case TYPE_ENUM:
             putchar('(');
             for(uint32_t i = 0; i < type_decl->u.enum_.literal_count; ++i) {
-                print_expression(type_decl->u.enum_.literals[i]);
+                print_enum_literal(&type_decl->u.enum_.literals[i]);
                 printf(", ");
             }
             putchar(')');
@@ -239,6 +240,12 @@ void print_type_decl(const TypeDecl* type_decl)
         default:
             printf("Unhandled type");
     }
+}
+
+static
+void print_enum_literal(const EnumLiteral* literal)
+{
+    printf("%s", ST(literal->name));
 }
 
 static
