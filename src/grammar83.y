@@ -1273,15 +1273,20 @@ pkg_decl :
     ;
 
 pkg_spec :
-    PACKAGE identifier IS decl_item_s private_part END identifier_opt {
-        $$ = calloc(1, sizeof(PackageSpec));
-        $$->base.kind = DECL_PKG_SPEC;
-        $$->base.line_num = @$;
-        $$->name = $2;
-        $$->decls = $4;
+    PACKAGE identifier IS <pkg_spec>{
+        begin_scope(context, @3);
+        $<pkg_spec>$ = calloc(1, sizeof(PackageSpec));
+        $<pkg_spec>$->base.kind = DECL_PKG_SPEC;
+        $<pkg_spec>$->base.line_num = @$;
+        $<pkg_spec>$->name = $2;
+    }
+    decl_item_s private_part END identifier_opt {
+        $$ = $4;
+        $$->decls = $5;
         // TODO: private part
-        if($7 && $$->name != $7) {
-            error_print(@7, "End label '%s' does not match package name ('%s')", ST($7), ST($$->name));
+        end_scope(context, @7);
+        if($8 && $$->name != $8) {
+            error_print(@8, "End label '%s' does not match package name ('%s')", ST($8), ST($$->name));
             error_exit();
         }
     };
@@ -1297,15 +1302,20 @@ identifier_opt :
     ;
 
 pkg_body :
-    PACKAGE BODY identifier IS decl_part body_opt END identifier_opt ';' {
-        $$ = calloc(1, sizeof(PackageBody));
-        $$->base.kind = DECL_PKG_BODY;
-        $$->base.line_num = @$;
-        $$->name = $3;
-        $$->decls = $5;
+    PACKAGE BODY identifier IS <pkg_body>{
+        begin_scope(context, @4);
+        $<pkg_body>$ = calloc(1, sizeof(PackageBody));
+        $<pkg_body>$->base.kind = DECL_PKG_BODY;
+        $<pkg_body>$->base.line_num = @$;
+        $<pkg_body>$->name = $3;
+    }
+    decl_part body_opt END identifier_opt ';' {
+        $$ = $5;
+        $$->decls = $6;
         // TODO: body_opt
-        if($8 && $$->name != $8) {
-            error_print(@8, "End label '%s' does not match package name ('%s')", ST($8), ST($$->name));
+        end_scope(context, @8);
+        if($9 && $$->name != $9) {
+            error_print(@9, "End label '%s' does not match package name ('%s')", ST($9), ST($$->name));
             error_exit();
         }
     };
