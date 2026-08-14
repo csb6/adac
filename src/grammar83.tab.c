@@ -878,16 +878,16 @@ static const yytype_int16 yyrline[] =
     1146,  1147,  1151,  1158,  1159,  1163,  1164,  1168,  1169,  1175,
     1199,  1200,  1205,  1205,  1211,  1211,  1217,  1221,  1222,  1226,
     1227,  1231,  1235,  1236,  1240,  1241,  1245,  1246,  1247,  1248,
-    1252,  1256,  1263,  1271,  1272,  1276,  1287,  1288,  1292,  1293,
-    1297,  1308,  1309,  1313,  1317,  1318,  1322,  1326,  1327,  1331,
-    1332,  1333,  1337,  1338,  1339,  1340,  1344,  1348,  1349,  1353,
-    1354,  1355,  1359,  1363,  1364,  1368,  1372,  1376,  1380,  1384,
-    1385,  1386,  1390,  1394,  1395,  1399,  1400,  1404,  1408,  1409,
-    1413,  1414,  1418,  1419,  1423,  1424,  1428,  1432,  1433,  1437,
-    1438,  1442,  1443,  1444,  1445,  1446,  1447,  1448,  1452,  1453,
-    1454,  1458,  1459,  1460,  1464,  1465,  1466,  1467,  1468,  1469,
-    1470,  1471,  1472,  1473,  1477,  1478,  1482,  1486,  1490,  1494,
-    1495,  1496,  1500,  1504,  1508,  1509,  1513,  1514,  1518,  1522
+    1252,  1256,  1263,  1271,  1272,  1276,  1290,  1291,  1295,  1296,
+    1300,  1314,  1315,  1319,  1323,  1324,  1328,  1332,  1333,  1337,
+    1338,  1339,  1343,  1344,  1345,  1346,  1350,  1354,  1355,  1359,
+    1360,  1361,  1365,  1369,  1370,  1374,  1378,  1382,  1386,  1390,
+    1391,  1392,  1396,  1400,  1401,  1405,  1406,  1410,  1414,  1415,
+    1419,  1420,  1424,  1425,  1429,  1430,  1434,  1438,  1439,  1443,
+    1444,  1448,  1449,  1450,  1451,  1452,  1453,  1454,  1458,  1459,
+    1460,  1464,  1465,  1466,  1470,  1471,  1472,  1473,  1474,  1475,
+    1476,  1477,  1478,  1479,  1483,  1484,  1488,  1492,  1496,  1500,
+    1501,  1502,  1506,  1510,  1514,  1515,  1519,  1520,  1524,  1528
 };
 #endif
 
@@ -3816,13 +3816,22 @@ yyreduce:
         (yyval.pkg_spec)->name = (yyvsp[-5].str_token);
         (yyval.pkg_spec)->decls = (yyvsp[-3].decl);
         // TODO: private part
-        // TODO: check identifier_opt matches
+        if((yyvsp[0].str_token) && (yyval.pkg_spec)->name != (yyvsp[0].str_token)) {
+            error_print((yylsp[0]), "End label '%s' does not match package name ('%s')", ST((yyvsp[0].str_token)), ST((yyval.pkg_spec)->name));
+            error_exit();
+        }
     }
-#line 3822 "grammar83.tab.c"
+#line 3825 "grammar83.tab.c"
+    break;
+
+  case 308: /* identifier_opt: %empty  */
+#line 1295 "grammar83.y"
+               { (yyval.str_token) = 0; }
+#line 3831 "grammar83.tab.c"
     break;
 
   case 310: /* pkg_body: PACKAGE BODY identifier IS decl_part body_opt END identifier_opt ';'  */
-#line 1297 "grammar83.y"
+#line 1300 "grammar83.y"
                                                                          {
         (yyval.pkg_body) = calloc(1, sizeof(PackageBody));
         (yyval.pkg_body)->base.kind = DECL_PKG_BODY;
@@ -3830,61 +3839,64 @@ yyreduce:
         (yyval.pkg_body)->name = (yyvsp[-6].str_token);
         (yyval.pkg_body)->decls = (yyvsp[-4].decl);
         // TODO: body_opt
-        // TODO: check identifier_opt matches
+        if((yyvsp[-1].str_token) && (yyval.pkg_body)->name != (yyvsp[-1].str_token)) {
+            error_print((yylsp[-2]), "End label '%s' does not match package name ('%s')", ST((yyvsp[-1].str_token)), ST((yyval.pkg_body)->name));
+            error_exit();
+        }
     }
-#line 3836 "grammar83.tab.c"
-    break;
-
-  case 327: /* comp_unit: context_spec unit pragma_s  */
-#line 1348 "grammar83.y"
-                               { (yyval.comp_unit) = (yyvsp[-1].comp_unit); }
-#line 3842 "grammar83.tab.c"
-    break;
-
-  case 328: /* comp_unit: unit pragma_s  */
-#line 1349 "grammar83.y"
-                               { (yyval.comp_unit) = (yyvsp[-1].comp_unit); }
 #line 3848 "grammar83.tab.c"
     break;
 
+  case 327: /* comp_unit: context_spec unit pragma_s  */
+#line 1354 "grammar83.y"
+                               { (yyval.comp_unit) = (yyvsp[-1].comp_unit); }
+#line 3854 "grammar83.tab.c"
+    break;
+
+  case 328: /* comp_unit: unit pragma_s  */
+#line 1355 "grammar83.y"
+                               { (yyval.comp_unit) = (yyvsp[-1].comp_unit); }
+#line 3860 "grammar83.tab.c"
+    break;
+
   case 335: /* unit: pkg_decl  */
-#line 1368 "grammar83.y"
+#line 1374 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_PACKAGE_SPEC);
         (yyval.comp_unit)->u.package_spec = (yyvsp[0].pkg_spec);
     }
-#line 3857 "grammar83.tab.c"
+#line 3869 "grammar83.tab.c"
     break;
 
   case 336: /* unit: pkg_body  */
-#line 1372 "grammar83.y"
+#line 1378 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_PACKAGE_BODY);
         (yyval.comp_unit)->u.package_body = (yyvsp[0].pkg_body);
     }
-#line 3866 "grammar83.tab.c"
+#line 3878 "grammar83.tab.c"
     break;
 
   case 337: /* unit: subprog_decl  */
-#line 1376 "grammar83.y"
+#line 1382 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_SUBPROGRAM);
         (yyval.comp_unit)->u.subprogram_decl = (yyvsp[0].subprogram_decl);
     }
-#line 3875 "grammar83.tab.c"
+#line 3887 "grammar83.tab.c"
     break;
 
   case 338: /* unit: subprog_body  */
-#line 1380 "grammar83.y"
+#line 1386 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_SUBPROGRAM);
         (yyval.comp_unit)->u.subprogram_decl = (yyvsp[0].subprogram_decl);
     }
-#line 3884 "grammar83.tab.c"
+#line 3896 "grammar83.tab.c"
     break;
 
 
-#line 3888 "grammar83.tab.c"
+#line 3900 "grammar83.tab.c"
 
         default: break;
       }
@@ -4124,7 +4136,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 1525 "grammar83.y"
+#line 1531 "grammar83.y"
 
 
 static

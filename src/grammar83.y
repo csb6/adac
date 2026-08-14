@@ -203,7 +203,7 @@
 
 /* Terminals */
 %type <c> char_lit;
-%type <str_token> identifier goto_label
+%type <str_token> identifier goto_label identifier_opt
 %type <str> char_string numeric_lit
 /* Nonterminals */
 %type <unary_op> unary adding multiplying membership relational logical short_circuit
@@ -1280,7 +1280,10 @@ pkg_spec :
         $$->name = $2;
         $$->decls = $4;
         // TODO: private part
-        // TODO: check identifier_opt matches
+        if($7 && $$->name != $7) {
+            error_print(@7, "End label '%s' does not match package name ('%s')", ST($7), ST($$->name));
+            error_exit();
+        }
     };
 
 private_part :
@@ -1289,7 +1292,7 @@ private_part :
     ;
 
 identifier_opt :
-    %empty
+    %empty     { $$ = 0; }
   | identifier
     ;
 
@@ -1301,7 +1304,10 @@ pkg_body :
         $$->name = $3;
         $$->decls = $5;
         // TODO: body_opt
-        // TODO: check identifier_opt matches
+        if($8 && $$->name != $8) {
+            error_print(@8, "End label '%s' does not match package name ('%s')", ST($8), ST($$->name));
+            error_exit();
+        }
     };
 
 body_opt :
