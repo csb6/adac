@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 typedef uint32_t StringToken;
 
 void string_pool_init(void);
+StringToken string_pool_c_str_to_token(const char* s);
 StringToken string_pool_to_token(StringView s);
 const char* string_pool_to_str(StringToken token);
 

@@ -180,6 +180,12 @@ void grow_table(void)
     free(old_tokens);
 }
 
+StringToken string_pool_c_str_to_token(const char* s)
+{
+    StringView sv = { .value = s, .len = strlen(s) };
+    return string_pool_to_token(sv);
+}
+
 StringToken string_pool_to_token(StringView s)
 {
     StringToken token = 0;

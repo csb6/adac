@@ -97,7 +97,7 @@ extern struct TypeDecl_ universal_int_type;
 
 typedef uint8_t ExprKind;
 enum {
-    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_NAME, EXPR_STRING_LIT,
+    EXPR_INT_LIT, EXPR_CHAR_LIT, EXPR_ENUM_LIT, EXPR_NAME, EXPR_STRING_LIT,
     EXPR_UNARY, EXPR_BINARY, EXPR_OBJECT, EXPR_CALL, EXPR_QUALIFIED,
 };
 
@@ -175,6 +175,7 @@ typedef struct Expression_ {
         UnaryExpr unary;
         BinaryExpr binary;
         NameExpr name;
+        struct EnumLiteral_* enum_lit;
         struct ObjectDecl_* object;
         CallExpr call;
         QualifiedExpr qualified;

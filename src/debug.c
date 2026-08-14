@@ -421,6 +421,9 @@ void print_expression(const Expression* expr)
         case EXPR_CHAR_LIT:
             printf("'%c'", expr->u.char_lit);
             break;
+        case EXPR_ENUM_LIT:
+            printf("%s", ST(expr->u.enum_lit->name));
+            break;
         case EXPR_NAME:
             printf("%s", ST(expr->u.name.name));
             if(expr->u.name.arg_count > 0) {

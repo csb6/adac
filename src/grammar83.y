@@ -92,10 +92,16 @@
     DEFINE_LINKED_LIST_OPS(Stmt)
     DEFINE_LINKED_LIST_OPS(Alt)
 
-    static const char universal_integer_str[] = "universal_integer";
     TypeDecl universal_int_type = {
+        .base.kind = DECL_TYPE,
         .kind = TYPE_UNIV_INTEGER,
         .name = 0 // Note: this is set the first time the parser is called (see initial-action)
+    };
+
+    TypeDecl boolean_type = {
+        .base.kind = DECL_TYPE,
+        .kind = TYPE_ENUM,
+        .name = 0, // Note: this is set the first time the parser is called (see initial-action)
     };
 
     static
@@ -245,9 +251,21 @@
     context->symbol_table_capacity = 64;
     context->symbol_table_size = 0;
     if(!universal_int_type.name) {
-        StringView universal_int_str_view = { .value = universal_integer_str, .len = sizeof(universal_integer_str) };
-        universal_int_type.name = string_pool_to_token(universal_int_str_view);
+        universal_int_type.name = string_pool_c_str_to_token("universal_integer");
     }
+    if(!boolean_type.name) {
+        boolean_type.name = string_pool_c_str_to_token("Boolean");
+        EnumLiteral* literals = calloc(2, sizeof(EnumLiteral));
+        literals[0].base.kind = DECL_ENUM_LIT;
+        literals[0].name = string_pool_c_str_to_token("False");
+        literals[1] = literals[0];
+        literals[1].name = string_pool_c_str_to_token("True");
+        boolean_type.u.enum_.literals = literals;
+        boolean_type.u.enum_.literal_count = 2;
+    }
+    push_declaration(context, &boolean_type.base);
+    push_declaration(context, &boolean_type.u.enum_.literals[false].base);
+    push_declaration(context, &boolean_type.u.enum_.literals[true].base);
 }
 
 %%
@@ -1057,9 +1075,8 @@ loop_content :
         $$->u.loop.kind = LOOP_WHILE;
         $$->u.loop.stmts = $1;
         // Create condition so this becomes a 'while True' loop
-        // TODO: should be a boolean literal
-        Expression* condition = create_expr(EXPR_INT_LIT, @$);
-        mpz_init_set_ui(condition->u.int_lit.value, 1);
+        Expression* condition = create_expr(EXPR_ENUM_LIT, @$);
+        condition->u.enum_lit = &boolean_type.u.enum_.literals[true];
         $$->u.loop.u.while_.condition = condition;
     }
   | WHILE condition basic_loop {
