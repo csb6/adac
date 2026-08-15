@@ -269,16 +269,16 @@
     if(!boolean_type.name) {
         boolean_type.name = string_pool_c_str_to_token("Boolean");
         EnumLiteral* literals = calloc(2, sizeof(EnumLiteral));
-        literals[0].base.kind = DECL_ENUM_LIT;
-        literals[0].name = string_pool_c_str_to_token("False");
-        literals[1] = literals[0];
-        literals[1].name = string_pool_c_str_to_token("True");
+        literals[false].base.kind = DECL_ENUM_LIT;
+        literals[false].name = string_pool_c_str_to_token("False");
+        literals[true] = literals[false];
+        literals[true].name = string_pool_c_str_to_token("True");
         boolean_type.u.enum_.literals = literals;
         boolean_type.u.enum_.literal_count = 2;
     }
     push_declaration(context, &boolean_type.base);
-    push_declaration(context, &boolean_type.u.enum_.literals[false].base);
-    push_declaration(context, &boolean_type.u.enum_.literals[true].base);
+    add_decl_to_symbol_table(context, &boolean_type.u.enum_.literals[false].base);
+    add_decl_to_symbol_table(context, &boolean_type.u.enum_.literals[true].base);
 }
 
 %%
@@ -488,11 +488,7 @@ enumeration_type :
     '(' enum_id_s ')' {
         $$ = create_type_decl(TYPE_ENUM);
         $$->u.enum_.literals = $2.data;
-        uint32_t literal_count = EnumLiteralArray_size(&$2);
-        $$->u.enum_.literal_count = literal_count;
-        for(uint32_t i = 0; i < literal_count; ++i) {
-            push_declaration(context, &$$->u.enum_.literals[i].base);
-        }
+        $$->u.enum_.literal_count = EnumLiteralArray_size(&$2);
     };
 
 enum_id_s :
@@ -1649,20 +1645,31 @@ void add_decl_to_symbol_table(ParseContext* context, Declaration* decl)
         for(Declaration* inner_decl = use_clause->package_spec->decls; inner_decl; inner_decl = inner_decl->next) {
             add_decl_to_symbol_table(context, inner_decl);
         }
-    } else {
-        // Add named declarations to the symbol table
-        if(context->symbol_table_buckets_used * 7 >= context->symbol_table_capacity) {
-            // Grow if table is at least 70% full
-            grow_table(context);
-        }
-        Declaration** first_overload = find_bucket(context, name);
-        if(*first_overload == NULL) {
-            ++context->symbol_table_buckets_used;
-        }
-        // Prepend new declaration to the bucket
-        decl->next_overload = *first_overload;
-        *first_overload = decl;
+        return;
     }
+
+    // TODO: also handle types derived from enum types
+    if(decl->kind == DECL_TYPE && ((TypeDecl*)decl)->kind == TYPE_ENUM) {
+        // Add the enum literals to the symbol table
+        EnumType* enum_type = &((TypeDecl*)decl)->u.enum_;
+        uint32_t literal_count = enum_type->literal_count;
+        for(uint32_t i = 0; i < literal_count; ++i) {
+            add_decl_to_symbol_table(context, &enum_type->literals[i].base);
+        }
+    }
+
+    // Add named declarations to the symbol table
+    if(context->symbol_table_buckets_used * 7 >= context->symbol_table_capacity) {
+        // Grow if table is at least 70% full
+        grow_table(context);
+    }
+    Declaration** first_overload = find_bucket(context, name);
+    if(*first_overload == NULL) {
+        ++context->symbol_table_buckets_used;
+    }
+    // Prepend new declaration to the bucket
+    decl->next_overload = *first_overload;
+    *first_overload = decl;
 }
 
 static
@@ -1679,13 +1686,23 @@ void remove_decl_from_symbol_table(ParseContext* context, Declaration* decl)
         for(Declaration* inner_decl = use_clause->package_spec->decls; inner_decl; inner_decl = inner_decl->next) {
             remove_decl_from_symbol_table(context, inner_decl);
         }
-    } else {
-        // Doesn't matter which overload we remove because we add and remove in LIFO order
-        Declaration** first_overload = find_bucket(context, name);
-        Declaration* second_overload = (*first_overload)->next_overload;
-        (*first_overload)->next_overload = NULL;
-        *first_overload = second_overload;
+        return;
     }
+
+    // TODO: also handle types derived from enum types
+    if(decl->kind == DECL_TYPE && ((TypeDecl*)decl)->kind == TYPE_ENUM) {
+        // Remove the enum literals from the symbol table
+        EnumType* enum_type = &((TypeDecl*)decl)->u.enum_;
+        uint32_t literal_count = enum_type->literal_count;
+        for(uint32_t i = 0; i < literal_count; ++i) {
+            remove_decl_from_symbol_table(context, &enum_type->literals[i].base);
+        }
+    }
+
+    Declaration** first_overload = find_bucket(context, name);
+    Declaration* second_overload = (*first_overload)->next_overload;
+    (*first_overload)->next_overload = NULL;
+    *first_overload = second_overload;
 }
 
 static
