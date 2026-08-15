@@ -110,7 +110,7 @@
     static
     Expression* make_unary_expr(UnaryOperator op, Expression* right);
 
-    #define curr_scope (context->scope_stack + context->curr_scope_idx)
+    #define curr_scope(context) ((context)->scope_stack + (context)->curr_scope_idx)
 
     static
     void begin_scope(ParseContext* context, uint32_t line_num);
@@ -131,6 +131,8 @@
     LabelDecl* find_label(ParseContext* context, StringToken name);
 
     #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
+
+    #define clr_struct(s) memset(s, 0, sizeof(*(s)))
 
     static
     void check_for_redefinition(ParseContext* context, StringToken name, uint32_t line_num);
@@ -246,7 +248,7 @@
 
 %initial-action {
     @$ = 1;
-    memset(context, 0, sizeof(*context));
+    clr_struct(context);
     context->symbol_table = calloc(64, sizeof(Declaration*));
     context->symbol_table_capacity = 64;
     context->symbol_table_buckets_used = 0;
@@ -297,19 +299,19 @@ decl :
     object_decl
   | number_decl
   | type_decl    {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         DeclList_append(&$$, $1);
     }
   | subtype_decl {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         DeclList_append(&$$, $1);
     }
   | subprog_decl {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         DeclList_append(&$$, &$1->base);
     }
   | pkg_decl     {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         DeclList_append(&$$, &$1->base);
     }
   | exception_decl
@@ -327,7 +329,7 @@ object_decl :
             error_exit();
         }
 
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         uint32_t name_count = StringTokenArray_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
@@ -347,7 +349,7 @@ object_decl :
 
 number_decl :
     def_id_s ':' CONSTANT IS_ASSIGNED expression ';' {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         uint32_t name_count = StringTokenArray_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
@@ -502,14 +504,14 @@ enum_id_s :
 
 enum_id :
     identifier {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         $$.base.kind = DECL_ENUM_LIT;
         $$.base.line_num = @$;
         $$.name = $1;
         $$.is_char_lit = false;
     }
   | char_lit {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         $$.base.kind = DECL_ENUM_LIT;
         $$.base.line_num = @$;
         char buffer[3] = {0};
@@ -707,7 +709,7 @@ decl_item_or_body_s1 :
 
 decl_item_or_body :
     body      {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         DeclList_append(&$$, $1);
     }
   | decl_item
@@ -720,14 +722,14 @@ body :
 
 name :
     identifier {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         $$.name = $1;
     }
   | indexed_comp
   | selected_comp
   | attribute
   | operator_symbol {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         $$.name = $1;
         //TODO: lookup operator, determine its arity, and allocate args array
     };
@@ -938,7 +940,7 @@ allocator :
 
 statement_s :
     statement             {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         StmtList_append(&$$, $1);
     }
   | statement_s statement {
@@ -1045,7 +1047,7 @@ case_hdr :
     };
 
 alternative_s :
-    %empty                    { memset(&$$, 0, sizeof($$)); }
+    %empty                    { clr_struct(&$$); }
   | alternative_s alternative {
         $$ = $1;
         AltList_append(&$$, $2);
@@ -1096,7 +1098,7 @@ loop_content :
 
 iter_part :
     FOR identifier IN {
-        memset(&$$, 0, sizeof($$));
+        clr_struct(&$$);
         $$.base.kind = DECL_OBJECT;
         $$.base.line_num = @$;
         $$.name = $2;
@@ -1586,7 +1588,7 @@ void end_scope(ParseContext* context, uint32_t line_num)
         error_exit();
     }
     // Remove all named declarations from the symbol table
-    for(Declaration* decl = curr_scope->first; decl; decl = decl->next) {
+    for(Declaration* decl = curr_scope(context)->first; decl; decl = decl->next) {
         StringToken name = get_decl_name(decl);
         if(name) {
             // Will always be the first overload of the set since we are in the
@@ -1597,14 +1599,14 @@ void end_scope(ParseContext* context, uint32_t line_num)
             *first_overload = second_overload;
         }
     }
-    memset(curr_scope, 0, sizeof(*curr_scope));
+    clr_struct(curr_scope(context));
     --context->curr_scope_idx;
 }
 
 static
 void push_declaration(ParseContext* context, Declaration* decl)
 {
-    DeclList_append(curr_scope, decl);
+    DeclList_append(curr_scope(context), decl);
     StringToken name = get_decl_name(decl);
     // Add named declarations to the symbol table
     if(name) {
@@ -1693,7 +1695,7 @@ Declaration** find_bucket(ParseContext* context, StringToken name)
 static
 void check_for_redefinition(ParseContext* context, StringToken name, uint32_t line_num)
 {
-    Declaration* existing_decl = find_decl_in_scope(curr_scope, name);
+    Declaration* existing_decl = find_decl_in_scope(curr_scope(context), name);
     if(existing_decl) {
         error_print(line_num, "Redefinition of '%s' within same declarative region", ST(name));
         error_print(existing_decl->line_num, "Previous definition here");
