@@ -1196,22 +1196,27 @@ goto_stmt :
     };
 
 subprog_decl :
-    subprog_spec ';'      { $$ = $1; }
+    subprog_spec ';'      {
+        $$ = $1;
+        end_scope(context, @2);
+    }
   | generic_subp_inst ';'
     ;
 
 // TODO: process formal_part_opt
 subprog_spec :
     PROCEDURE identifier <subprogram_decl>{
-        begin_scope(context, @2);
         // TODO: check for name conflict
         $<subprogram_decl>$ = create_subprogram_decl($2, @2);
+        push_declaration(context, &$<subprogram_decl>$->base);
+        begin_scope(context, @2);
     }
     formal_part_opt             { $$ = $3; }
   | FUNCTION designator <subprogram_decl>{
-        begin_scope(context, @2);
         // TODO: check for name conflict
         $<subprogram_decl>$ = create_subprogram_decl($2, @2);
+        push_declaration(context, &$<subprogram_decl>$->base);
+        begin_scope(context, @2);
     }
     formal_part_opt RETURN name { $$ = $3; }
   | FUNCTION designator  /* for generic inst and generic rename */
@@ -1252,11 +1257,15 @@ subprog_spec_is_push :
     subprog_spec IS { $$ = $1; }
     ;
 
+// TODO: params will be pushed twice (one in forward decl, if any, and again in subprog_body)
+//  Need to somehow check if a forward decl was already made; if so, don't push params again
 subprog_body :
     subprog_spec_is_push decl_part block_body END id_opt ';' {
         $$ = $1;
         $$->decls = $2;
         $$->stmts = $3;
+        // Close scope opened in subprog_spec
+        end_scope(context, @4);
     };
 
 procedure_call :
@@ -1588,6 +1597,7 @@ void end_scope(ParseContext* context, uint32_t line_num)
             *first_overload = second_overload;
         }
     }
+    memset(curr_scope, 0, sizeof(*curr_scope));
     --context->curr_scope_idx;
 }
 
