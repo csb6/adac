@@ -2479,7 +2479,7 @@ YYLTYPE yylloc = yyloc_default;
     memset(context, 0, sizeof(*context));
     context->symbol_table = calloc(64, sizeof(Declaration*));
     context->symbol_table_capacity = 64;
-    context->symbol_table_size = 0;
+    context->symbol_table_buckets_used = 0;
     if(!universal_int_type.name) {
         universal_int_type.name = string_pool_c_str_to_token("universal_integer");
     }
@@ -4225,15 +4225,17 @@ void push_declaration(ParseContext* context, Declaration* decl)
     StringToken name = get_decl_name(decl);
     // Add named declarations to the symbol table
     if(name) {
-        if(context->symbol_table_size * 7 >= context->symbol_table_capacity) {
+        if(context->symbol_table_buckets_used * 7 >= context->symbol_table_capacity) {
             // Grow if table is at least 70% full
             grow_table(context);
         }
         Declaration** first_overload = find_bucket(context, name);
+        if(*first_overload == NULL) {
+            ++context->symbol_table_buckets_used;
+        }
         // Prepend new declaration to the bucket
         decl->next_overload = *first_overload;
         *first_overload = decl;
-        ++context->symbol_table_size;
     }
 }
 

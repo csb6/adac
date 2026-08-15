@@ -81,7 +81,7 @@ extern int yydebug;
         DeclList scope_stack[32];
         Declaration** symbol_table; // array of Declaration*
         uint32_t symbol_table_capacity;
-        uint32_t symbol_table_size;
+        uint32_t symbol_table_buckets_used;
         uint8_t curr_scope_idx;
     } ParseContext;
 
