@@ -33,15 +33,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             list->first = item; \
         } \
         list->last = item; \
-    } \
-    void T##List_splice(T##List* a, T##List* b) \
-    { \
-        if(a->last) { \
-            a->last->next = b->first; \
-        } else { \
-            a->first = b->first; \
-        } \
-        a->last = b->last; \
     }
 
 #endif /* ADA_LINKED_LIST_H */

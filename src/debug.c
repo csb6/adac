@@ -79,6 +79,10 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
             }
             break;
         }
+        case DECL_ENUM_LIT:
+            print_indent(indent_level);
+            printf("(enum literal) %s", ST(((const EnumLiteral*)decl)->name));
+            break;
         case DECL_SUBPROGRAM:
             print_subprogram_decl((const SubprogramDecl*)decl, indent_level);
             break;

@@ -202,7 +202,6 @@
     PackageSpec* pkg_spec;
     PackageBody* pkg_body;
     Declaration* decl;
-    DeclList decl_list;
     CompilationUnit* comp_unit;
     bool bool_;
     ParamMode param_mode;
@@ -229,9 +228,8 @@
              block_body block cond_clause cond_clause_s else_opt if_stmt case_hdr case_stmt
 %type <stmt_list> statement_s
 %type <case_> alternative
-%type <decl> body decl_item_s decl_part type_decl subtype_decl block_decl
-%type <decl_list> decl decl_item_s1 decl_item_or_body_s1 decl_item object_decl number_decl decl_item_or_body
-                  use_clause
+%type <decl> body decl_item_s decl_part type_decl subtype_decl block_decl decl decl_item_s1
+             decl_item_or_body_s1 decl_item object_decl number_decl decl_item_or_body use_clause
 %type <case_list> alternative_s
 %type <choice> choice
 %type <choice_array> choice_s
@@ -311,22 +309,10 @@ pragma_s :
 decl :
     object_decl
   | number_decl
-  | type_decl    {
-        clr_struct(&$$);
-        DeclList_append(&$$, $1);
-    }
-  | subtype_decl {
-        clr_struct(&$$);
-        DeclList_append(&$$, $1);
-    }
-  | subprog_decl {
-        clr_struct(&$$);
-        DeclList_append(&$$, &$1->base);
-    }
-  | pkg_decl     {
-        clr_struct(&$$);
-        DeclList_append(&$$, &$1->base);
-    }
+  | type_decl
+  | subtype_decl
+  | subprog_decl
+  | pkg_decl
   | exception_decl
   | rename_decl
   | generic_decl
@@ -342,7 +328,7 @@ object_decl :
             error_exit();
         }
 
-        clr_struct(&$$);
+        $$ = NULL;
         uint32_t name_count = StringTokenArray_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
@@ -355,14 +341,16 @@ object_decl :
                 error_print(@$, "Constant declaration '%s' is not initialized", ST(decl->name));
                 error_exit();
             }
-            DeclList_append(&$$, &decl->base);
             push_declaration(context, &decl->base);
+            if(!$$) {
+                $$ = &decl->base;
+            }
         }
     };
 
 number_decl :
     def_id_s ':' CONSTANT IS_ASSIGNED expression ';' {
-        clr_struct(&$$);
+        $$ = NULL;
         uint32_t name_count = StringTokenArray_size(&$1);
         for(uint32_t i = 0; i < name_count; ++i) {
             ObjectDecl* decl = create_object_decl($1.data[i], @$);
@@ -370,8 +358,10 @@ number_decl :
             decl->is_constant = true;
             decl->type = &universal_int_type;
             decl->init_expr = $5;
-            DeclList_append(&$$, &decl->base);
             push_declaration(context, &decl->base);
+            if(!$$) {
+                $$ = &decl->base;
+            }
         }
     };
 
@@ -691,20 +681,17 @@ access_type :
 
 decl_part :
     %empty               { $$ = NULL; }
-  | decl_item_or_body_s1 { $$ = $1.first; }
+  | decl_item_or_body_s1
     ;
 
 decl_item_s :
     %empty       { $$ = NULL; }
-  | decl_item_s1 { $$ = $1.first; }
+  | decl_item_s1
     ;
 
 decl_item_s1 :
     decl_item
-  | decl_item_s1 decl_item {
-        DeclList_splice(&$1, &$2);
-        $$ = $1;
-    };
+  | decl_item_s1 decl_item { $$ = $1; };
 
 decl_item :
     decl
@@ -715,16 +702,10 @@ decl_item :
 
 decl_item_or_body_s1 :
     decl_item_or_body
-  | decl_item_or_body_s1 decl_item_or_body {
-        DeclList_splice(&$1, &$2);
-        $$ = $1;
-    };
+  | decl_item_or_body_s1 decl_item_or_body { $$ = $1; };
 
 decl_item_or_body :
-    body      {
-        clr_struct(&$$);
-        DeclList_append(&$$, $1);
-    }
+    body
   | decl_item
     ;
 
@@ -1372,7 +1353,7 @@ limited_opt :
 
 use_clause :
     USE def_id_s ';' {
-        clr_struct(&$$);
+        $$ = NULL;
         uint32_t package_count = StringTokenArray_size(&$2);
         for(uint32_t i = 0; i < package_count; ++i) {
             StringToken package_name = $2.data[i];
@@ -1400,7 +1381,9 @@ use_clause :
             }
             // Add the use clause itself to the current scope's DeclList
             push_declaration(context, &use_clause->base);
-            DeclList_append(&$$, &use_clause->base);
+            if(!$$) {
+                $$ = &use_clause->base;
+            }
         }
     };
 
