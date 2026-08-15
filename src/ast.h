@@ -258,7 +258,7 @@ typedef struct {
 typedef struct PackageSpec_ {
     Declaration base;
     StringToken name;
-    Declaration* decls; // TODO: support representation_clause/use_clause in this list
+    Declaration* decls;
 } PackageSpec;
 
 typedef struct {

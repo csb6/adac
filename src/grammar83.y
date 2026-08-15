@@ -128,6 +128,9 @@
     TypeDecl* find_type_decl(ParseContext* context, StringToken name);
 
     static
+    PackageSpec* find_package_spec(ParseContext* context, StringToken name);
+
+    static
     LabelDecl* find_label(ParseContext* context, StringToken name);
 
     #define cnt_of_array(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -219,6 +222,7 @@
 %type <case_> alternative
 %type <decl> body decl_item_s decl_part type_decl subtype_decl block_decl
 %type <decl_list> decl decl_item_s1 decl_item_or_body_s1 decl_item object_decl number_decl decl_item_or_body
+                  use_clause
 %type <case_list> alternative_s
 %type <choice> choice
 %type <choice_array> choice_s
@@ -1310,6 +1314,7 @@ pkg_spec :
             error_print(@8, "End label '%s' does not match package name ('%s')", ST($8), ST($$->name));
             error_exit();
         }
+        push_declaration(context, &$$->base);
     };
 
 private_part :
@@ -1339,6 +1344,7 @@ pkg_body :
             error_print(@9, "End label '%s' does not match package name ('%s')", ST($9), ST($$->name));
             error_exit();
         }
+        push_declaration(context, &$$->base);
     };
 
 body_opt :
@@ -1356,13 +1362,26 @@ limited_opt :
     ;
 
 use_clause :
-    USE name_s ';'
-    ;
-
-name_s :
-    name
-  | name_s ',' name
-    ;
+    USE def_id_s ';' {
+        clr_struct(&$$);
+        uint32_t package_count = StringTokenArray_size(&$2);
+        for(uint32_t i = 0; i < package_count; ++i) {
+            StringToken package_name = $2.data[i];
+            PackageSpec* package_spec = find_package_spec(context, package_name);
+            if(!package_spec) {
+                error_print(@2, "Unknown package name '%s'", ST(package_name));
+                error_exit();
+            }
+            // TODO: keep track of which packages have already been made available
+            //  and are still visible, avoid re-adding all of their declarations
+            // TODO: mark potential ambiguities that require name qualifications
+            //  somehow
+            for(Declaration* decl = package_spec->decls; decl; decl = decl->next) {
+                push_declaration(context, decl);
+                DeclList_append(&$$, decl);
+            }
+        }
+    };
 
 rename_decl :
     def_id_s ':' object_qualifier_opt subtype_ind renames ';'
@@ -1673,6 +1692,20 @@ ObjectDecl* find_object_decl(ParseContext* context, StringToken name)
 }
 
 static
+PackageSpec* find_package_spec(ParseContext* context, StringToken name)
+{
+    Declaration** bucket = find_bucket(context, name);
+    if(bucket) {
+        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+            if(decl->kind == DECL_PKG_SPEC) {
+                return (PackageSpec*)decl;
+            }
+        }
+    }
+    return NULL;
+}
+
+static
 LabelDecl* find_label(ParseContext* context, StringToken name)
 {
     Declaration** bucket = find_bucket(context, name);
@@ -1872,6 +1905,9 @@ StringToken get_decl_name(const Declaration* decl)
             break;
         case DECL_LABEL:
             name = ((LabelDecl*)decl)->name;
+            break;
+        case DECL_PKG_SPEC:
+            name = ((PackageSpec*)decl)->name;
             break;
         default:
             // This kind of declaration has no associated name
