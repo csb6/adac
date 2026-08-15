@@ -251,6 +251,7 @@ typedef struct {
     Declaration base;
     struct Statement_* target;
     StringToken name;
+    bool is_placeholder;
 } LabelDecl;
 
 // 7.1: Package Structure

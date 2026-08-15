@@ -951,9 +951,22 @@ statement_s :
 statement :
     unlabeled
   | goto_label statement {
-        check_for_redefinition(context, $1, @1);
-        LabelDecl* label = create_label($1, @1);
-        push_declaration(context, (Declaration*)label);
+        LabelDecl* label = find_label(context, $1);
+        if(label) {
+            if(label->is_placeholder) {
+                // Fill in the placeholder
+                label->is_placeholder = false;
+                label->base.line_num = @1;
+            } else {
+                error_print(@1, "Redefinition of label '%s'", ST($1));
+                error_print(label->base.line_num, "Previous definition here");
+                error_exit();
+            }
+        } else {
+            check_for_redefinition(context, $1, @1);
+            label = create_label($1, @1);
+            push_declaration(context, (Declaration*)label);
+        }
         $$ = $2;
     };
 
@@ -1174,12 +1187,8 @@ return_stmt :
     };
 
 goto_stmt :
-    GOTO name ';' {
-        if($2.arg_count != 0) {
-            error_print(@2, "Invalid label name (must be a simple name)");
-            error_exit();
-        }
-        StringToken label_name = $2.name;
+    GOTO identifier ';' {
+        StringToken label_name = $2;
 
         $$ = create_stmt(STMT_GOTO, @$);
         LabelDecl* label = find_label(context, label_name);
@@ -1192,6 +1201,7 @@ goto_stmt :
             // Define a placeholder label
             // TODO: in semantic analysis, verify that all placeholder labels are filled in
             LabelDecl* label = create_label(label_name, @2);
+            label->is_placeholder = true;
             $$->u.goto_.label = label;
             push_declaration(context, (Declaration*)label);
         }
