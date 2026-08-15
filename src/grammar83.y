@@ -122,6 +122,12 @@
     void push_declaration(ParseContext* context, Declaration* decl);
 
     static
+    void add_decl_to_symbol_table(ParseContext* context, Declaration* decl);
+
+    static
+    void remove_decl_from_symbol_table(ParseContext* context, Declaration* decl);
+
+    static
     Declaration* find_decl_in_scope(DeclList* scope, StringToken name);
 
     static
@@ -129,6 +135,9 @@
 
     static
     PackageSpec* find_package_spec(ParseContext* context, StringToken name);
+
+    static
+    UseClause* find_use_clause(ParseContext* context, StringToken package_name);
 
     static
     LabelDecl* find_label(ParseContext* context, StringToken name);
@@ -1372,14 +1381,26 @@ use_clause :
                 error_print(@2, "Unknown package name '%s'", ST(package_name));
                 error_exit();
             }
-            // TODO: keep track of which packages have already been made available
-            //  and are still visible, avoid re-adding all of their declarations
+            UseClause* use_clause = find_use_clause(context, package_name);
+            if(use_clause) {
+                // Duplicate use clause - ignore
+                // TODO: warning?
+                continue;
+            }
             // TODO: mark potential ambiguities that require name qualifications
             //  somehow
+            use_clause = calloc(1, sizeof(UseClause));
+            use_clause->base.kind = DECL_USE;
+            use_clause->base.line_num = @$;
+            use_clause->package_spec = package_spec;
+            // Add all declarations in the package spec to the symbol table but not
+            // to the current scope's DeclList
             for(Declaration* decl = package_spec->decls; decl; decl = decl->next) {
-                push_declaration(context, decl);
-                DeclList_append(&$$, decl);
+                add_decl_to_symbol_table(context, decl);
             }
+            // Add the use clause itself to the current scope's DeclList
+            push_declaration(context, &use_clause->base);
+            DeclList_append(&$$, &use_clause->base);
         }
     };
 
@@ -1618,15 +1639,7 @@ void end_scope(ParseContext* context, uint32_t line_num)
     }
     // Remove all named declarations from the symbol table
     for(Declaration* decl = curr_scope(context)->first; decl; decl = decl->next) {
-        StringToken name = get_decl_name(decl);
-        if(name) {
-            // Will always be the first overload of the set since we are in the
-            // innermost scope and will have just added it to the set
-            Declaration** first_overload = find_bucket(context, name);
-            Declaration* second_overload = (*first_overload)->next_overload;
-            (*first_overload)->next_overload = NULL;
-            *first_overload = second_overload;
-        }
+        remove_decl_from_symbol_table(context, decl);
     }
     clr_struct(curr_scope(context));
     --context->curr_scope_idx;
@@ -1636,9 +1649,25 @@ static
 void push_declaration(ParseContext* context, Declaration* decl)
 {
     DeclList_append(curr_scope(context), decl);
+    add_decl_to_symbol_table(context, decl);
+}
+
+static
+void add_decl_to_symbol_table(ParseContext* context, Declaration* decl)
+{
     StringToken name = get_decl_name(decl);
-    // Add named declarations to the symbol table
-    if(name) {
+    if(!name) {
+        return;
+    }
+
+    if(decl->kind == DECL_USE) {
+        UseClause* use_clause = (UseClause*)decl;
+        // Add the declarations pulled in by the use clause
+        for(Declaration* inner_decl = use_clause->package_spec->decls; inner_decl; inner_decl = inner_decl->next) {
+            add_decl_to_symbol_table(context, inner_decl);
+        }
+    } else {
+        // Add named declarations to the symbol table
         if(context->symbol_table_buckets_used * 7 >= context->symbol_table_capacity) {
             // Grow if table is at least 70% full
             grow_table(context);
@@ -1650,6 +1679,29 @@ void push_declaration(ParseContext* context, Declaration* decl)
         // Prepend new declaration to the bucket
         decl->next_overload = *first_overload;
         *first_overload = decl;
+    }
+}
+
+static
+void remove_decl_from_symbol_table(ParseContext* context, Declaration* decl)
+{
+    StringToken name = get_decl_name(decl);
+    if(!name) {
+        return;
+    }
+
+    if(decl->kind == DECL_USE) {
+        UseClause* use_clause = (UseClause*)decl;
+        // Remove the declarations pulled in by the use clause
+        for(Declaration* inner_decl = use_clause->package_spec->decls; inner_decl; inner_decl = inner_decl->next) {
+            remove_decl_from_symbol_table(context, inner_decl);
+        }
+    } else {
+        // Doesn't matter which overload we remove because we add and remove in LIFO order
+        Declaration** first_overload = find_bucket(context, name);
+        Declaration* second_overload = (*first_overload)->next_overload;
+        (*first_overload)->next_overload = NULL;
+        *first_overload = second_overload;
     }
 }
 
@@ -1699,6 +1751,20 @@ PackageSpec* find_package_spec(ParseContext* context, StringToken name)
         for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
             if(decl->kind == DECL_PKG_SPEC) {
                 return (PackageSpec*)decl;
+            }
+        }
+    }
+    return NULL;
+}
+
+static
+UseClause* find_use_clause(ParseContext* context, StringToken package_name)
+{
+    Declaration** bucket = find_bucket(context, package_name);
+    if(bucket) {
+        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+            if(decl->kind == DECL_USE) {
+                return (UseClause*)decl;
             }
         }
     }
@@ -1908,6 +1974,9 @@ StringToken get_decl_name(const Declaration* decl)
             break;
         case DECL_PKG_SPEC:
             name = ((PackageSpec*)decl)->name;
+            break;
+        case DECL_USE:
+            name = ((UseClause*)decl)->package_spec->name;
             break;
         default:
             // This kind of declaration has no associated name

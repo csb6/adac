@@ -92,6 +92,10 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
         case DECL_PKG_BODY:
             print_package_body((const PackageBody*)decl, indent_level);
             break;
+        case DECL_USE:
+            print_indent(indent_level);
+            printf("use %s", ST(((const UseClause*)decl)->package_spec->name));
+            break;
         default:
             printf("Unknown declaration");
     }

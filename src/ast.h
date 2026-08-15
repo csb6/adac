@@ -187,7 +187,7 @@ typedef struct Expression_ {
 typedef uint8_t DeclKind;
 enum {
     DECL_OBJECT, DECL_ENUM_LIT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL, DECL_PKG_SPEC,
-    DECL_PKG_BODY
+    DECL_PKG_BODY, DECL_USE,
 };
 
 typedef struct Declaration_ {
@@ -267,6 +267,11 @@ typedef struct {
     Declaration* decls;
     struct Statement_* stmts;
 } PackageBody;
+
+typedef struct {
+    Declaration base;
+    PackageSpec* package_spec;
+} UseClause;
 
 /* STATEMENTS */
 

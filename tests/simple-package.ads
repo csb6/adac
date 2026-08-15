@@ -4,7 +4,10 @@ package SimplePackage is
 
     package Inner is
         type B is range 0 .. 1;
+        type InnerFoo is new Foo;
     end Inner;
 
     procedure Bar;
+    use Inner;
+    function Return_Foo return InnerFoo;
 end SimplePackage;
