@@ -156,10 +156,10 @@ void gather_candidates_name(ParseContext* context, Expression* expr)
             assert(false);
         }
     } else {
-        Declaration** bucket = find_bucket(context, name_expr->name);
+        Declaration* bucket = find_bucket(context, name_expr->name);
         // See if this name refers to a subprogram
         uint32_t overload_n = 0;
-        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
             // TODO: account for default parameters
             // TODO: account for named parameters
             if(decl->kind == DECL_SUBPROGRAM

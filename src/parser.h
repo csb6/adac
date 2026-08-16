@@ -79,17 +79,15 @@ extern int yydebug;
     typedef struct ParseContext_ {
         CompilationUnit* comp_unit;
         DeclList scope_stack[32];
-        Declaration** symbol_table; // array of Declaration*
-        uint32_t symbol_table_capacity;
-        uint32_t symbol_table_buckets_used;
+        void* symbol_table;
         uint8_t curr_scope_idx;
     } ParseContext;
 
-    Declaration** find_bucket(ParseContext* context, StringToken name);
+    Declaration* find_bucket(ParseContext* context, StringToken name);
 
     ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 
-#line 93 "parser.h"
+#line 91 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -184,7 +182,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 190 "grammar83.y"
+#line 186 "grammar83.y"
 
     UnaryOperator unary_op;
     BinaryOperator binary_op;
@@ -212,7 +210,7 @@ union YYSTYPE
     StringTokenArray str_token_array;
     NameExpr name;
 
-#line 216 "parser.h"
+#line 214 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -229,10 +227,10 @@ typedef SourceLocation YYLTYPE;
 int yyparse (void* scanner, ParseContext* context);
 
 /* "%code provides" blocks.  */
-#line 72 "grammar83.y"
+#line 70 "grammar83.y"
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 237 "parser.h"
+#line 235 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

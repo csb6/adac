@@ -57,13 +57,11 @@
     typedef struct ParseContext_ {
         CompilationUnit* comp_unit;
         DeclList scope_stack[32];
-        Declaration** symbol_table; // array of Declaration*
-        uint32_t symbol_table_capacity;
-        uint32_t symbol_table_buckets_used;
+        void* symbol_table;
         uint8_t curr_scope_idx;
     } ParseContext;
 
-    Declaration** find_bucket(ParseContext* context, StringToken name);
+    Declaration* find_bucket(ParseContext* context, StringToken name);
 
     ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 }
@@ -83,8 +81,12 @@
     #include "string_view.h"
     #include "lexer.h"
 
-    #define TABLE_GROWTH_FACTOR 2
-    #define TABLE_TOMBSTONE (Declaration*)0x1
+    #define NAME symbol_map
+    #define KEY_TY StringToken
+    #define VAL_TY Declaration*
+    #define HASH_FN vt_hash_integer
+    #define CMPR_FN vt_cmpr_integer
+    #include "verstable.h"
 
     DEFINE_ARRAY_OPS(EnumLiteral)
     DEFINE_ARRAY_OPS(StringToken)
@@ -178,12 +180,6 @@
     bool prepare_num_str(StringView num_str, char* buffer, int buffer_sz);
 
     static
-    uint32_t hash_fnv(StringToken token);
-
-    static
-    void grow_table(ParseContext* context);
-
-    static
     StringToken get_decl_name(const Declaration* decl);
 }
 
@@ -261,9 +257,8 @@
 %initial-action {
     @$ = 1;
     clr_struct(context);
-    context->symbol_table = calloc(64, sizeof(Declaration*));
-    context->symbol_table_capacity = 64;
-    context->symbol_table_buckets_used = 0;
+    context->symbol_table = calloc(1, sizeof(symbol_map));
+    symbol_map_init(context->symbol_table);
     if(!universal_int_type.name) {
         universal_int_type.name = string_pool_c_str_to_token("universal_integer");
     }
@@ -1665,17 +1660,12 @@ void add_decl_to_symbol_table(ParseContext* context, Declaration* decl)
     }
 
     // Add named declarations to the symbol table
-    if(context->symbol_table_buckets_used * 7 >= context->symbol_table_capacity) {
-        // Grow if table is at least 70% full
-        grow_table(context);
+    symbol_map_itr it = symbol_map_get(context->symbol_table, name);
+    if(!symbol_map_is_end(it)) {
+        // Prepend new declaration to the bucket
+        decl->next_overload = it.data->val;
     }
-    Declaration** first_overload = find_bucket(context, name);
-    if(*first_overload == NULL) {
-        ++context->symbol_table_buckets_used;
-    }
-    // Prepend new declaration to the bucket
-    decl->next_overload = *first_overload;
-    *first_overload = decl;
+    symbol_map_insert(context->symbol_table, name, decl);
 }
 
 static
@@ -1705,12 +1695,13 @@ void remove_decl_from_symbol_table(ParseContext* context, Declaration* decl)
         }
     }
 
-    Declaration** first_overload = find_bucket(context, name);
-    Declaration* second_overload = (*first_overload)->next_overload;
-    (*first_overload)->next_overload = NULL;
-    *first_overload = second_overload;
-    if(*first_overload == NULL) {
-        *first_overload = TABLE_TOMBSTONE;
+    symbol_map_itr it = symbol_map_get(context->symbol_table, name);
+    assert(!symbol_map_is_end(it));
+    Declaration* next_overload = it.data->val->next_overload;
+    if(next_overload) {
+        symbol_map_insert(context->symbol_table, name, next_overload);
+    } else {
+        symbol_map_erase_itr(context->symbol_table, it);
     }
 }
 
@@ -1728,9 +1719,9 @@ Declaration* find_decl_in_scope(DeclList* scope, StringToken name)
 static
 TypeDecl* find_type_decl(ParseContext* context, StringToken name)
 {
-    Declaration** bucket = find_bucket(context, name);
+    Declaration* bucket = find_bucket(context, name);
     if(bucket) {
-        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
             if(decl->kind == DECL_TYPE) {
                 return (TypeDecl*)decl;
             }
@@ -1741,9 +1732,9 @@ TypeDecl* find_type_decl(ParseContext* context, StringToken name)
 
 ObjectDecl* find_object_decl(ParseContext* context, StringToken name)
 {
-    Declaration** bucket = find_bucket(context, name);
+    Declaration* bucket = find_bucket(context, name);
     if(bucket) {
-        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
             if(decl->kind == DECL_OBJECT) {
                 return (ObjectDecl*)decl;
             }
@@ -1755,9 +1746,9 @@ ObjectDecl* find_object_decl(ParseContext* context, StringToken name)
 static
 PackageSpec* find_package_spec(ParseContext* context, StringToken name)
 {
-    Declaration** bucket = find_bucket(context, name);
+    Declaration* bucket = find_bucket(context, name);
     if(bucket) {
-        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
             if(decl->kind == DECL_PKG_SPEC) {
                 return (PackageSpec*)decl;
             }
@@ -1769,9 +1760,9 @@ PackageSpec* find_package_spec(ParseContext* context, StringToken name)
 static
 UseClause* find_use_clause(ParseContext* context, StringToken package_name)
 {
-    Declaration** bucket = find_bucket(context, package_name);
+    Declaration* bucket = find_bucket(context, package_name);
     if(bucket) {
-        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
             if(decl->kind == DECL_USE) {
                 return (UseClause*)decl;
             }
@@ -1783,9 +1774,9 @@ UseClause* find_use_clause(ParseContext* context, StringToken package_name)
 static
 LabelDecl* find_label(ParseContext* context, StringToken name)
 {
-    Declaration** bucket = find_bucket(context, name);
+    Declaration* bucket = find_bucket(context, name);
     if(bucket) {
-        for(Declaration* decl = *bucket; decl; decl = decl->next_overload) {
+        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
             if(decl->kind == DECL_LABEL) {
                 return (LabelDecl*)decl;
             }
@@ -1794,20 +1785,13 @@ LabelDecl* find_label(ParseContext* context, StringToken name)
     return NULL;
 }
 
-Declaration** find_bucket(ParseContext* context, StringToken name)
+Declaration* find_bucket(ParseContext* context, StringToken name)
 {
-    uint32_t hash = hash_fnv(name);
-    uint32_t capacity = context->symbol_table_capacity;
-    uint32_t idx = hash % capacity;
-    Declaration** bucket = context->symbol_table + idx;
-    // Linear probing to resolve conflicts (stop when we find an empty
-    // bucket or a bucket with the target name)
-    while(*bucket && (*bucket == TABLE_TOMBSTONE || get_decl_name(*bucket) != name)) {
-        ++idx;
-        idx %= capacity;
-        bucket = context->symbol_table + idx;
+    symbol_map_itr it = symbol_map_get(context->symbol_table, name);
+    if(symbol_map_is_end(it)) {
+        return NULL;
     }
-    return bucket;
+    return it.data->val;
 }
 
 static
@@ -1926,39 +1910,6 @@ bool prepare_num_str(StringView num_str, char* buffer, int buffer_sz)
     }
     *b = '\0';
     return true;
-}
-
-// FNV-1 hash (32-bit variant)
-static
-uint32_t hash_fnv(StringToken token)
-{
-    uint32_t hash = 2166136261;
-    const char* bytes = (const char*)&token;
-    for(int i = 0; i < 4; ++i) {
-        hash *= 16777619;
-        hash ^= bytes[i];
-    }
-    return hash;
-}
-
-static
-void grow_table(ParseContext* context)
-{
-    uint32_t old_capacity = context->symbol_table_capacity;
-    Declaration** old_buckets = context->symbol_table;
-
-    context->symbol_table_capacity *= TABLE_GROWTH_FACTOR;
-    context->symbol_table = calloc(context->symbol_table_capacity, sizeof(DeclList));
-    for(uint32_t i = 0; i < old_capacity; ++i) {
-        // Skip over empty/deleted buckets (no need to copy them to new table)
-        if(old_buckets[i] && old_buckets[i] != TABLE_TOMBSTONE) {
-            StringToken name = get_decl_name(old_buckets[i]);
-            assert(name);
-            Declaration** new_bucket = find_bucket(context, name);
-            *new_bucket = old_buckets[i];
-        }
-    }
-    free(old_buckets);
 }
 
 static
