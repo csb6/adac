@@ -1128,7 +1128,7 @@ block :
         $$ = create_stmt(STMT_BLOCK, @$);
         $$->u.block.decls = $2;
         $$->u.block.stmts = $3;
-        // Close scope if needed (i.e. if there was a declaration section)
+        // Close scope if there was a declaration section
         if($2) {
             end_scope(context, @4);
         }
@@ -1136,8 +1136,13 @@ block :
 
 block_decl :
     %empty                                          { $$ = NULL; }
-  | DECLARE { begin_scope(context, @1); } decl_part { $$ = $3; }
-    ;
+  | DECLARE { begin_scope(context, @1); } decl_part {
+        $$ = $3;
+        // Close scope if no declaration section
+        if(!$$) {
+            end_scope(context, @1);
+        }
+    };
 
 block_body :
     BEGiN handled_stmt_s { $$ = $2; }
