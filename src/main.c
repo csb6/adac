@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include "debug.h"
@@ -40,6 +41,7 @@ int main(int argc, const char** argv)
         fprintf(stderr, "Compilation failed\n");
         return 1;
     }
+    assert(parse_ctx.curr_scope_idx == 0);
     print_compilation_unit(parse_ctx.comp_unit);
 
     return 0;

@@ -84,6 +84,7 @@
     #include "lexer.h"
 
     #define TABLE_GROWTH_FACTOR 2
+    #define TABLE_TOMBSTONE (Declaration*)0x1
 
     DEFINE_ARRAY_OPS(EnumLiteral)
     DEFINE_ARRAY_OPS(StringToken)
@@ -1703,6 +1704,9 @@ void remove_decl_from_symbol_table(ParseContext* context, Declaration* decl)
     Declaration* second_overload = (*first_overload)->next_overload;
     (*first_overload)->next_overload = NULL;
     *first_overload = second_overload;
+    if(*first_overload == NULL) {
+        *first_overload = TABLE_TOMBSTONE;
+    }
 }
 
 static
@@ -1793,7 +1797,7 @@ Declaration** find_bucket(ParseContext* context, StringToken name)
     Declaration** bucket = context->symbol_table + idx;
     // Linear probing to resolve conflicts (stop when we find an empty
     // bucket or a bucket with the target name)
-    while(*bucket && get_decl_name(*bucket) != name) {
+    while(*bucket && (*bucket == TABLE_TOMBSTONE || get_decl_name(*bucket) != name)) {
         ++idx;
         idx %= capacity;
         bucket = context->symbol_table + idx;
@@ -1941,8 +1945,8 @@ void grow_table(ParseContext* context)
     context->symbol_table_capacity *= TABLE_GROWTH_FACTOR;
     context->symbol_table = calloc(context->symbol_table_capacity, sizeof(DeclList));
     for(uint32_t i = 0; i < old_capacity; ++i) {
-        // Skip over empty buckets (no need to copy them to new table)
-        if(old_buckets[i]) {
+        // Skip over empty/deleted buckets (no need to copy them to new table)
+        if(old_buckets[i] && old_buckets[i] != TABLE_TOMBSTONE) {
             StringToken name = get_decl_name(old_buckets[i]);
             assert(name);
             Declaration** new_bucket = find_bucket(context, name);
