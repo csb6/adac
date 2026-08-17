@@ -64,7 +64,7 @@ else()
 endif()
 
 # Compiler driver
-add_executable(adac src/main.c src/grammar83.tab.c src/lex.yy.c src/string_pool.c src/checker.c src/debug.c)
+add_executable(adac src/main.c src/grammar83.tab.c src/lex.yy.c src/string_pool.c src/checker.c src/debug.c src/comp_manager.c)
 target_include_directories(adac PRIVATE src third_party/verstable)
 target_compile_options(adac PRIVATE "${FLAGS}")
 target_link_libraries(adac PUBLIC util mini-gmp)

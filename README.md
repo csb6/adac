@@ -39,7 +39,7 @@ or manually invoke `gperf` using the invocation in the comment at the top of `ke
 
 The build produces a standalone executable `adac` that can then be run:
 
-    adac path_to_ada_source_file
+    adac -I search_dir main_unit_name
 
 Currently, this simply parses the given file, emitting error messages if any are encountered, and pretty prints the parse tree.
 

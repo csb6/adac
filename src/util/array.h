@@ -32,13 +32,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     } T##Array;
 
 #define DEFINE_ARRAY_OPS(T) \
-    void T##Array_init(T##Array* array) \
+    static inline void T##Array_init(T##Array* array) \
     { \
         array->data = calloc(DEFAULT_ARRAY_CAPACITY, sizeof(T)); \
         array->end = array->data; \
         array->buffer_end = array->data + DEFAULT_ARRAY_CAPACITY; \
     } \
-    void T##Array_append(T##Array* array, T value) \
+    static inline void T##Array_append(T##Array* array, T value) \
     { \
         if(array->end >= array->buffer_end) { \
             uint32_t old_size = array->end - array->data; \
@@ -49,7 +49,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         } \
         *array->end++ = value; \
     } \
-    uint32_t T##Array_size(const T##Array* array) \
+    static inline uint32_t T##Array_size(const T##Array* array) \
     { \
        return array->end - array->data; \
     }

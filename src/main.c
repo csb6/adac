@@ -1,48 +1,69 @@
-#include <assert.h>
+/*
+adac - Ada compiler
+Copyright (C) 2025  Cole Blakley
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
-#include <stdbool.h>
+#include <unistd.h>
+#include "ast.h"
+#include "comp_manager.h"
 #include "debug.h"
-#include "error.h"
-#include "parser.h"
-#include "lexer.h"
 #include "string_pool.h"
 
-void yyerror(YYLTYPE* yyloc, yyscan_t scanner, ParseContext* parse_ctx, const char* msg)
-{
-    (void)scanner;
-    (void)parse_ctx;
-    error_print(*yyloc, msg);
-    error_exit();
-}
+static
+void usage(const char* exe_name);
 
-int main(int argc, const char** argv)
+int main(int argc, char * const* argv)
 {
-    if(argc != 2) {
-        fprintf(stderr, "Usage: %s input_file\n", argv[0]);
-        return 1;
-    }
-    const char* input_file_path = argv[1];
-    FILE* input_file = fopen(input_file_path, "rb");
-    if(!input_file) {
-        perror(input_file_path);
-        return 1;
-    }
-    yyscan_t lexer;
-    error_set_source_file_path(input_file_path);
-    yylex_init(&lexer);
-    yyset_in(input_file, lexer);
-
     string_pool_init();
-    ParseContext parse_ctx = {0};
-    int parse_status = yyparse(lexer, &parse_ctx);
-    yylex_destroy(lexer);
-    fclose(input_file);
-    if(parse_status != 0) {
-        fprintf(stderr, "Compilation failed\n");
+    CompilationManager* comp_manager = comp_manager_init();
+
+    int opt;
+    while((opt = getopt(argc, argv, "I:h")) != -1) {
+        switch(opt) {
+            case 'I':
+                comp_manager_add_source_dir(comp_manager, optarg);
+                break;
+            case 'h':
+                usage(argv[0]);
+                return 0;
+            default:
+                usage(argv[0]);
+                return 1;
+        }
+    }
+
+    if(optind >= argc) {
+        fprintf(stderr, "Error: missing main unit name after options list\n");
+        usage(argv[0]);
         return 1;
     }
-    assert(parse_ctx.curr_scope_idx == 0);
-    print_compilation_unit(parse_ctx.comp_unit);
+
+    const char* main_unit_name = argv[optind];
+    CompilationUnit* comp_unit = comp_manager_parse_unit(comp_manager, main_unit_name);
+    if(!comp_unit) {
+        return 1;
+    }
+    print_compilation_unit(comp_unit);
 
     return 0;
+}
+
+static
+void usage(const char* exe_name)
+{
+    fprintf(stderr, "Usage: %s [-I source_dir]... main_unit\n", exe_name);
 }
