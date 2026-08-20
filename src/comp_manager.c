@@ -22,10 +22,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 #include "array.h"
+#include "string_pool.h"
 #include "ast.h"
 #include "error.h"
 #include "parser.h"
 #include "lexer.h"
+
+#define NAME spec_cache_map
+#define KEY_TY StringToken
+#define VAL_TY CompilationUnit*
+#define HASH_FN vt_hash_integer
+#define CMPR_FN vt_cmpr_integer
+#include "verstable.h"
 
 typedef const char* Path;
 DEFINE_ARRAY_TYPE(Path)
@@ -46,18 +54,41 @@ CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name);
 
 struct CompilationManager_ {
     PathArray source_dirs;
+    spec_cache_map spec_cache;
 };
 
 CompilationManager* comp_manager_init(void)
 {
     CompilationManager* comp_manager = calloc(1, sizeof(CompilationManager));
     PathArray_init(&comp_manager->source_dirs);
+    spec_cache_map_init(&comp_manager->spec_cache);
     return comp_manager;
 }
 
 void comp_manager_add_source_dir(CompilationManager* comp_manager, const char* source_dir)
 {
     PathArray_append(&comp_manager->source_dirs, source_dir);
+}
+
+CompilationUnit* comp_manager_parse_spec(CompilationManager* comp_manager, const char* spec_name)
+{
+    StringToken spec_name_token = string_pool_c_str_to_token(spec_name);
+    spec_cache_map_itr it = spec_cache_map_get(&comp_manager->spec_cache, spec_name_token);
+    if(!spec_cache_map_is_end(it)) {
+        return it.data->val;
+    }
+    char* spec_file_name = add_extension(spec_name, ".ads");
+    const char* source_dir = find_dir(
+        comp_manager->source_dirs.data, PathArray_size(&comp_manager->source_dirs), spec_file_name);
+    if(!source_dir) {
+        error_print_general("Unable to find spec file for unit '%s'", spec_name);
+        error_exit();
+    }
+
+    CompilationUnit* comp_unit = parse_unit(source_dir, spec_file_name);
+    free(spec_file_name);
+    spec_cache_map_insert(&comp_manager->spec_cache, spec_name_token, comp_unit);
+    return comp_unit;
 }
 
 CompilationUnit* comp_manager_parse_unit(CompilationManager* comp_manager, const char* unit_name)
