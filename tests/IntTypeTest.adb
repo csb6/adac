@@ -1,3 +1,5 @@
+with SimplePackage;
+
 procedure IntTypeTest is
     -- comment
     type SmallInteger is range 16#FFF# .. 12+1;

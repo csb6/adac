@@ -49,7 +49,7 @@ static
 const char* find_dir(const char** dir_list, uint32_t dir_count, const char* file_name);
 
 static
-CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name);
+CompilationUnit* parse_unit(CompilationManager* comp_manager, const char* source_dir, const char* unit_file_name);
 
 
 struct CompilationManager_ {
@@ -85,7 +85,7 @@ CompilationUnit* comp_manager_parse_spec(CompilationManager* comp_manager, const
         error_exit();
     }
 
-    CompilationUnit* comp_unit = parse_unit(source_dir, spec_file_name);
+    CompilationUnit* comp_unit = parse_unit(comp_manager, source_dir, spec_file_name);
     free(spec_file_name);
     spec_cache_map_insert(&comp_manager->spec_cache, spec_name_token, comp_unit);
     return comp_unit;
@@ -101,13 +101,13 @@ CompilationUnit* comp_manager_parse_unit(CompilationManager* comp_manager, const
         error_exit();
     }
 
-    CompilationUnit* comp_unit = parse_unit(source_dir, unit_file_name);
+    CompilationUnit* comp_unit = parse_unit(comp_manager, source_dir, unit_file_name);
     free(unit_file_name);
     return comp_unit;
 }
 
 static
-CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name)
+CompilationUnit* parse_unit(CompilationManager* comp_manager, const char* source_dir, const char* unit_file_name)
 {
     char* input_file_path = create_input_file_path(source_dir, unit_file_name);
     FILE* input_file = fopen(input_file_path, "rb");
@@ -120,6 +120,7 @@ CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name)
     yyset_in(input_file, lexer);
 
     ParseContext parse_ctx = {0};
+    parse_ctx.comp_manager = comp_manager;
     parse_ctx.file_id = error_get_file_id(input_file_path);
     int parse_status = yyparse(lexer, &parse_ctx);
     yylex_destroy(lexer);
