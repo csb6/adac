@@ -101,14 +101,5 @@ target_link_libraries(array_test PUBLIC util)
 # Tools
 
 # Counts lines of code (requires cloc tool to be installed)
-add_custom_target(cloc cloc --by-file --fullpath --not-match-d=src/lexer_gen --exclude-ext=tab.c,yy.c src
+add_custom_target(cloc cloc --by-file --fullpath --exclude-ext=tab.c,yy.c src
                   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Custom lexer generator (not current being used)
-add_executable(lexer_gen
-    src/lexer_gen/main.c
-    src/lexer_gen/lexer.c src/lexer_gen/parser.c src/lexer_gen/checker.c src/lexer_gen/generator.c
-    src/lexer_gen/debug.c)
-target_include_directories(lexer_gen PRIVATE src/lexer_gen)
-target_compile_options(lexer_gen PRIVATE "${FLAGS}")
-target_link_libraries(lexer_gen PUBLIC util)
