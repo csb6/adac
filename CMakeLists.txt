@@ -20,7 +20,7 @@ option(ENABLE_GCC_ANALYZER "Enable GCC static analyzer" OFF)
 option(ENABLE_CLANG_ANALYZER "Enable Clang static analyzer" OFF)
 
 # Misc utilities
-add_library(util STATIC src/util/error.c src/util/file_buffer.c src/util/string_view.c)
+add_library(util STATIC src/util/error.c src/util/string_view.c)
 target_include_directories(util PUBLIC src/util)
 target_compile_options(util PRIVATE "${FLAGS}")
 
