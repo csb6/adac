@@ -54,8 +54,6 @@ extern int yydebug;
     #include "linked_list.h"
     #include "ast.h"
 
-    typedef uint32_t SourceLocation;
-
     DEFINE_ARRAY_TYPE(EnumLiteral)
     DEFINE_ARRAY_TYPE(StringToken)
     DEFINE_ARRAY_TYPE(Choice)
@@ -80,6 +78,7 @@ extern int yydebug;
         CompilationUnit* comp_unit;
         DeclList scope_stack[32];
         void* symbol_table;
+        uint16_t file_id;
         uint8_t curr_scope_idx;
     } ParseContext;
 
@@ -87,7 +86,7 @@ extern int yydebug;
 
     ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 
-#line 91 "parser.h"
+#line 90 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -182,7 +181,7 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 186 "grammar83.y"
+#line 185 "grammar83.y"
 
     UnaryOperator unary_op;
     BinaryOperator binary_op;
@@ -210,7 +209,7 @@ union YYSTYPE
     StringTokenArray str_token_array;
     NameExpr name;
 
-#line 214 "parser.h"
+#line 213 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -227,10 +226,10 @@ typedef SourceLocation YYLTYPE;
 int yyparse (void* scanner, ParseContext* context);
 
 /* "%code provides" blocks.  */
-#line 70 "grammar83.y"
+#line 69 "grammar83.y"
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 235 "parser.h"
+#line 234 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

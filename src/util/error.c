@@ -15,24 +15,39 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#define _XOPEN_SOURCE 500
 #include "error.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
+#include "array.h"
 
-static const char* source_file_path = NULL;
+typedef char* Path;
+DEFINE_ARRAY_TYPE(Path)
+DEFINE_ARRAY_OPS(Path)
 
-void error_set_source_file_path(const char* path)
+static PathArray source_paths;
+
+void error_init(void)
 {
-    source_file_path = path;
+    PathArray_init(&source_paths);
 }
 
-void error_print(uint32_t line_num, const char *message, ...)
+uint16_t error_get_file_id(const char* source_path)
 {
-    if(source_file_path) {
-        fprintf(stderr, "%s:%u ", source_file_path, line_num);
+    PathArray_append(&source_paths, strdup(source_path));
+    return PathArray_size(&source_paths) - 1;
+}
+
+void error_print(SourceLocation loc, const char *message, ...)
+{
+    const char* source_file_path = "(Unknown file)";
+    if(loc.file_id < PathArray_size(&source_paths)) {
+        source_file_path = source_paths.data[loc.file_id];
     }
+    fprintf(stderr, "%s:%u ", source_file_path, loc.line_num);
 
     va_list args;
     va_start(args, message);

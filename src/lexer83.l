@@ -102,9 +102,9 @@ IDENTIFIER      [a-zA-Z](_?[a-zA-Z0-9])*
     yylval->str.len = yyleng;
     return numeric_lit;
 }
---.*\n                  (*yylloc)++;
+--.*\n                  yylloc->line_num++;
 [ \t\f]                 ;
-\n                      (*yylloc)++;
+\n                      yylloc->line_num++;
 <<EOF>>                 return YYEOF;
 .                       {
     error_print(*yylloc, "Illegal character: %c", *yytext);

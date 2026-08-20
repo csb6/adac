@@ -1043,7 +1043,7 @@ case 30:
 /* rule 30 can match eol */
 YY_RULE_SETUP
 #line 105 "lexer83.l"
-(*yylloc)++;
+yylloc->line_num++;
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
@@ -1054,7 +1054,7 @@ case 32:
 /* rule 32 can match eol */
 YY_RULE_SETUP
 #line 107 "lexer83.l"
-(*yylloc)++;
+yylloc->line_num++;
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
 #line 108 "lexer83.l"

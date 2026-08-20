@@ -20,8 +20,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
-void error_set_source_file_path(const char* path);
-void error_print(uint32_t line_num, const char *message, ...);
+typedef struct {
+    uint16_t file_id;
+    uint16_t line_num;
+} SourceLocation;
+
+void error_init(void);
+uint16_t error_get_file_id(const char* source_path);
+void error_print(SourceLocation loc, const char *message, ...);
 void error_print_general(const char* message, ...);
 void error_exit(void) __attribute__ ((noreturn));
 

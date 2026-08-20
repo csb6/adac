@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "ast.h"
 #include "comp_manager.h"
 #include "debug.h"
+#include "error.h"
 #include "string_pool.h"
 
 static
@@ -28,6 +29,7 @@ void usage(const char* exe_name);
 
 int main(int argc, char * const* argv)
 {
+    error_init();
     string_pool_init();
     CompilationManager* comp_manager = comp_manager_init();
 

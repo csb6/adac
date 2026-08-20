@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "error.h"
 #include "mini-gmp.h"
 #include "string_view.h"
 #include "string_pool.h"
@@ -165,7 +166,7 @@ typedef struct {
 } QualifiedExpr;
 
 typedef struct Expression_ {
-    uint32_t line_num;
+    SourceLocation loc;
     ExprKind kind;
     union {
         // 4.2: Literals
@@ -193,7 +194,7 @@ enum {
 typedef struct Declaration_ {
     struct Declaration_* next; // Next decl in region
     struct Declaration_* next_overload; // Next declaration with same name
-    uint32_t line_num;
+    SourceLocation loc;
     DeclKind kind;
 } Declaration;
 
@@ -364,7 +365,7 @@ typedef struct {
 } GotoStmt;
 
 typedef struct Statement_ {
-    uint32_t line_num;
+    SourceLocation loc;
     StmtKind kind;
     union {
         AssignStmt assign;

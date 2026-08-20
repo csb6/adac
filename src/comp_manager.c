@@ -116,13 +116,11 @@ CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name)
         error_exit();
     }
     yyscan_t lexer;
-    // TODO: need this to be part of context, not global, so we handle
-    //  switching between files
-    error_set_source_file_path(input_file_path);
     yylex_init(&lexer);
     yyset_in(input_file, lexer);
 
     ParseContext parse_ctx = {0};
+    parse_ctx.file_id = error_get_file_id(input_file_path);
     int parse_status = yyparse(lexer, &parse_ctx);
     yylex_destroy(lexer);
     fclose(input_file);

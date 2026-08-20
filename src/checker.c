@@ -176,7 +176,7 @@ void gather_candidates_name(ParseContext* context, Expression* expr)
         // TODO: other possible entities that can have names
         // TODO: check for more constraints on candidates? (e.g. type of operands)
         if(!name_expr->overload_candidates) {
-            error_print(expr->line_num, "No viable overloads for name '%s'", ST(name_expr->name));
+            error_print(expr->loc, "No viable overloads for name '%s'", ST(name_expr->name));
             error_exit();
         }
     }
@@ -189,8 +189,7 @@ void add_overload(Expression* expr, uint32_t overload_n)
     // Only care about there being too many overloads if we are unable
     // to represent a candidate in the bitset, so we only check here
     if(overload_n >= MAX_OVERLOAD_CANDIDATES) {
-        error_print(expr->line_num,
-            "Too many overload candidates to consider for name '%s' (maximum is %u)",
+        error_print(expr->loc, "Too many overload candidates to consider for name '%s' (maximum is %u)",
             ST(expr->u.name.name), MAX_OVERLOAD_CANDIDATES);
         error_exit();
     }

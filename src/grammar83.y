@@ -32,8 +32,6 @@
     #include "linked_list.h"
     #include "ast.h"
 
-    typedef uint32_t SourceLocation;
-
     DEFINE_ARRAY_TYPE(EnumLiteral)
     DEFINE_ARRAY_TYPE(StringToken)
     DEFINE_ARRAY_TYPE(Choice)
@@ -58,6 +56,7 @@
         CompilationUnit* comp_unit;
         DeclList scope_stack[32];
         void* symbol_table;
+        uint16_t file_id;
         uint8_t curr_scope_idx;
     } ParseContext;
 
@@ -116,10 +115,10 @@
     #define curr_scope(context) ((context)->scope_stack + (context)->curr_scope_idx)
 
     static
-    void begin_scope(ParseContext* context, uint32_t line_num);
+    void begin_scope(ParseContext* context, SourceLocation loc);
 
     static
-    void end_scope(ParseContext* context, uint32_t line_num);
+    void end_scope(ParseContext* context, SourceLocation loc);
 
     static
     void push_declaration(ParseContext* context, Declaration* decl);
@@ -150,31 +149,31 @@
     #define clr_struct(s) memset(s, 0, sizeof(*(s)))
 
     static
-    void check_for_redefinition(ParseContext* context, StringToken name, uint32_t line_num);
+    void check_for_redefinition(ParseContext* context, StringToken name, SourceLocation loc);
 
     static
-    Expression* create_expr(ExprKind kind, uint32_t line_num);
+    Expression* create_expr(ExprKind kind, SourceLocation loc);
 
     static
-    Statement* create_stmt(StmtKind kind, uint32_t line_num);
+    Statement* create_stmt(StmtKind kind, SourceLocation loc);
 
     static
     TypeDecl* create_type_decl(TypeKind kind);
 
     static
-    ObjectDecl* create_object_decl(StringToken name, uint32_t line_num);
+    ObjectDecl* create_object_decl(StringToken name, SourceLocation loc);
 
     static
-    SubprogramDecl* create_subprogram_decl(StringToken name, uint32_t line_num);
+    SubprogramDecl* create_subprogram_decl(StringToken name, SourceLocation loc);
 
     static
-    LabelDecl* create_label(StringToken name, uint32_t line_num);
+    LabelDecl* create_label(StringToken name, SourceLocation loc);
 
     static
     CompilationUnit* create_comp_unit(CompilationUnitKind kind);
 
     static
-    int get_base(StringView num_str, uint32_t line_num);
+    int get_base(StringView num_str, SourceLocation loc);
 
     static
     bool prepare_num_str(StringView num_str, char* buffer, int buffer_sz);
@@ -255,8 +254,8 @@
 %token char_lit identifier char_string numeric_lit goto_label
 
 %initial-action {
-    @$ = 1;
-    clr_struct(context);
+    @$.file_id = context->file_id;
+    @$.line_num = 1;
     context->symbol_table = calloc(1, sizeof(symbol_map));
     symbol_map_init(context->symbol_table);
     if(!universal_int_type.name) {
@@ -390,7 +389,7 @@ type_decl :
         // TODO: discriminant
         TypeDecl* decl = $4;
         // Note: decl->base.kind is set by the specific type_completion
-        decl->base.line_num = @$;
+        decl->base.loc = @$;
         decl->name = $2;
         check_for_redefinition(context, decl->name, @$);
         push_declaration(context, &decl->base);
@@ -423,7 +422,7 @@ type_def :
 subtype_decl :
     SUBTYPE identifier IS subtype_ind ';' {
         TypeDecl* decl = create_type_decl(TYPE_SUBTYPE);
-        decl->base.line_num = @$;
+        decl->base.loc = @$;
         decl->name = $2;
         check_for_redefinition(context, decl->name, @$);
         TypeDecl* base_type = find_type_decl(context, $4);
@@ -501,14 +500,14 @@ enum_id :
     identifier {
         clr_struct(&$$);
         $$.base.kind = DECL_ENUM_LIT;
-        $$.base.line_num = @$;
+        $$.base.loc = @$;
         $$.name = $1;
         $$.is_char_lit = false;
     }
   | char_lit {
         clr_struct(&$$);
         $$.base.kind = DECL_ENUM_LIT;
-        $$.base.line_num = @$;
+        $$.base.loc = @$;
         char buffer[3] = {0};
         buffer[0] = '\'';
         buffer[1] = $1;
@@ -942,10 +941,10 @@ statement :
             if(label->is_placeholder) {
                 // Fill in the placeholder
                 label->is_placeholder = false;
-                label->base.line_num = @1;
+                label->base.loc = @1;
             } else {
                 error_print(@1, "Redefinition of label '%s'", ST($1));
-                error_print(label->base.line_num, "Previous definition here");
+                error_print(label->base.loc, "Previous definition here");
                 error_exit();
             }
         } else {
@@ -989,7 +988,7 @@ assign_stmt :
     name IS_ASSIGNED expression ';' {
         $$ = create_stmt(STMT_ASSIGN, @$);
         $$->u.assign.dest.kind = EXPR_NAME;
-        $$->u.assign.dest.line_num = @$;
+        $$->u.assign.dest.loc = @$;
         $$->u.assign.dest.u.name = $1;
         $$->u.assign.expr = $3;
     };
@@ -1099,7 +1098,7 @@ iter_part :
     FOR identifier IN {
         clr_struct(&$$);
         $$.base.kind = DECL_OBJECT;
-        $$.base.line_num = @$;
+        $$.base.loc = @$;
         $$.name = $2;
     };
 
@@ -1275,7 +1274,7 @@ procedure_call :
     name ';' {
         $$ = create_stmt(STMT_EXPR, @$);
         $$->u.expr.kind = EXPR_NAME;
-        $$->u.expr.line_num = @$;
+        $$->u.expr.loc = @$;
         $$->u.expr.u.name = $1;
     };
 
@@ -1289,7 +1288,7 @@ pkg_spec :
         begin_scope(context, @3);
         $<pkg_spec>$ = calloc(1, sizeof(PackageSpec));
         $<pkg_spec>$->base.kind = DECL_PKG_SPEC;
-        $<pkg_spec>$->base.line_num = @$;
+        $<pkg_spec>$->base.loc = @$;
         $<pkg_spec>$->name = $2;
     }
     decl_item_s private_part END identifier_opt {
@@ -1319,7 +1318,7 @@ pkg_body :
         begin_scope(context, @4);
         $<pkg_body>$ = calloc(1, sizeof(PackageBody));
         $<pkg_body>$->base.kind = DECL_PKG_BODY;
-        $<pkg_body>$->base.line_num = @$;
+        $<pkg_body>$->base.loc = @$;
         $<pkg_body>$->name = $3;
     }
     decl_part body_opt END identifier_opt ';' {
@@ -1369,7 +1368,7 @@ use_clause :
             //  somehow
             use_clause = calloc(1, sizeof(UseClause));
             use_clause->base.kind = DECL_USE;
-            use_clause->base.line_num = @$;
+            use_clause->base.loc = @$;
             use_clause->package_spec = package_spec;
             // Add all declarations in the package spec to the symbol table but not
             // to the current scope's DeclList
@@ -1584,7 +1583,7 @@ code_stmt :
 static
 Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right)
 {
-    Expression* expr = create_expr(EXPR_BINARY, left->line_num);
+    Expression* expr = create_expr(EXPR_BINARY, left->loc);
     expr->u.binary.left = left;
     expr->u.binary.op = op;
     expr->u.binary.right = right;
@@ -1594,27 +1593,27 @@ Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* ri
 static
 Expression* make_unary_expr(UnaryOperator op, Expression* right)
 {
-    Expression* expr = create_expr(EXPR_UNARY, right->line_num);
+    Expression* expr = create_expr(EXPR_UNARY, right->loc);
     expr->u.unary.op = op;
     expr->u.unary.right = right;
     return expr;
 }
 
 static
-void begin_scope(ParseContext* context, uint32_t line_num)
+void begin_scope(ParseContext* context, SourceLocation loc)
 {
     if(context->curr_scope_idx + 1u >= cnt_of_array(context->scope_stack)) {
-        error_print(line_num, "Too many nested scopes (maximum is %u nested scopes)", cnt_of_array(context->scope_stack));
+        error_print(loc, "Too many nested scopes (maximum is %u nested scopes)", cnt_of_array(context->scope_stack));
         error_exit();
     }
     ++context->curr_scope_idx;
 }
 
 static
-void end_scope(ParseContext* context, uint32_t line_num)
+void end_scope(ParseContext* context, SourceLocation loc)
 {
     if(context->curr_scope_idx == 0) {
-        error_print(line_num, "Attempted to exit top-level region");
+        error_print(loc, "Attempted to exit top-level region");
         error_exit();
     }
     // Remove all named declarations from the symbol table
@@ -1795,31 +1794,31 @@ Declaration* find_bucket(ParseContext* context, StringToken name)
 }
 
 static
-void check_for_redefinition(ParseContext* context, StringToken name, uint32_t line_num)
+void check_for_redefinition(ParseContext* context, StringToken name, SourceLocation loc)
 {
     Declaration* existing_decl = find_decl_in_scope(curr_scope(context), name);
     if(existing_decl) {
-        error_print(line_num, "Redefinition of '%s' within same declarative region", ST(name));
-        error_print(existing_decl->line_num, "Previous definition here");
+        error_print(loc, "Redefinition of '%s' within same declarative region", ST(name));
+        error_print(existing_decl->loc, "Previous definition here");
         error_exit();
     }
 }
 
 static
-Expression* create_expr(ExprKind kind, uint32_t line_num)
+Expression* create_expr(ExprKind kind, SourceLocation loc)
 {
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = kind;
-    expr->line_num = line_num;
+    expr->loc = loc;
     return expr;
 }
 
 static
-Statement* create_stmt(StmtKind kind, uint32_t line_num)
+Statement* create_stmt(StmtKind kind, SourceLocation loc)
 {
     Statement* stmt = calloc(1, sizeof(Statement));
     stmt->kind = kind;
-    stmt->line_num = line_num;
+    stmt->loc = loc;
     return stmt;
 }
 
@@ -1833,31 +1832,31 @@ TypeDecl* create_type_decl(TypeKind kind)
 }
 
 static
-ObjectDecl* create_object_decl(StringToken name, uint32_t line_num)
+ObjectDecl* create_object_decl(StringToken name, SourceLocation loc)
 {
     ObjectDecl* decl = calloc(1, sizeof(ObjectDecl));
     decl->base.kind = DECL_OBJECT;
-    decl->base.line_num = line_num;
+    decl->base.loc = loc;
     decl->name = name;
     return decl;
 }
 
 static
-SubprogramDecl* create_subprogram_decl(StringToken name, uint32_t line_num)
+SubprogramDecl* create_subprogram_decl(StringToken name, SourceLocation loc)
 {
     SubprogramDecl* decl = calloc(1, sizeof(SubprogramDecl));
     decl->base.kind = DECL_SUBPROGRAM;
-    decl->base.line_num = line_num;
+    decl->base.loc = loc;
     decl->name = name;
     return decl;
 }
 
 static
-LabelDecl* create_label(StringToken name, uint32_t line_num)
+LabelDecl* create_label(StringToken name, SourceLocation loc)
 {
     LabelDecl* label = calloc(1, sizeof(LabelDecl));
     label->base.kind = DECL_LABEL;
-    label->base.line_num = line_num;
+    label->base.loc = loc;
     label->name = name;
     return label;
 }
@@ -1871,7 +1870,7 @@ CompilationUnit* create_comp_unit(CompilationUnitKind kind)
 }
 
 static
-int get_base(StringView num_str, uint32_t line_num)
+int get_base(StringView num_str, SourceLocation loc)
 {
     int base = 10;
     const char* hash_mark = memchr(num_str.value, '#', num_str.len);
@@ -1883,7 +1882,7 @@ int get_base(StringView num_str, uint32_t line_num)
             }
         }
         if(base < 1 || base > 16) {
-            error_print(line_num, "Numeric literal has invalid base (%d). Bases must be in range [1, 16]", base);
+            error_print(loc, "Numeric literal has invalid base (%d). Bases must be in range [1, 16]", base);
             error_exit();
         }
     }
