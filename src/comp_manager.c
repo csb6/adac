@@ -70,7 +70,8 @@ void comp_manager_add_source_dir(CompilationManager* comp_manager, const char* s
     PathArray_append(&comp_manager->source_dirs, source_dir);
 }
 
-CompilationUnit* comp_manager_parse_spec(CompilationManager* comp_manager, const char* spec_name)
+CompilationUnit* comp_manager_parse_spec(
+    CompilationManager* comp_manager, const char* spec_name, SourceLocation* loc)
 {
     StringToken spec_name_token = string_pool_c_str_to_token(spec_name);
     spec_cache_map_itr it = spec_cache_map_get(&comp_manager->spec_cache, spec_name_token);
@@ -81,7 +82,11 @@ CompilationUnit* comp_manager_parse_spec(CompilationManager* comp_manager, const
     const char* source_dir = find_dir(
         comp_manager->source_dirs.data, PathArray_size(&comp_manager->source_dirs), spec_file_name);
     if(!source_dir) {
-        error_print_general("Unable to find spec file for unit '%s'", spec_name);
+        if(loc) {
+            error_print(*loc, "Unable to find spec file for unit '%s'", spec_name);
+        } else {
+            error_print_general("Unable to find spec file for unit '%s'", spec_name);
+        }
         error_exit();
     }
 

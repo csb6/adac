@@ -1418,7 +1418,7 @@ with_clause :
         uint32_t package_count = StringTokenArray_size(&$2);
         for(uint32_t i = 0; i < package_count; ++i) {
             const char* package_name = string_pool_to_str($2.data[i]);
-            CompilationUnit* unit = comp_manager_parse_spec(context->comp_manager, package_name);
+            CompilationUnit* unit = comp_manager_parse_spec(context->comp_manager, package_name, &@$);
             assert(unit->kind == COMP_UNIT_PACKAGE_SPEC);
             push_declaration(context, &unit->u.package_spec->base);
         }

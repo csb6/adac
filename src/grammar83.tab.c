@@ -3895,7 +3895,7 @@ yyreduce:
         uint32_t package_count = StringTokenArray_size(&(yyvsp[-1].str_token_array));
         for(uint32_t i = 0; i < package_count; ++i) {
             const char* package_name = string_pool_to_str((yyvsp[-1].str_token_array).data[i]);
-            CompilationUnit* unit = comp_manager_parse_spec(context->comp_manager, package_name);
+            CompilationUnit* unit = comp_manager_parse_spec(context->comp_manager, package_name, &(yyloc));
             assert(unit->kind == COMP_UNIT_PACKAGE_SPEC);
             push_declaration(context, &unit->u.package_spec->base);
         }

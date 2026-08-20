@@ -18,6 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef ADAC_COMP_MANAGER_H
 #define ADAC_COMP_MANAGER_H
 
+#include "error.h"
+
 struct CompilationManager_;
 typedef struct CompilationManager_ CompilationManager;
 struct CompilationUnit_;
@@ -26,7 +28,8 @@ CompilationManager* comp_manager_init(void);
 
 void comp_manager_add_source_dir(CompilationManager* comp_manager, const char* source_dir);
 
-struct CompilationUnit_* comp_manager_parse_spec(CompilationManager* comp_manager, const char* spec_name);
+struct CompilationUnit_* comp_manager_parse_spec(
+    CompilationManager* comp_manager, const char* spec_name, SourceLocation* loc);
 
 struct CompilationUnit_* comp_manager_parse_unit(CompilationManager* comp_manager, const char* unit_name);
 
