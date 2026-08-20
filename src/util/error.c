@@ -37,6 +37,14 @@ void error_init(void)
 
 uint16_t error_get_file_id(const char* source_path)
 {
+    uint16_t i;
+    uint16_t source_paths_count = (uint16_t)PathArray_size(&source_paths);
+    for(i = 0; i < source_paths_count; ++i) {
+        if(strcmp(source_paths.data[i], source_path) == 0) {
+            return i;
+        }
+    }
+    // New path: add it
     PathArray_append(&source_paths, strdup(source_path));
     return PathArray_size(&source_paths) - 1;
 }
