@@ -53,11 +53,8 @@ int main(int argc, char * const* argv)
     }
 
     const char* main_unit_name = argv[optind];
-    CompilationUnit* comp_unit = comp_manager_parse_unit(comp_manager, main_unit_name);
-    if(!comp_unit) {
-        return 1;
-    }
-    print_compilation_unit(comp_unit);
+    CompilationUnit* main_unit = comp_manager_parse_unit(comp_manager, main_unit_name);
+    print_compilation_unit(main_unit);
 
     return 0;
 }

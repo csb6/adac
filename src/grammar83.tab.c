@@ -4532,3 +4532,11 @@ StringToken get_decl_name(const Declaration* decl)
     }
     return name;
 }
+
+void yyerror(YYLTYPE* yyloc, yyscan_t scanner, ParseContext* parse_ctx, const char* msg)
+{
+    (void)scanner;
+    (void)parse_ctx;
+    error_print(*yyloc, msg);
+    error_exit();
+}

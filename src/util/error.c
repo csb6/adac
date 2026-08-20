@@ -42,6 +42,16 @@ void error_print(uint32_t line_num, const char *message, ...)
     va_end(args);
 }
 
+void error_print_general(const char* message, ...)
+{
+    va_list args;
+    va_start(args, message);
+    fprintf(stderr, "Error: ");
+    vfprintf(stderr, message, args);
+    fputc('\n', stderr);
+    va_end(args);
+}
+
 void error_exit(void)
 {
     exit(1);

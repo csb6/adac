@@ -40,6 +40,10 @@ char* create_input_file_path(const char* source_dir, const char* file_name);
 static
 const char* find_dir(const char** dir_list, uint32_t dir_count, const char* file_name);
 
+static
+CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name);
+
+
 struct CompilationManager_ {
     PathArray source_dirs;
 };
@@ -59,24 +63,30 @@ void comp_manager_add_source_dir(CompilationManager* comp_manager, const char* s
 CompilationUnit* comp_manager_parse_unit(CompilationManager* comp_manager, const char* unit_name)
 {
     char* unit_file_name = add_extension(unit_name, ".adb");
-
     const char* source_dir = find_dir(
         comp_manager->source_dirs.data, PathArray_size(&comp_manager->source_dirs), unit_file_name);
     if(!source_dir) {
-        fprintf(stderr, "Error: Unable to find source file for unit '%s'\n", unit_name);
-        free(unit_file_name);
-        return NULL;
+        error_print_general("Unable to find source file for unit '%s'", unit_name);
+        error_exit();
     }
 
-    char* input_file_path = create_input_file_path(source_dir, unit_file_name);
+    CompilationUnit* comp_unit = parse_unit(source_dir, unit_file_name);
     free(unit_file_name);
+    return comp_unit;
+}
+
+static
+CompilationUnit* parse_unit(const char* source_dir, const char* unit_file_name)
+{
+    char* input_file_path = create_input_file_path(source_dir, unit_file_name);
     FILE* input_file = fopen(input_file_path, "rb");
     if(!input_file) {
-        perror(input_file_path);
-        free(input_file_path);
-        return NULL;
+        error_print_general("%s", strerror(errno));
+        error_exit();
     }
     yyscan_t lexer;
+    // TODO: need this to be part of context, not global, so we handle
+    //  switching between files
     error_set_source_file_path(input_file_path);
     yylex_init(&lexer);
     yyset_in(input_file, lexer);
@@ -86,21 +96,12 @@ CompilationUnit* comp_manager_parse_unit(CompilationManager* comp_manager, const
     yylex_destroy(lexer);
     fclose(input_file);
     if(parse_status != 0) {
-        fprintf(stderr, "Compilation failed\n");
-        free(input_file_path);
-        return NULL;
+        error_print_general("Compilation failed");
+        error_exit();
     }
     assert(parse_ctx.curr_scope_idx == 0);
     free(input_file_path);
     return parse_ctx.comp_unit;
-}
-
-void yyerror(YYLTYPE* yyloc, yyscan_t scanner, ParseContext* parse_ctx, const char* msg)
-{
-    (void)scanner;
-    (void)parse_ctx;
-    error_print(*yyloc, msg);
-    error_exit();
 }
 
 static
@@ -115,7 +116,7 @@ char* add_extension(const char* file_stem, const char* extension)
 static
 char* create_input_file_path(const char* source_dir, const char* file_name)
 {
-    // path = source_dir + file_name + path_separator + '\0'
+    // path = source_dir + path_separator + file_name + '\0'
     char* input_file_path = calloc(strlen(source_dir) + strlen(file_name) + 2, sizeof(char));
     strcpy(input_file_path, source_dir);
     strcat(input_file_path, "/");
