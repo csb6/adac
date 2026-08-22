@@ -276,6 +276,8 @@
     push_declaration(context, &boolean_type.base);
     add_decl_to_symbol_table(context, &boolean_type.u.enum_.literals[false].base);
     add_decl_to_symbol_table(context, &boolean_type.u.enum_.literals[true].base);
+    // Silences annoying compiler warning
+    (void)yynerrs;
 }
 
 %%
