@@ -1374,12 +1374,6 @@ use_clause :
             use_clause->base.kind = DECL_USE;
             use_clause->base.loc = @$;
             use_clause->package_spec = package_spec;
-            // Add all declarations in the package spec to the symbol table but not
-            // to the current scope's DeclList
-            for(Declaration* decl = package_spec->decls; decl; decl = decl->next) {
-                add_decl_to_symbol_table(context, decl);
-            }
-            // Add the use clause itself to the current scope's DeclList
             push_declaration(context, &use_clause->base);
             if(!$$) {
                 $$ = &use_clause->base;

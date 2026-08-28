@@ -1,4 +1,4 @@
-with SimplePackage;
+with SimplePackage; use SimplePackage;
 
 procedure IntTypeTest is
     -- comment
