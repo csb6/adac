@@ -37,6 +37,8 @@ procedure IntTypeTest is
     function binary_function(a : CharType; b : Boolean := False) return Boolean;
     function modes(a : in CharType; b : in out CharType; c : out Boolean) return Boolean;
 
+    db2 : DistinctBoolean renames db;
+
     function "+"(a : BigInteger) return BigInteger;
     function "+"(a : BigInteger; b : BigInteger) return BigInteger;
     -- function "+"(a : BigInteger; b : BigInteger; c : BigInteger) return BigInteger;

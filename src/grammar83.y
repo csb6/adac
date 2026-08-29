@@ -228,6 +228,7 @@
 %type <case_> alternative
 %type <decl> body decl_item_s decl_part type_decl subtype_decl block_decl decl decl_item_s1
              decl_item_or_body_s1 decl_item object_decl number_decl decl_item_or_body use_clause
+             rename_decl
 %type <case_list> alternative_s
 %type <choice> choice
 %type <choice_array> choice_s
@@ -242,7 +243,7 @@
 %type <str_token_array> def_id_s
 %type <enum_literal> enum_id
 %type <enum_literals> enum_id_s
-%type <name> name
+%type <name> name renames
 %type <comp_unit> comp_unit unit
 
 /* Multi-character operators */
@@ -1381,8 +1382,27 @@ use_clause :
         }
     };
 
+// Note: def_id_s is used instead of identifier to avoid shift/reduce conflict
 rename_decl :
-    def_id_s ':' object_qualifier_opt subtype_ind renames ';'
+    def_id_s ':' object_qualifier_opt subtype_ind renames ';' {
+        uint32_t ident_count = StringTokenArray_size(&$1);
+        if(ident_count != 1) {
+            error_print(@1,
+                "Renames declarations must have exactly one identifier on the left-hand side of the 'renames' keyword");
+            error_exit();
+        }
+        RenameDecl* rename_decl = calloc(1, sizeof(RenameDecl));
+        rename_decl->base.kind = DECL_RENAME;
+        rename_decl->base.loc = @$;
+        rename_decl->name = $1.data[0];
+        rename_decl->target.kind = EXPR_NAME;
+        rename_decl->target.loc = @$;
+        rename_decl->target.u.name = $5;
+        // TODO: handle object_qualifier_opt
+        // TODO: handle subtype_ind
+        // TODO: check that the target is an object (or some kind of slice/expression that yields an object)
+        push_declaration(context, &rename_decl->base);
+    }
   | def_id_s ':' EXCEPTION renames ';'
   | rename_unit
     ;
@@ -1395,7 +1415,7 @@ rename_unit :
     ;
 
 renames :
-    RENAMES name
+    RENAMES name { $$ = $2; }
     ;
 
 comp_unit :
@@ -1941,6 +1961,9 @@ StringToken get_decl_name(const Declaration* decl)
             break;
         case DECL_USE:
             name = ((UseClause*)decl)->package_spec->name;
+            break;
+        case DECL_RENAME:
+            name = ((RenameDecl*)decl)->name;
             break;
         default:
             // This kind of declaration has no associated name

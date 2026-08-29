@@ -188,7 +188,7 @@ typedef struct Expression_ {
 typedef uint8_t DeclKind;
 enum {
     DECL_OBJECT, DECL_ENUM_LIT, DECL_TYPE, DECL_SUBPROGRAM, DECL_LABEL, DECL_PKG_SPEC,
-    DECL_PKG_BODY, DECL_USE,
+    DECL_PKG_BODY, DECL_USE, DECL_RENAME,
 };
 
 typedef struct Declaration_ {
@@ -273,6 +273,12 @@ typedef struct {
     Declaration base;
     PackageSpec* package_spec;
 } UseClause;
+
+typedef struct {
+    Declaration base;
+    Expression target; // Must be a NameExpr
+    StringToken name;
+} RenameDecl;
 
 /* STATEMENTS */
 

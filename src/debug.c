@@ -100,6 +100,11 @@ void print_declaration(const Declaration* decl, uint8_t indent_level)
             print_indent(indent_level);
             printf("use %s", ST(((const UseClause*)decl)->package_spec->name));
             break;
+        case DECL_RENAME:
+            print_indent(indent_level);
+            printf("%s renames ", ST(((const RenameDecl*)decl)->name));
+            print_expression(&((const RenameDecl*)decl)->target);
+            break;
         default:
             printf("Unknown declaration");
     }
