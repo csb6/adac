@@ -283,7 +283,7 @@
 
 %%
 
-goal_symbol : comp_unit { context->comp_unit = $1; }
+goal_symbol : comp_unit { context->comp_unit = $comp_unit; }
     ;
 
 pragma :
@@ -322,20 +322,20 @@ decl :
 
 object_decl :
     def_id_s ':' object_qualifier_opt object_subtype_def init_opt ';' {
-        TypeDecl* type_decl = find_type_decl(context, $4);
+        TypeDecl* type_decl = find_type_decl(context, $object_subtype_def);
         if(!type_decl) {
-            error_print(@$, "Unknown type: %s", ST($4));
+            error_print(@$, "Unknown type: %s", ST($object_subtype_def));
             error_exit();
         }
 
         $$ = NULL;
-        uint32_t name_count = StringTokenArray_size(&$1);
+        uint32_t name_count = StringTokenArray_size(&$def_id_s);
         for(uint32_t i = 0; i < name_count; ++i) {
-            ObjectDecl* decl = create_object_decl($1.data[i], @$);
+            ObjectDecl* decl = create_object_decl($def_id_s.data[i], @$);
             check_for_redefinition(context, decl->name, @$);
-            decl->is_constant = $3;
+            decl->is_constant = $object_qualifier_opt;
             decl->type = type_decl;
-            decl->init_expr = $5;
+            decl->init_expr = $init_opt;
             // TODO: handle deferred constants, which do not have initial expressions
             if(decl->is_constant && !decl->init_expr) {
                 error_print(@$, "Constant declaration '%s' is not initialized", ST(decl->name));
@@ -351,13 +351,13 @@ object_decl :
 number_decl :
     def_id_s ':' CONSTANT IS_ASSIGNED expression ';' {
         $$ = NULL;
-        uint32_t name_count = StringTokenArray_size(&$1);
+        uint32_t name_count = StringTokenArray_size(&$def_id_s);
         for(uint32_t i = 0; i < name_count; ++i) {
-            ObjectDecl* decl = create_object_decl($1.data[i], @$);
+            ObjectDecl* decl = create_object_decl($def_id_s.data[i], @$);
             check_for_redefinition(context, decl->name, @$);
             decl->is_constant = true;
             decl->type = &universal_int_type;
-            decl->init_expr = $5;
+            decl->init_expr = $expression;
             push_declaration(context, &decl->base);
             if(!$$) {
                 $$ = &decl->base;
@@ -366,12 +366,14 @@ number_decl :
     };
 
 def_id_s :
-    identifier {
+    identifier              {
         StringTokenArray_init(&$$);
-        StringTokenArray_append(&$$, $1);
+        StringTokenArray_append(&$$, $identifier);
     }
-  | def_id_s ',' identifier { StringTokenArray_append(&$$, $3); }
-    ;
+  | def_id_s ',' identifier {
+        $$ = $1;
+        StringTokenArray_append(&$$, $identifier);
+    };
 
 // boolean attribute indicates whether object is a constant or not
 object_qualifier_opt :
@@ -386,16 +388,16 @@ object_subtype_def :
 
 init_opt :
     %empty                 { $$ = NULL; }
-  | IS_ASSIGNED expression { $$ = $2; }
+  | IS_ASSIGNED expression { $$ = $expression; }
     ;
 
 type_decl :
     TYPE identifier discrim_part_opt type_completion ';' {
         // TODO: discriminant
-        TypeDecl* decl = $4;
+        TypeDecl* decl = $type_completion;
         // Note: decl->base.kind is set by the specific type_completion
         decl->base.loc = @$;
-        decl->name = $2;
+        decl->name = $identifier;
         check_for_redefinition(context, decl->name, @$);
         push_declaration(context, &decl->base);
         $$ = &decl->base;
@@ -410,7 +412,7 @@ discrim_part_opt :
 // TODO: incomplete types (i.e. case 1)
 type_completion :
     %empty
-  | IS type_def { $$ = $2; }
+  | IS type_def { $$ = $type_def; }
     ;
 
 type_def :
@@ -428,11 +430,11 @@ subtype_decl :
     SUBTYPE identifier IS subtype_ind ';' {
         TypeDecl* decl = create_type_decl(TYPE_SUBTYPE);
         decl->base.loc = @$;
-        decl->name = $2;
+        decl->name = $identifier;
         check_for_redefinition(context, decl->name, @$);
-        TypeDecl* base_type = find_type_decl(context, $4);
+        TypeDecl* base_type = find_type_decl(context, $subtype_ind);
         if(!base_type) {
-            error_print(@$, "Unknown base type: %s", ST($4));
+            error_print(@$, "Unknown base type: %s", ST($subtype_ind));
             error_exit();
         }
         decl->u.subtype.base = base_type;
@@ -444,9 +446,9 @@ subtype_decl :
 subtype_ind :
     name constraint {
         // TODO: propagate constraint somehow
-        $$ = $1.name;
+        $$ = $name.name;
     }
-  | name { $$ = $1.name; }
+  | name { $$ = $name.name; }
   ;
 
 constraint :
@@ -461,16 +463,16 @@ decimal_digits_constraint :
 derived_type :
     NEW subtype_ind {
         $$ = create_type_decl(TYPE_DERIVED);
-        TypeDecl* base_type = find_type_decl(context, $2);
+        TypeDecl* base_type = find_type_decl(context, $subtype_ind);
         if(!base_type) {
-            error_print(@$, "Unknown base type: %s", ST($2));
+            error_print(@$, "Unknown base type: %s", ST($subtype_ind));
             error_exit();
         }
         $$->u.subtype.base = base_type;
     };
 
 range_constraint :
-    RANGE range { $$ = $2; }
+    RANGE range { $$ = $range; }
     ;
 
 range_constr_opt :
@@ -479,7 +481,7 @@ range_constr_opt :
     ;
 
 range :
-    simple_expression DOT_DOT simple_expression { $$ = make_binary_expr($1, OP_RANGE, $3); }
+    simple_expression[left] DOT_DOT simple_expression[right] { $$ = make_binary_expr($left, OP_RANGE, $right); }
   | name '\'' RANGE
   | name '\'' RANGE '(' expression ')'
     ;
@@ -487,18 +489,18 @@ range :
 enumeration_type :
     '(' enum_id_s ')' {
         $$ = create_type_decl(TYPE_ENUM);
-        $$->u.enum_.literals = $2.data;
-        $$->u.enum_.literal_count = EnumLiteralArray_size(&$2);
+        $$->u.enum_.literals = $enum_id_s.data;
+        $$->u.enum_.literal_count = EnumLiteralArray_size(&$enum_id_s);
     };
 
 enum_id_s :
     enum_id {
         EnumLiteralArray_init(&$$);
-        EnumLiteralArray_append(&$$, $1);
+        EnumLiteralArray_append(&$$, $enum_id);
     }
-  | enum_id_s ',' enum_id {
-        $$ = $1;
-        EnumLiteralArray_append(&$$, $3);
+  | enum_id_s[left] ',' enum_id {
+        $$ = $left;
+        EnumLiteralArray_append(&$$, $enum_id);
     };
 
 enum_id :
@@ -506,7 +508,7 @@ enum_id :
         clr_struct(&$$);
         $$.base.kind = DECL_ENUM_LIT;
         $$.base.loc = @$;
-        $$.name = $1;
+        $$.name = $identifier;
         $$.is_char_lit = false;
     }
   | char_lit {
@@ -515,7 +517,7 @@ enum_id :
         $$.base.loc = @$;
         char buffer[3] = {0};
         buffer[0] = '\'';
-        buffer[1] = $1;
+        buffer[1] = $char_lit;
         buffer[2] = '\'';
         StringView literal_text = { .value = buffer, .len = sizeof(buffer) };
         $$.name = string_pool_to_token(literal_text);
@@ -525,7 +527,7 @@ enum_id :
 integer_type :
     range_constraint {
         $$ = create_type_decl(TYPE_INTEGER);
-        $$->u.int_.range = $1;
+        $$->u.int_.range = $range_constraint;
     }
   | MOD expression
     ;
@@ -649,17 +651,17 @@ variant :
 choice_s :
     choice              {
         ChoiceArray_init(&$$);
-        ChoiceArray_append(&$$, $1);
+        ChoiceArray_append(&$$, $choice);
     }
-  | choice_s '|' choice {
-        $$ = $1;
-        ChoiceArray_append(&$$, $3);
+  | choice_s[left] '|' choice {
+        $$ = $left;
+        ChoiceArray_append(&$$, $choice);
     };
 
 choice :
     expression           {
         $$.kind = CHOICE_EXPR;
-        $$.u.expr = $1;
+        $$.u.expr = $expression;
     }
   | discrete_with_range
   | OTHERS               { $$.kind = CHOICE_OTHERS; }
@@ -706,21 +708,21 @@ decl_item_or_body :
     ;
 
 body :
-    subprog_body { $$ = &$1->base; }
-  | pkg_body     { $$ = &$1->base; }
+    subprog_body { $$ = &$subprog_body->base; }
+  | pkg_body     { $$ = &$pkg_body->base; }
     ;
 
 name :
     identifier {
         clr_struct(&$$);
-        $$.name = $1;
+        $$.name = $identifier;
     }
   | indexed_comp
   | selected_comp
   | attribute
   | operator_symbol {
         clr_struct(&$$);
-        $$.name = $1;
+        $$.name = $operator_symbol;
         //TODO: lookup operator, determine its arity, and allocate args array
     };
 
@@ -733,7 +735,7 @@ mark :
 used_char :
     char_lit {
         $$ = create_expr(EXPR_CHAR_LIT, @$);
-        $$->u.char_lit = $1;
+        $$->u.char_lit = $char_lit;
     };
 
 operator_symbol :
@@ -777,11 +779,11 @@ attribute_id :
 literal :
     numeric_lit {
         // TODO: support non-integer numeric literals
-        int base = get_base($1, @$);
+        int base = get_base($numeric_lit, @$);
 
         char num_buffer[128];
         num_buffer[0] = '\0';
-        if(!prepare_num_str($1, num_buffer, sizeof(num_buffer))) {
+        if(!prepare_num_str($numeric_lit, num_buffer, sizeof(num_buffer))) {
             error_print(@$, "Numeric literal is too long to be processed (max supported is 127 characters)");
             error_exit();
         }
@@ -789,7 +791,7 @@ literal :
         // Note: don't overwrite $$ here since we are still using its value
         Expression* expr = create_expr(EXPR_INT_LIT, @$);
         if(mpz_init_set_str(expr->u.int_lit.value, num_buffer, base) < 0) {
-            error_print(@$, "Invalid numeric literal: '%.*s' for base %u", SV($1), base);
+            error_print(@$, "Invalid numeric literal: '%.*s' for base %u", SV($numeric_lit), base);
             error_exit();
         }
         $$ = expr;
@@ -817,8 +819,8 @@ comp_assoc :
 
 expression :
     relation
-  | expression logical relation       { $$ = make_binary_expr($1, $2, $3); }
-  | expression short_circuit relation { $$ = make_binary_expr($1, $2, $3); }
+  | expression[left] logical[op] relation[right]       { $$ = make_binary_expr($left, $op, $right); }
+  | expression[left] short_circuit[op] relation[right] { $$ = make_binary_expr($left, $op, $right); }
     ;
 
 logical :
@@ -835,12 +837,12 @@ short_circuit :
 // TODO: constant folding of literals
 relation :
     simple_expression
-  | simple_expression relational simple_expression { $$ = make_binary_expr($1, $2, $3); }
-  | simple_expression membership range             { $$ = make_binary_expr($1, $2, $3); }
-  | simple_expression membership name              {
+  | simple_expression[left] relational[op] simple_expression[right] { $$ = make_binary_expr($left, $op, $right); }
+  | simple_expression[left] membership[op] range[right]             { $$ = make_binary_expr($left, $op, $right); }
+  | simple_expression[left] membership[op] name                     {
         Expression* right = create_expr(EXPR_NAME, @3);
-        right->u.name = $3;
-        $$ = make_binary_expr($1, $2, right);
+        right->u.name = $name;
+        $$ = make_binary_expr($left, $op, right);
     };
 
 relational :
@@ -859,8 +861,8 @@ membership :
 
 simple_expression :
     term
-  | unary term                    { $$ = make_unary_expr($1, $2); }
-  | simple_expression adding term { $$ = make_binary_expr($1, $2, $3); }
+  | unary[op] term                                 { $$ = make_unary_expr($op, $term); }
+  | simple_expression[left] adding[op] term[right] { $$ = make_binary_expr($left, $op, $right); }
     ;
 
 unary :
@@ -876,7 +878,7 @@ adding :
 
 term :
     factor
-  | term multiplying factor { $$ = make_binary_expr($1, $2, $3); }
+  | term[left] multiplying[op] factor[right] { $$ = make_binary_expr($left, $op, $right); }
     ;
 
 multiplying :
@@ -888,16 +890,16 @@ multiplying :
 
 factor :
     primary
-  | NOT primary           { $$ = make_unary_expr(OP_NOT, $2); }
-  | ABS primary           { $$ = make_unary_expr(OP_ABS, $2); }
-  | primary EXPON primary { $$ = make_binary_expr($1, OP_EXP, $3); }
+  | NOT primary                        { $$ = make_unary_expr(OP_NOT, $primary); }
+  | ABS primary                        { $$ = make_unary_expr(OP_ABS, $primary); }
+  | primary[left] EXPON primary[right] { $$ = make_binary_expr($left, OP_EXP, $right); }
     ;
 
 primary :
     literal
   | name {
         $$ = create_expr(EXPR_NAME, @$);
-        $$->u.name = $1;
+        $$->u.name = $name;
     }
   | allocator
   | qualified
@@ -906,21 +908,21 @@ primary :
 
 parenthesized_primary :
     aggregate
-  | '(' expression ')' { $$ = $2; }
+  | '(' expression ')' { $$ = $expression; }
     ;
 
 qualified :
-    name '\'' parenthesized_primary {
+    name '\'' parenthesized_primary[expr] {
         // TODO: support other kinds of names
-        assert($1.arg_count == 0);
-        TypeDecl* type_decl = find_type_decl(context, $1.name);
+        assert($name.arg_count == 0);
+        TypeDecl* type_decl = find_type_decl(context, $name.name);
         if(!type_decl) {
-            error_print(@$, "Unknown type: %s", ST($1.name));
+            error_print(@$, "Unknown type: %s", ST($name.name));
             error_exit();
         }
         $$ = create_expr(EXPR_QUALIFIED, @$);
         $$->u.qualified.type = type_decl;
-        $$->u.qualified.expr = $3;
+        $$->u.qualified.expr = $expr;
     };
 
 allocator :
@@ -931,30 +933,30 @@ allocator :
 statement_s :
     statement             {
         clr_struct(&$$);
-        StmtList_append(&$$, $1);
+        StmtList_append(&$$, $statement);
     }
-  | statement_s statement {
-        StmtList_append(&$1, $2);
-        $$ = $1;
+  | statement_s[left] statement {
+        StmtList_append(&$left, $statement);
+        $$ = $left;
     };
 
 statement :
     unlabeled
   | goto_label statement {
-        LabelDecl* label = find_label(context, $1);
+        LabelDecl* label = find_label(context, $goto_label);
         if(label) {
             if(label->is_placeholder) {
                 // Fill in the placeholder
                 label->is_placeholder = false;
-                label->base.loc = @1;
+                label->base.loc = @goto_label;
             } else {
-                error_print(@1, "Redefinition of label '%s'", ST($1));
+                error_print(@goto_label, "Redefinition of label '%s'", ST($goto_label));
                 error_print(label->base.loc, "Previous definition here");
                 error_exit();
             }
         } else {
-            check_for_redefinition(context, $1, @1);
-            label = create_label($1, @1);
+            check_for_redefinition(context, $goto_label, @goto_label);
+            label = create_label($goto_label, @goto_label);
             push_declaration(context, (Declaration*)label);
         }
         $$ = $2;
@@ -994,37 +996,37 @@ assign_stmt :
         $$ = create_stmt(STMT_ASSIGN, @$);
         $$->u.assign.dest.kind = EXPR_NAME;
         $$->u.assign.dest.loc = @$;
-        $$->u.assign.dest.u.name = $1;
-        $$->u.assign.expr = $3;
+        $$->u.assign.dest.u.name = $name;
+        $$->u.assign.expr = $expression;
     };
 
 if_stmt :
     IF cond_clause_s else_opt END IF ';' {
-        $$ = $2;
-        Statement* branch = $2;
+        $$ = $cond_clause_s;
+        Statement* branch = $cond_clause_s;
         while(branch->u.if_.else_) {
             branch = branch->u.if_.else_;
             assert(branch->kind == STMT_IF);
         }
-        branch->u.if_.else_ = $3;
+        branch->u.if_.else_ = $else_opt;
     };
 
 cond_clause_s :
     cond_clause
-  | cond_clause_s ELSIF cond_clause {
-        $$ = $1;
-        $$->u.if_.else_ = $3;
+  | cond_clause_s[if] ELSIF cond_clause[elsif] {
+        $$ = $if;
+        $$->u.if_.else_ = $elsif;
     };
 
 cond_clause :
     cond_part statement_s {
         $$ = create_stmt(STMT_IF, @$);
-        $$->u.if_.condition = $1;
-        $$->u.if_.stmts = $2.first;
+        $$->u.if_.condition = $cond_part;
+        $$->u.if_.stmts = $statement_s.first;
     };
 
 cond_part :
-    condition THEN { $$ = $1; }
+    condition THEN { $$ = $condition; }
     ;
 
 condition :
@@ -1033,40 +1035,40 @@ condition :
 
 else_opt :
     %empty           { $$ = NULL; }
-  | ELSE statement_s { $$ = $2.first; }
+  | ELSE statement_s { $$ = $statement_s.first; }
     ;
 
 case_stmt :
     case_hdr pragma_s alternative_s END CASE ';' {
-        $$ = $1;
+        $$ = $case_hdr;
         // TODO: pragmas
-        $$->u.case_.cases = $3.first;
+        $$->u.case_.cases = $alternative_s.first;
     };
 
 case_hdr :
     CASE expression IS {
         $$ = create_stmt(STMT_CASE, @$);
-        $$->u.case_.expr = $2;
+        $$->u.case_.expr = $expression;
     };
 
 alternative_s :
     %empty                    { clr_struct(&$$); }
-  | alternative_s alternative {
-        $$ = $1;
-        AltList_append(&$$, $2);
+  | alternative_s[left] alternative {
+        $$ = $left;
+        AltList_append(&$$, $alternative);
     };
 
 alternative :
     WHEN choice_s RIGHT_SHAFT statement_s {
         $$ = calloc(1, sizeof(Alternative));
-        $$->choices.choices = $2.data;
-        $$->choices.count = ChoiceArray_size(&$2);
-        $$->stmts = $4.first;
+        $$->choices.choices = $choice_s.data;
+        $$->choices.count = ChoiceArray_size(&$choice_s);
+        $$->stmts = $statement_s.first;
     };
 
 // TODO: label_opt and id_opt
 loop_stmt :
-    label_opt loop_content id_opt ';' { $$ = $2; }
+    label_opt loop_content id_opt ';' { $$ = $loop_content; }
     ;
 
 label_opt :
@@ -1078,7 +1080,7 @@ loop_content :
     basic_loop {
         $$ = create_stmt(STMT_LOOP, @$);
         $$->u.loop.kind = LOOP_WHILE;
-        $$->u.loop.stmts = $1;
+        $$->u.loop.stmts = $basic_loop;
         // Create condition so this becomes a 'while True' loop
         Expression* condition = create_expr(EXPR_ENUM_LIT, @$);
         condition->u.enum_lit = &boolean_type.u.enum_.literals[true];
@@ -1087,16 +1089,16 @@ loop_content :
   | WHILE condition basic_loop {
         $$ = create_stmt(STMT_LOOP, @$);
         $$->u.loop.kind = LOOP_WHILE;
-        $$->u.loop.stmts = $3;
-        $$->u.loop.u.while_.condition = $2;
+        $$->u.loop.u.while_.condition = $condition;
+        $$->u.loop.stmts = $basic_loop;
     }
   | iter_part reverse_opt discrete_range basic_loop {
         $$ = create_stmt(STMT_LOOP, @$);
         $$->u.loop.kind = LOOP_FOR;
-        $$->u.loop.reverse = $2;
-        $$->u.loop.u.for_.var = $1;
-        $$->u.loop.u.for_.range = $3;
-        $$->u.loop.stmts = $4;
+        $$->u.loop.reverse = $reverse_opt;
+        $$->u.loop.u.for_.var = $iter_part;
+        $$->u.loop.u.for_.range = $discrete_range;
+        $$->u.loop.stmts = $basic_loop;
     };
 
 iter_part :
@@ -1104,7 +1106,7 @@ iter_part :
         clr_struct(&$$);
         $$.base.kind = DECL_OBJECT;
         $$.base.loc = @$;
-        $$.name = $2;
+        $$.name = $identifier;
     };
 
 reverse_opt :
@@ -1113,7 +1115,7 @@ reverse_opt :
     ;
 
 basic_loop :
-    LOOP statement_s END LOOP { $$ = $2.first; }
+    LOOP statement_s END LOOP { $$ = $statement_s.first; }
     ;
 
 id_opt :
@@ -1125,31 +1127,31 @@ id_opt :
 block :
     label_opt block_decl block_body END id_opt ';' {
         $$ = create_stmt(STMT_BLOCK, @$);
-        $$->u.block.decls = $2;
-        $$->u.block.stmts = $3;
+        $$->u.block.decls = $block_decl;
+        $$->u.block.stmts = $block_body;
         // Close scope if there was a declaration section
         if($2) {
-            end_scope(context, @4);
+            end_scope(context, @END);
         }
     };
 
 block_decl :
-    %empty                                          { $$ = NULL; }
-  | DECLARE { begin_scope(context, @1); } decl_part {
-        $$ = $3;
+    %empty                                                { $$ = NULL; }
+  | DECLARE { begin_scope(context, @DECLARE); } decl_part {
+        $$ = $decl_part;
         // Close scope if no declaration section
         if(!$$) {
-            end_scope(context, @1);
+            end_scope(context, @DECLARE);
         }
     };
 
 block_body :
-    BEGiN handled_stmt_s { $$ = $2; }
+    BEGiN handled_stmt_s { $$ = $handled_stmt_s; }
     ;
 
 // TODO: exception handler
 handled_stmt_s :
-    statement_s except_handler_part_opt { $$ = $1.first; }
+    statement_s except_handler_part_opt { $$ = $statement_s.first; }
     ;
 
 except_handler_part_opt :
@@ -1161,7 +1163,7 @@ exit_stmt :
     EXIT name_opt when_opt ';' {
         $$ = create_stmt(STMT_EXIT, @$);
         // TODO: name_opt
-        $$->u.exit.condition = $3;
+        $$->u.exit.condition = $when_opt;
     };
 
 name_opt :
@@ -1171,19 +1173,19 @@ name_opt :
 
 when_opt :
     %empty         { $$ = NULL; }
-  | WHEN condition { $$ = $2; }
+  | WHEN condition { $$ = $condition; }
     ;
 
 return_stmt :
-    RETURN ';'    { $$ = create_stmt(STMT_RETURN, @$); }
+    RETURN ';'            { $$ = create_stmt(STMT_RETURN, @$); }
   | RETURN expression ';' {
         $$ = create_stmt(STMT_RETURN, @$);
-        $$->u.return_.expr = $2;
+        $$->u.return_.expr = $expression;
     };
 
 goto_stmt :
     GOTO identifier ';' {
-        StringToken label_name = $2;
+        StringToken label_name = $identifier;
 
         $$ = create_stmt(STMT_GOTO, @$);
         LabelDecl* label = find_label(context, label_name);
@@ -1192,10 +1194,10 @@ goto_stmt :
             $$->u.goto_.label = label;
         } else {
             // Label is not defined yet
-            check_for_redefinition(context, label_name, @2);
+            check_for_redefinition(context, label_name, @identifier);
             // Define a placeholder label
             // TODO: in semantic analysis, verify that all placeholder labels are filled in
-            LabelDecl* label = create_label(label_name, @2);
+            LabelDecl* label = create_label(label_name, @identifier);
             label->is_placeholder = true;
             $$->u.goto_.label = label;
             push_declaration(context, (Declaration*)label);
@@ -1204,7 +1206,7 @@ goto_stmt :
 
 subprog_decl :
     subprog_spec ';'      {
-        $$ = $1;
+        $$ = $subprog_spec;
         end_scope(context, @2);
     }
   | generic_subp_inst ';'
@@ -1214,16 +1216,16 @@ subprog_decl :
 subprog_spec :
     PROCEDURE identifier <subprogram_decl>{
         // TODO: check for name conflict
-        $<subprogram_decl>$ = create_subprogram_decl($2, @2);
+        $<subprogram_decl>$ = create_subprogram_decl($identifier, @identifier);
         push_declaration(context, &$<subprogram_decl>$->base);
-        begin_scope(context, @2);
+        begin_scope(context, @identifier);
     }
     formal_part_opt             { $$ = $3; }
   | FUNCTION designator <subprogram_decl>{
         // TODO: check for name conflict
-        $<subprogram_decl>$ = create_subprogram_decl($2, @2);
+        $<subprogram_decl>$ = create_subprogram_decl($designator, @designator);
         push_declaration(context, &$<subprogram_decl>$->base);
-        begin_scope(context, @2);
+        begin_scope(context, @designator);
     }
     formal_part_opt RETURN name { $$ = $3; }
   | FUNCTION designator  /* for generic inst and generic rename */
@@ -1231,7 +1233,7 @@ subprog_spec :
 
 designator :
     identifier
-  | char_string { $$ = string_pool_to_token($1); }
+  | char_string { $$ = string_pool_to_token($char_string); }
     ;
 
 formal_part_opt :
@@ -1261,18 +1263,18 @@ mode :
     ;
 
 subprog_spec_is_push :
-    subprog_spec IS { $$ = $1; }
+    subprog_spec IS { $$ = $subprog_spec; }
     ;
 
 // TODO: params will be pushed twice (one in forward decl, if any, and again in subprog_body)
 //  Need to somehow check if a forward decl was already made; if so, don't push params again
 subprog_body :
     subprog_spec_is_push decl_part block_body END id_opt ';' {
-        $$ = $1;
-        $$->decls = $2;
-        $$->stmts = $3;
+        $$ = $subprog_spec_is_push;
+        $$->decls = $decl_part;
+        $$->stmts = $block_body;
         // Close scope opened in subprog_spec
-        end_scope(context, @4);
+        end_scope(context, @END);
     };
 
 procedure_call :
@@ -1280,29 +1282,30 @@ procedure_call :
         $$ = create_stmt(STMT_EXPR, @$);
         $$->u.expr.kind = EXPR_NAME;
         $$->u.expr.loc = @$;
-        $$->u.expr.u.name = $1;
+        $$->u.expr.u.name = $name;
     };
 
 pkg_decl :
-    pkg_spec ';'         { $$ = $1; }
+    pkg_spec ';'         { $$ = $pkg_spec; }
   | generic_pkg_inst ';'
     ;
 
 pkg_spec :
     PACKAGE identifier IS <pkg_spec>{
-        begin_scope(context, @3);
+        begin_scope(context, @IS);
         $<pkg_spec>$ = calloc(1, sizeof(PackageSpec));
         $<pkg_spec>$->base.kind = DECL_PKG_SPEC;
         $<pkg_spec>$->base.loc = @$;
-        $<pkg_spec>$->name = $2;
+        $<pkg_spec>$->name = $identifier;
     }
     decl_item_s private_part END identifier_opt {
         $$ = $4;
-        $$->decls = $5;
+        $$->decls = $decl_item_s;
         // TODO: private part
-        end_scope(context, @7);
-        if($8 && $$->name != $8) {
-            error_print(@8, "End label '%s' does not match package name ('%s')", ST($8), ST($$->name));
+        end_scope(context, @END);
+        if($identifier_opt && $$->name != $identifier_opt) {
+            error_print(@identifier_opt,
+                "End label '%s' does not match package name ('%s')", ST($identifier_opt), ST($$->name));
             error_exit();
         }
         push_declaration(context, &$$->base);
@@ -1320,19 +1323,20 @@ identifier_opt :
 
 pkg_body :
     PACKAGE BODY identifier IS <pkg_body>{
-        begin_scope(context, @4);
+        begin_scope(context, @IS);
         $<pkg_body>$ = calloc(1, sizeof(PackageBody));
         $<pkg_body>$->base.kind = DECL_PKG_BODY;
         $<pkg_body>$->base.loc = @$;
-        $<pkg_body>$->name = $3;
+        $<pkg_body>$->name = $identifier;
     }
     decl_part body_opt END identifier_opt ';' {
         $$ = $5;
-        $$->decls = $6;
+        $$->decls = $decl_part;
         // TODO: body_opt
-        end_scope(context, @8);
-        if($9 && $$->name != $9) {
-            error_print(@9, "End label '%s' does not match package name ('%s')", ST($9), ST($$->name));
+        end_scope(context, @END);
+        if($identifier_opt && $$->name != $identifier_opt) {
+            error_print(@identifier_opt,
+                "End label '%s' does not match package name ('%s')", ST($identifier_opt), ST($$->name));
             error_exit();
         }
         push_declaration(context, &$$->base);
@@ -1355,12 +1359,12 @@ limited_opt :
 use_clause :
     USE def_id_s ';' {
         $$ = NULL;
-        uint32_t package_count = StringTokenArray_size(&$2);
+        uint32_t package_count = StringTokenArray_size(&$def_id_s);
         for(uint32_t i = 0; i < package_count; ++i) {
-            StringToken package_name = $2.data[i];
+            StringToken package_name = $def_id_s.data[i];
             PackageSpec* package_spec = find_package_spec(context, package_name);
             if(!package_spec) {
-                error_print(@2, "Unknown package name '%s'", ST(package_name));
+                error_print(@def_id_s, "Unknown package name '%s'", ST(package_name));
                 error_exit();
             }
             UseClause* use_clause = find_use_clause(context, package_name);
@@ -1385,19 +1389,19 @@ use_clause :
 // Note: def_id_s is used instead of identifier to avoid shift/reduce conflict
 rename_decl :
     def_id_s ':' object_qualifier_opt subtype_ind renames ';' {
-        uint32_t ident_count = StringTokenArray_size(&$1);
+        uint32_t ident_count = StringTokenArray_size(&$def_id_s);
         if(ident_count != 1) {
-            error_print(@1,
+            error_print(@def_id_s,
                 "Renames declarations must have exactly one identifier on the left-hand side of the 'renames' keyword");
             error_exit();
         }
         RenameDecl* rename_decl = calloc(1, sizeof(RenameDecl));
         rename_decl->base.kind = DECL_RENAME;
         rename_decl->base.loc = @$;
-        rename_decl->name = $1.data[0];
+        rename_decl->name = $def_id_s.data[0];
         rename_decl->target.kind = EXPR_NAME;
         rename_decl->target.loc = @$;
-        rename_decl->target.u.name = $5;
+        rename_decl->target.u.name = $renames;
         // TODO: handle object_qualifier_opt
         // TODO: handle subtype_ind
         // TODO: check that the target is an object (or some kind of slice/expression that yields an object)
@@ -1419,8 +1423,8 @@ renames :
     ;
 
 comp_unit :
-    context_spec unit pragma_s { $$ = $2; }
-  | unit pragma_s              { $$ = $1; }
+    context_spec unit pragma_s { $$ = $unit; }
+  | unit pragma_s              { $$ = $unit; }
     ;
 
 context_spec :
@@ -1431,9 +1435,9 @@ context_spec :
 
 with_clause :
     WITH def_id_s ';' {
-        uint32_t package_count = StringTokenArray_size(&$2);
+        uint32_t package_count = StringTokenArray_size(&$def_id_s);
         for(uint32_t i = 0; i < package_count; ++i) {
-            const char* package_name = string_pool_to_str($2.data[i]);
+            const char* package_name = string_pool_to_str($def_id_s.data[i]);
             CompilationUnit* unit = comp_manager_parse_spec(context->comp_manager, package_name, &@$);
             assert(unit->kind == COMP_UNIT_PACKAGE_SPEC);
             push_declaration(context, &unit->u.package_spec->base);
@@ -1448,19 +1452,19 @@ use_clause_opt :
 unit :
     pkg_decl     {
         $$ = create_comp_unit(COMP_UNIT_PACKAGE_SPEC);
-        $$->u.package_spec = $1;
+        $$->u.package_spec = $pkg_decl;
     }
   | pkg_body     {
         $$ = create_comp_unit(COMP_UNIT_PACKAGE_BODY);
-        $$->u.package_body = $1;
+        $$->u.package_body = $pkg_body;
     }
   | subprog_decl {
         $$ = create_comp_unit(COMP_UNIT_SUBPROGRAM);
-        $$->u.subprogram_decl = $1;
+        $$->u.subprogram_decl = $subprog_decl;
     }
   | subprog_body {
         $$ = create_comp_unit(COMP_UNIT_SUBPROGRAM);
-        $$->u.subprogram_decl = $1;
+        $$->u.subprogram_decl = $subprog_body;
     }
   | subunit
   | generic_decl
