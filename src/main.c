@@ -50,7 +50,6 @@ int main(int argc, char * const* argv)
 
     if(optind >= argc) {
         fprintf(stderr, "Error: missing main unit name after options list\n");
-        usage(argv[0]);
         return 1;
     }
 
@@ -64,5 +63,9 @@ int main(int argc, char * const* argv)
 static
 void usage(const char* exe_name)
 {
-    fprintf(stderr, "Usage: %s [-I source_dir]... main_unit\n", exe_name);
+    fprintf(stderr, "Usage: %s [option...] main_unit\n", exe_name);
+    fprintf(stderr, "\nOptions:\n"
+                    "-I  Add search path for Ada source files\n"
+                    "-h  Show help\n\n"
+    );
 }
