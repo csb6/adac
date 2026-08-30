@@ -32,7 +32,7 @@ with Errcount;         use Errcount;
 with Excep;            use Excep;
 with Osint;            use Osint;
 with Output;           use Output;
-with System.Traceback; use System.Traceback;
+--with System.Traceback; use System.Traceback;
 with Treepr;           use Treepr;
 
 package body Comperr is

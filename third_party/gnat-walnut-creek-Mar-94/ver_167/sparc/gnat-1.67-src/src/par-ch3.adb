@@ -22,7 +22,7 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
-with Sinfo.Change; use Sinfo.Change;
+--with Sinfo.Change; use Sinfo.Change;
 
 separate (Par)
 package body Ch3 is

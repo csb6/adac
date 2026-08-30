@@ -37,7 +37,7 @@ with Opt;         use Opt;
 with Osint;       use Osint;
 with Output;      use Output;
 with Par;
-with System.Assertions;
+--with System.Assertions;
 with Types;       use Types;
 with Usage;
 

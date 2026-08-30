@@ -43,7 +43,7 @@ with Sem_Util;     use Sem_Util;
 with Sem_Type;     use Sem_Type;
 with Stand;        use Stand;
 with Sinfo;        use Sinfo;
-with Sinfo.Change; use Sinfo.Change;
+--with Sinfo.Change; use Sinfo.Change;
 with Snames;       use Snames;
 with Tbuild;       use Tbuild;
 

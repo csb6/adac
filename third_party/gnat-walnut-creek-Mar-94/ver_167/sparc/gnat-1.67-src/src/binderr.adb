@@ -30,7 +30,7 @@ with Namet;            use Namet;
 with Opt;              use Opt;
 with Osint;            use Osint;
 with Output;           use Output;
-with System.Traceback; use System.Traceback;
+--with System.Traceback; use System.Traceback;
 
 package body Binderr is
 

@@ -38,7 +38,7 @@ with Osint;    use Osint;
 with Output;   use Output;
 with Par;
 with Sinfo;    use Sinfo;
-with System.Assertions;
+--with System.Assertions;
 with Types;    use Types;
 with Usage;
 

@@ -39,7 +39,7 @@ with Sem_Ch8;      use Sem_Ch8;
 with Sem_Util;     use Sem_Util;
 with Stand;        use Stand;
 with Sinfo;        use Sinfo;
-with Sinfo.Change; use Sinfo.Change;
+--with Sinfo.Change; use Sinfo.Change;
 with Snames;       use Snames;
 with Stringt;      use Stringt;
 with Tbuild;       use Tbuild;
