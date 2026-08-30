@@ -18,9 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <unistd.h>
-#include "ast.h"
 #include "comp_manager.h"
-#include "debug.h"
 #include "error.h"
 #include "string_pool.h"
 
@@ -54,8 +52,7 @@ int main(int argc, char * const* argv)
     }
 
     const char* main_unit_name = argv[optind];
-    CompilationUnit* main_unit = comp_manager_parse_unit(comp_manager, main_unit_name);
-    print_compilation_unit(main_unit);
+    comp_manager_parse_unit(comp_manager, main_unit_name);
 
     return 0;
 }

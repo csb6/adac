@@ -55,16 +55,10 @@ extern int yydebug;
     #include "ast.h"
     #include "comp_manager.h"
 
-    DEFINE_ARRAY_TYPE(EnumLiteral)
     DEFINE_ARRAY_TYPE(StringToken)
-    DEFINE_ARRAY_TYPE(Choice)
 
     typedef Declaration Decl;
     DEFINE_LINKED_LIST_TYPE(Decl)
-    typedef Statement Stmt;
-    DEFINE_LINKED_LIST_TYPE(Stmt)
-    typedef Alternative Alt;
-    DEFINE_LINKED_LIST_TYPE(Alt)
 
     #define YYLLOC_DEFAULT(Cur, Rhs, N) \
         do { \
@@ -78,8 +72,6 @@ extern int yydebug;
     typedef struct ParseContext_ {
         CompilationManager* comp_manager;
         CompilationUnit* comp_unit;
-        DeclList scope_stack[32];
-        void* symbol_table;
         uint16_t file_id;
         uint8_t curr_scope_idx;
     } ParseContext;
@@ -88,7 +80,7 @@ extern int yydebug;
 
     ObjectDecl* find_object_decl(ParseContext* context, StringToken name);
 
-#line 92 "parser.h"
+#line 84 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -183,35 +175,14 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 187 "grammar83.y"
+#line 81 "grammar83.y"
 
-    UnaryOperator unary_op;
-    BinaryOperator binary_op;
-    Expression* expr;
-    Statement* stmt;
-    StmtList stmt_list;
-    AltList case_list;
-    Choice choice;
-    ChoiceArray choice_array;
-    Alternative* case_;
-    ObjectDecl object_decl;
-    TypeDecl* type_decl;
-    SubprogramDecl* subprogram_decl;
-    PackageSpec* pkg_spec;
-    PackageBody* pkg_body;
-    Declaration* decl;
-    CompilationUnit* comp_unit;
-    bool bool_;
-    ParamMode param_mode;
     StringToken str_token;
     char c;
     StringView str; // Note: this StringView owns its allocated data
-    EnumLiteral enum_literal;
-    EnumLiteralArray enum_literals;
     StringTokenArray str_token_array;
-    NameExpr name;
 
-#line 215 "parser.h"
+#line 186 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -228,10 +199,10 @@ typedef SourceLocation YYLTYPE;
 int yyparse (void* scanner, ParseContext* context);
 
 /* "%code provides" blocks.  */
-#line 71 "grammar83.y"
+#line 63 "grammar83.y"
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 236 "parser.h"
+#line 207 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */
