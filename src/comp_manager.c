@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "error.h"
 #include "parser.h"
 #include "lexer.h"
+#include "string_view.h"
 
 #define NAME spec_cache_map
 #define KEY_TY StringToken
@@ -46,7 +47,7 @@ static
 char* create_input_file_path(const char* source_dir, const char* file_name);
 
 static
-const char* find_dir(const char** dir_list, uint32_t dir_count, const char* file_name);
+const char* find_dir(const char** dir_list, uint32_t dir_count, char* file_name);
 
 static
 CompilationUnit* parse_unit(CompilationManager* comp_manager, const char* source_dir, const char* unit_file_name);
@@ -159,8 +160,9 @@ char* create_input_file_path(const char* source_dir, const char* file_name)
     return input_file_path;
 }
 
+// Note: modifies file_name in-place to use the exact casing of the file that matches
 static
-const char* find_dir(const char** dir_list, uint32_t dir_count, const char* file_name)
+const char* find_dir(const char** dir_list, uint32_t dir_count, char* file_name)
 {
     for(uint32_t i = 0; i < dir_count; ++i) {
         DIR* directory = opendir(dir_list[i]);
@@ -170,7 +172,9 @@ const char* find_dir(const char** dir_list, uint32_t dir_count, const char* file
         }
         struct dirent* entry;
         while((entry = readdir(directory))) {
-            if(strcmp(entry->d_name, file_name) == 0) {
+            if(string_caseless_eq(entry->d_name, file_name)) {
+                // Replace with version with exact casing
+                strcpy(file_name, entry->d_name);
                 closedir(directory);
                 return dir_list[i];
             }

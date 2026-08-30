@@ -29,9 +29,12 @@ typedef struct {
 // Enables succinct printing of a StringView using printf("%.*s")
 #define SV(sv) (sv).len, (sv).value
 
+extern const uint8_t downcase_table[256];
+
 // Pre: length of buffer >= 2
 void escape_char(char c, char* buffer);
 char unescape_char(char second);
-bool string_view_eq(const StringView* a, const StringView* b);
+bool string_view_equal(StringView a, const char* b);
+bool string_caseless_eq(const char* a, const char* b);
 
 #endif /* ADA_STRING_VIEW_H */
