@@ -240,7 +240,7 @@
 %type <bool_> reverse_opt object_qualifier_opt
 %type <param_mode> mode
 %type <str_token> subtype_ind object_subtype_def designator operator_symbol
-%type <str_token_array> def_id_s
+%type <str_token_array> def_id_s use_name_s
 %type <enum_literal> enum_id
 %type <enum_literals> enum_id_s
 %type <name> name renames
@@ -1356,15 +1356,29 @@ limited_opt :
   | LIMITED
     ;
 
+// TODO: support complex names (e.g. nested packages)
+use_name_s :
+    identifier                   {
+        StringTokenArray_init(&$$);
+        StringTokenArray_append(&$$, $identifier);
+    }
+  | selected_comp
+  | use_name_s ',' identifier    {
+        $$ = $1;
+        StringTokenArray_append(&$$, $identifier);
+    }
+  | use_name_s ',' selected_comp
+  ;
+
 use_clause :
-    USE def_id_s ';' {
+    USE use_name_s ';' {
         $$ = NULL;
-        uint32_t package_count = StringTokenArray_size(&$def_id_s);
+        uint32_t package_count = StringTokenArray_size(&$use_name_s);
         for(uint32_t i = 0; i < package_count; ++i) {
-            StringToken package_name = $def_id_s.data[i];
+            StringToken package_name = $use_name_s.data[i];
             PackageSpec* package_spec = find_package_spec(context, package_name);
             if(!package_spec) {
-                error_print(@def_id_s, "Unknown package name '%s'", ST(package_name));
+                error_print(@use_name_s, "Unknown package name '%s'", ST(package_name));
                 error_exit();
             }
             UseClause* use_clause = find_use_clause(context, package_name);
