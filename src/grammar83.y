@@ -669,11 +669,7 @@ cond_clause_s :
   ;
 
 cond_clause :
-    cond_part statement_s
-    ;
-
-cond_part :
-    condition THEN
+    condition THEN statement_s
     ;
 
 condition :
