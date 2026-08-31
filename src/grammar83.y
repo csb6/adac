@@ -219,7 +219,7 @@
 /* Nonterminals */
 %type <unary_op> unary adding multiplying membership relational logical short_circuit
 %type <expr> used_char literal simple_expression relation primary term factor expression
-             parenthesized_primary condition cond_part when_opt range range_constraint range_constr_opt
+             parenthesized_primary condition when_opt range range_constraint range_constr_opt
              discrete_range init_opt qualified
 %type <stmt> statement simple_stmt null_stmt assign_stmt return_stmt exit_stmt basic_loop loop_content
              loop_stmt goto_stmt unlabeled compound_stmt procedure_call handled_stmt_s
@@ -1021,15 +1021,11 @@ cond_clause_s :
     };
 
 cond_clause :
-    cond_part statement_s {
+    condition THEN statement_s {
         $$ = create_stmt(STMT_IF, @$);
-        $$->u.if_.condition = $cond_part;
+        $$->u.if_.condition = $condition;
         $$->u.if_.stmts = $statement_s.first;
     };
-
-cond_part :
-    condition THEN { $$ = $condition; }
-    ;
 
 condition :
     expression
