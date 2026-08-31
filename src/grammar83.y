@@ -242,7 +242,7 @@
 %type <str_token_array> def_id_s use_name_s
 %type <enum_literal> enum_id
 %type <enum_literals> enum_id_s
-%type <name> name renames
+%type <name> name
 %type <comp_unit> comp_unit unit
 
 /* Multi-character operators */
@@ -1398,7 +1398,7 @@ use_clause :
 
 // Note: def_id_s is used instead of identifier to avoid shift/reduce conflict
 rename_decl :
-    def_id_s ':' object_qualifier_opt subtype_ind renames ';' {
+    def_id_s ':' object_qualifier_opt subtype_ind RENAMES name ';' {
         uint32_t ident_count = StringTokenArray_size(&$def_id_s);
         if(ident_count != 1) {
             error_print(@def_id_s,
@@ -1411,25 +1411,21 @@ rename_decl :
         rename_decl->name = $def_id_s.data[0];
         rename_decl->target.kind = EXPR_NAME;
         rename_decl->target.loc = @$;
-        rename_decl->target.u.name = $renames;
+        rename_decl->target.u.name = $name;
         // TODO: handle object_qualifier_opt
         // TODO: handle subtype_ind
         // TODO: check that the target is an object (or some kind of slice/expression that yields an object)
         push_declaration(context, &rename_decl->base);
     }
-  | def_id_s ':' EXCEPTION renames ';'
+  | def_id_s ':' EXCEPTION RENAMES name ';'
   | rename_unit
     ;
 
 rename_unit :
-    PACKAGE identifier renames ';'
-  | subprog_spec renames ';'
-  | generic_formal_part PACKAGE identifier renames ';'
-  | generic_formal_part subprog_spec renames ';'
-    ;
-
-renames :
-    RENAMES name { $$ = $2; }
+    PACKAGE identifier RENAMES name ';'
+  | subprog_spec RENAMES name ';'
+  | generic_formal_part PACKAGE identifier RENAMES name ';'
+  | generic_formal_part subprog_spec RENAMES name ';'
     ;
 
 comp_unit :
