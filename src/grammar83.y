@@ -715,12 +715,8 @@ label_opt :
 loop_content :
     basic_loop
   | WHILE condition basic_loop
-  | iter_part reverse_opt discrete_range basic_loop
+  | FOR identifier IN reverse_opt discrete_range basic_loop
   ;
-
-iter_part :
-    FOR identifier IN
-    ;
 
 reverse_opt :
     %empty
@@ -889,20 +885,16 @@ use_clause :
 
 // Note: def_id_s is used instead of identifier to avoid shift/reduce conflict
 rename_decl :
-    def_id_s ':' object_qualifier_opt subtype_ind renames ';'
-  | def_id_s ':' EXCEPTION renames ';'
+    def_id_s ':' object_qualifier_opt subtype_ind RENAMES name ';'
+  | def_id_s ':' EXCEPTION RENAMES name ';'
   | rename_unit
     ;
 
 rename_unit :
-    PACKAGE identifier renames ';'
-  | subprog_spec renames ';'
-  | generic_formal_part PACKAGE identifier renames ';'
-  | generic_formal_part subprog_spec renames ';'
-    ;
-
-renames :
-    RENAMES name
+    PACKAGE identifier RENAMES name ';'
+  | subprog_spec RENAMES name ';'
+  | generic_formal_part PACKAGE identifier RENAMES name ';'
+  | generic_formal_part subprog_spec RENAMES name ';'
     ;
 
 comp_unit :
