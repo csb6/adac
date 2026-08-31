@@ -233,7 +233,6 @@
 %type <choice> choice
 %type <choice_array> choice_s
 %type <type_decl> type_completion type_def enumeration_type integer_type derived_type
-%type <object_decl> iter_part
 %type <subprogram_decl> subprog_decl subprog_spec subprog_spec_is_push subprog_body
 %type <pkg_spec> pkg_spec pkg_decl
 %type <pkg_body> pkg_body
@@ -712,6 +711,9 @@ body :
   | pkg_body     { $$ = &$pkg_body->base; }
     ;
 
+// TODO: replace most usages of NameExpr with a new Name type that is not an expression
+//   Names are used in a lot of places where expressions are not needed and just make things
+//   more confusing/bloated
 name :
     identifier {
         clr_struct(&$$);
@@ -1092,21 +1094,15 @@ loop_content :
         $$->u.loop.u.while_.condition = $condition;
         $$->u.loop.stmts = $basic_loop;
     }
-  | iter_part reverse_opt discrete_range basic_loop {
+  | FOR identifier IN reverse_opt discrete_range basic_loop {
         $$ = create_stmt(STMT_LOOP, @$);
         $$->u.loop.kind = LOOP_FOR;
         $$->u.loop.reverse = $reverse_opt;
-        $$->u.loop.u.for_.var = $iter_part;
+        $$->u.loop.u.for_.var.base.kind = DECL_OBJECT;
+        $$->u.loop.u.for_.var.base.loc = @identifier;
+        $$->u.loop.u.for_.var.name = $identifier;
         $$->u.loop.u.for_.range = $discrete_range;
         $$->u.loop.stmts = $basic_loop;
-    };
-
-iter_part :
-    FOR identifier IN {
-        clr_struct(&$$);
-        $$.base.kind = DECL_OBJECT;
-        $$.base.loc = @$;
-        $$.name = $identifier;
     };
 
 reverse_opt :
