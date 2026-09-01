@@ -186,7 +186,6 @@ union YYSTYPE
 #line 187 "grammar83.y"
 
     UnaryOperator unary_op;
-    BinaryOperator binary_op;
     Expression* expr;
     Statement* stmt;
     StmtList stmt_list;
@@ -210,7 +209,7 @@ union YYSTYPE
     StringTokenArray str_token_array;
     NameExpr name;
 
-#line 214 "parser.h"
+#line 213 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -231,6 +230,6 @@ int yyparse (void* scanner, ParseContext* context);
 
     void yyerror(YYLTYPE* yyloc, void* scanner, ParseContext* parse_ctx, const char* msg);
 
-#line 235 "parser.h"
+#line 234 "parser.h"
 
 #endif /* !YY_YY_PARSER_H_INCLUDED  */

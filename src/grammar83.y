@@ -186,7 +186,6 @@
 
 %union {
     UnaryOperator unary_op;
-    BinaryOperator binary_op;
     Expression* expr;
     Statement* stmt;
     StmtList stmt_list;
