@@ -194,7 +194,6 @@
     Choice choice;
     ChoiceArray choice_array;
     Alternative* case_;
-    ObjectDecl object_decl;
     TypeDecl* type_decl;
     SubprogramDecl* subprogram_decl;
     PackageSpec* pkg_spec;
