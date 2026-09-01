@@ -63,11 +63,15 @@ else()
     message(STATUS "Bison not found - using the checked-in Bison-generated files instead")
 endif()
 
+# Hash table library
+add_library(verstable INTERFACE)
+target_include_directories(verstable INTERFACE third_party/verstable)
+
 # Compiler driver
 add_executable(adac src/main.c src/grammar83.tab.c src/lex.yy.c src/string_pool.c src/checker.c src/debug.c src/comp_manager.c)
-target_include_directories(adac PRIVATE src third_party/verstable)
+target_include_directories(adac PRIVATE src)
 target_compile_options(adac PRIVATE "${FLAGS}")
-target_link_libraries(adac PUBLIC util mini-gmp)
+target_link_libraries(adac PUBLIC util mini-gmp verstable)
 
 if(ENABLE_ASAN)
     target_compile_options(adac PRIVATE "-fsanitize=address")
@@ -92,7 +96,7 @@ endif()
 add_executable(string_pool_test tests/string_pool_test.c src/string_pool.c)
 target_include_directories(string_pool_test PUBLIC src)
 target_compile_options(string_pool_test PRIVATE "${FLAGS}")
-target_link_libraries(string_pool_test PUBLIC util)
+target_link_libraries(string_pool_test PUBLIC util verstable)
 
 add_executable(array_test tests/array_test.c)
 target_compile_options(array_test PRIVATE "${FLAGS}")
