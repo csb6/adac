@@ -35,43 +35,31 @@ struct EnumLiteral_;
 
 typedef uint8_t TypeKind;
 enum {
-    // 3.2: Objects and Named Numbers
     TYPE_UNIV_INTEGER, TYPE_UNIV_FLOAT_PT, TYPE_UNIV_FIXED_PT,
-    // 3.3: Types and Subtypes
     TYPE_SUBTYPE,
-    // 3.4: Derived Types
     TYPE_DERIVED,
-    // 3.5: Scalar types
     TYPE_ENUM, TYPE_INTEGER, TYPE_FLOAT_PT, TYPE_FIXED_PT,
-    // 3.6: Array types
     TYPE_ARRAY,
-    // 3.7: Record types
     TYPE_RECORD,
-    // 3.8: Access types
     TYPE_ACCESS, TYPE_INCOMPLETE,
 
     TYPE_KIND_COUNT
 };
 
-// 3.3: Types and Subtypes
-// 3.4: Derived Types (these are just subtypes that do not implicitly convert to other subtypes with same base type)
 typedef struct {
     struct TypeDecl_* base;
     // TODO: constraints
 } SubType;
 
-// 3.5.1: Enumeration Types
 typedef struct {
     struct EnumLiteral_* literals;
     uint32_t literal_count;
 } EnumType;
 
-// 3.5.4: Integer Types
 typedef struct {
     struct Expression_* range; // Must be a BinaryExpr with OP_RANGE
 } IntType;
 
-// 3.6: Array types
 typedef struct {
     struct TypeDecl_* index_type;
     struct TypeDecl_* component_type;
@@ -79,7 +67,6 @@ typedef struct {
     // TODO: multidimensional arrays
 } ArrayType;
 
-// 3.7: Record types
 typedef struct {
     int placeholder;
     // TODO: variant
@@ -87,7 +74,6 @@ typedef struct {
     // TODO: discriminant (doesn't always mean there's a variant)
 } RecordType;
 
-// 3.8: Access types
 typedef struct {
     struct TypeDecl_* inner_type;
 } AccessType;
@@ -169,7 +155,6 @@ typedef struct Expression_ {
     SourceLocation loc;
     ExprKind kind;
     union {
-        // 4.2: Literals
         IntLiteral int_lit;
         char char_lit;
         StringView string_lit;
@@ -198,13 +183,11 @@ typedef struct Declaration_ {
     DeclKind kind;
 } Declaration;
 
-// 6.2: Formal Parameter Modes
 typedef uint8_t ParamMode;
 enum {
     PARAM_MODE_NONE, PARAM_MODE_IN, PARAM_MODE_OUT, PARAM_MODE_IN_OUT
 };
 
-// 3.3.1: Type Declarations
 typedef struct TypeDecl_ {
     Declaration base;
     StringToken name;
@@ -220,7 +203,6 @@ typedef struct TypeDecl_ {
     } u;
 } TypeDecl;
 
-// 3.2: Objects and Named Numbers
 typedef struct ObjectDecl_ {
     Declaration base;
     TypeDecl* type;
@@ -255,7 +237,6 @@ typedef struct {
     bool is_placeholder;
 } LabelDecl;
 
-// 7.1: Package Structure
 typedef struct PackageSpec_ {
     Declaration base;
     StringToken name;
