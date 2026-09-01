@@ -1048,7 +1048,7 @@ case_hdr :
     };
 
 alternative_s :
-    %empty                    { clr_struct(&$$); }
+    %empty                          { clr_struct(&$$); }
   | alternative_s[left] alternative {
         $$ = $left;
         AltList_append(&$$, $alternative);
@@ -1073,7 +1073,7 @@ label_opt :
     ;
 
 loop_content :
-    basic_loop {
+    basic_loop                                              {
         $$ = create_stmt(STMT_WHILE, @$);
         // Create condition so this becomes a 'while True' loop
         Expression* condition = create_expr(EXPR_ENUM_LIT, @$);
@@ -1081,7 +1081,7 @@ loop_content :
         $$->u.while_.condition = condition;
         $$->u.while_.stmts = $basic_loop;
     }
-  | WHILE condition basic_loop {
+  | WHILE condition basic_loop                              {
         $$ = create_stmt(STMT_WHILE, @$);
         $$->u.while_.condition = $condition;
         $$->u.while_.stmts = $basic_loop;

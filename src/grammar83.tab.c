@@ -3470,7 +3470,7 @@ yyreduce:
 
   case 248: /* alternative_s: %empty  */
 #line 1051 "grammar83.y"
-                              { clr_struct(&(yyval.case_list)); }
+                                    { clr_struct(&(yyval.case_list)); }
 #line 3475 "grammar83.tab.c"
     break;
 
@@ -3502,7 +3502,7 @@ yyreduce:
 
   case 254: /* loop_content: basic_loop  */
 #line 1076 "grammar83.y"
-               {
+                                                            {
         (yyval.stmt) = create_stmt(STMT_WHILE, (yyloc));
         // Create condition so this becomes a 'while True' loop
         Expression* condition = create_expr(EXPR_ENUM_LIT, (yyloc));
@@ -3515,7 +3515,7 @@ yyreduce:
 
   case 255: /* loop_content: WHILE condition basic_loop  */
 #line 1084 "grammar83.y"
-                               {
+                                                            {
         (yyval.stmt) = create_stmt(STMT_WHILE, (yyloc));
         (yyval.stmt)->u.while_.condition = (yyvsp[-1].expr);
         (yyval.stmt)->u.while_.stmts = (yyvsp[0].stmt);
