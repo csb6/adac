@@ -416,12 +416,6 @@ typedef enum yysymbol_kind_t yysymbol_kind_t;
         .name = 0, // Note: this is set the first time the parser is called (see initial-action)
     };
 
-    static
-    Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right);
-
-    static
-    Expression* make_unary_expr(UnaryOperator op, Expression* right);
-
     #define curr_scope(context) ((context)->scope_stack + (context)->curr_scope_idx)
 
     static
@@ -463,6 +457,12 @@ typedef enum yysymbol_kind_t yysymbol_kind_t;
 
     static
     Expression* create_expr(ExprKind kind, SourceLocation loc);
+
+    static
+    Expression* create_binary_expr(Expression* left, BinaryOperator op, Expression* right);
+
+    static
+    Expression* create_unary_expr(UnaryOperator op, Expression* right);
 
     static
     Statement* create_stmt(StmtKind kind, SourceLocation loc);
@@ -2919,7 +2919,7 @@ yyreduce:
 
   case 56: /* range: simple_expression DOT_DOT simple_expression  */
 #line 483 "grammar83.y"
-                                                             { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), OP_RANGE, (yyvsp[0].expr)); }
+                                                             { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), OP_RANGE, (yyvsp[0].expr)); }
 #line 2924 "grammar83.tab.c"
     break;
 
@@ -3112,13 +3112,13 @@ yyreduce:
 
   case 170: /* expression: expression logical relation  */
 #line 824 "grammar83.y"
-                                                       { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                                       { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3117 "grammar83.tab.c"
     break;
 
   case 171: /* expression: expression short_circuit relation  */
 #line 825 "grammar83.y"
-                                                       { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                                       { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3123 "grammar83.tab.c"
     break;
 
@@ -3154,13 +3154,13 @@ yyreduce:
 
   case 178: /* relation: simple_expression relational simple_expression  */
 #line 842 "grammar83.y"
-                                                                    { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                                                    { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3159 "grammar83.tab.c"
     break;
 
   case 179: /* relation: simple_expression membership range  */
 #line 843 "grammar83.y"
-                                                                    { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                                                    { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3165 "grammar83.tab.c"
     break;
 
@@ -3169,7 +3169,7 @@ yyreduce:
                                                                     {
         Expression* right = create_expr(EXPR_NAME, (yylsp[0]));
         right->u.name = (yyvsp[0].name);
-        (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), right);
+        (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), right);
     }
 #line 3175 "grammar83.tab.c"
     break;
@@ -3224,13 +3224,13 @@ yyreduce:
 
   case 190: /* simple_expression: unary term  */
 #line 866 "grammar83.y"
-                                                   { (yyval.expr) = make_unary_expr((yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                                   { (yyval.expr) = create_unary_expr((yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3229 "grammar83.tab.c"
     break;
 
   case 191: /* simple_expression: simple_expression adding term  */
 #line 867 "grammar83.y"
-                                                   { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                                   { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3235 "grammar83.tab.c"
     break;
 
@@ -3266,7 +3266,7 @@ yyreduce:
 
   case 198: /* term: term multiplying factor  */
 #line 883 "grammar83.y"
-                                             { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
+                                             { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), (yyvsp[-1].unary_op), (yyvsp[0].expr)); }
 #line 3271 "grammar83.tab.c"
     break;
 
@@ -3296,19 +3296,19 @@ yyreduce:
 
   case 204: /* factor: NOT primary  */
 #line 895 "grammar83.y"
-                                       { (yyval.expr) = make_unary_expr(OP_NOT, (yyvsp[0].expr)); }
+                                       { (yyval.expr) = create_unary_expr(OP_NOT, (yyvsp[0].expr)); }
 #line 3301 "grammar83.tab.c"
     break;
 
   case 205: /* factor: ABS primary  */
 #line 896 "grammar83.y"
-                                       { (yyval.expr) = make_unary_expr(OP_ABS, (yyvsp[0].expr)); }
+                                       { (yyval.expr) = create_unary_expr(OP_ABS, (yyvsp[0].expr)); }
 #line 3307 "grammar83.tab.c"
     break;
 
   case 206: /* factor: primary EXPON primary  */
 #line 897 "grammar83.y"
-                                       { (yyval.expr) = make_binary_expr((yyvsp[-2].expr), OP_EXP, (yyvsp[0].expr)); }
+                                       { (yyval.expr) = create_binary_expr((yyvsp[-2].expr), OP_EXP, (yyvsp[0].expr)); }
 #line 3313 "grammar83.tab.c"
     break;
 
@@ -4218,25 +4218,6 @@ yyreturnlab:
 
 
 static
-Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right)
-{
-    Expression* expr = create_expr(EXPR_BINARY, left->loc);
-    expr->u.binary.left = left;
-    expr->u.binary.op = op;
-    expr->u.binary.right = right;
-    return expr;
-}
-
-static
-Expression* make_unary_expr(UnaryOperator op, Expression* right)
-{
-    Expression* expr = create_expr(EXPR_UNARY, right->loc);
-    expr->u.unary.op = op;
-    expr->u.unary.right = right;
-    return expr;
-}
-
-static
 void begin_scope(ParseContext* context, SourceLocation loc)
 {
     if(context->curr_scope_idx + 1u >= cnt_of_array(context->scope_stack)) {
@@ -4447,6 +4428,25 @@ Expression* create_expr(ExprKind kind, SourceLocation loc)
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = kind;
     expr->loc = loc;
+    return expr;
+}
+
+static
+Expression* create_binary_expr(Expression* left, BinaryOperator op, Expression* right)
+{
+    Expression* expr = create_expr(EXPR_BINARY, left->loc);
+    expr->u.binary.left = left;
+    expr->u.binary.op = op;
+    expr->u.binary.right = right;
+    return expr;
+}
+
+static
+Expression* create_unary_expr(UnaryOperator op, Expression* right)
+{
+    Expression* expr = create_expr(EXPR_UNARY, right->loc);
+    expr->u.unary.op = op;
+    expr->u.unary.right = right;
     return expr;
 }
 

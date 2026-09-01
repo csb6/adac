@@ -108,12 +108,6 @@
         .name = 0, // Note: this is set the first time the parser is called (see initial-action)
     };
 
-    static
-    Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right);
-
-    static
-    Expression* make_unary_expr(UnaryOperator op, Expression* right);
-
     #define curr_scope(context) ((context)->scope_stack + (context)->curr_scope_idx)
 
     static
@@ -155,6 +149,12 @@
 
     static
     Expression* create_expr(ExprKind kind, SourceLocation loc);
+
+    static
+    Expression* create_binary_expr(Expression* left, BinaryOperator op, Expression* right);
+
+    static
+    Expression* create_unary_expr(UnaryOperator op, Expression* right);
 
     static
     Statement* create_stmt(StmtKind kind, SourceLocation loc);
@@ -480,7 +480,7 @@ range_constr_opt :
     ;
 
 range :
-    simple_expression[left] DOT_DOT simple_expression[right] { $$ = make_binary_expr($left, OP_RANGE, $right); }
+    simple_expression[left] DOT_DOT simple_expression[right] { $$ = create_binary_expr($left, OP_RANGE, $right); }
   | name '\'' RANGE
   | name '\'' RANGE '(' expression ')'
     ;
@@ -821,8 +821,8 @@ comp_assoc :
 
 expression :
     relation
-  | expression[left] logical[op] relation[right]       { $$ = make_binary_expr($left, $op, $right); }
-  | expression[left] short_circuit[op] relation[right] { $$ = make_binary_expr($left, $op, $right); }
+  | expression[left] logical[op] relation[right]       { $$ = create_binary_expr($left, $op, $right); }
+  | expression[left] short_circuit[op] relation[right] { $$ = create_binary_expr($left, $op, $right); }
     ;
 
 logical :
@@ -839,12 +839,12 @@ short_circuit :
 // TODO: constant folding of literals
 relation :
     simple_expression
-  | simple_expression[left] relational[op] simple_expression[right] { $$ = make_binary_expr($left, $op, $right); }
-  | simple_expression[left] membership[op] range[right]             { $$ = make_binary_expr($left, $op, $right); }
+  | simple_expression[left] relational[op] simple_expression[right] { $$ = create_binary_expr($left, $op, $right); }
+  | simple_expression[left] membership[op] range[right]             { $$ = create_binary_expr($left, $op, $right); }
   | simple_expression[left] membership[op] name                     {
         Expression* right = create_expr(EXPR_NAME, @3);
         right->u.name = $name;
-        $$ = make_binary_expr($left, $op, right);
+        $$ = create_binary_expr($left, $op, right);
     };
 
 relational :
@@ -863,8 +863,8 @@ membership :
 
 simple_expression :
     term
-  | unary[op] term                                 { $$ = make_unary_expr($op, $term); }
-  | simple_expression[left] adding[op] term[right] { $$ = make_binary_expr($left, $op, $right); }
+  | unary[op] term                                 { $$ = create_unary_expr($op, $term); }
+  | simple_expression[left] adding[op] term[right] { $$ = create_binary_expr($left, $op, $right); }
     ;
 
 unary :
@@ -880,7 +880,7 @@ adding :
 
 term :
     factor
-  | term[left] multiplying[op] factor[right] { $$ = make_binary_expr($left, $op, $right); }
+  | term[left] multiplying[op] factor[right] { $$ = create_binary_expr($left, $op, $right); }
     ;
 
 multiplying :
@@ -892,9 +892,9 @@ multiplying :
 
 factor :
     primary
-  | NOT primary                        { $$ = make_unary_expr(OP_NOT, $primary); }
-  | ABS primary                        { $$ = make_unary_expr(OP_ABS, $primary); }
-  | primary[left] EXPON primary[right] { $$ = make_binary_expr($left, OP_EXP, $right); }
+  | NOT primary                        { $$ = create_unary_expr(OP_NOT, $primary); }
+  | ABS primary                        { $$ = create_unary_expr(OP_ABS, $primary); }
+  | primary[left] EXPON primary[right] { $$ = create_binary_expr($left, OP_EXP, $right); }
     ;
 
 primary :
@@ -1607,25 +1607,6 @@ code_stmt :
 %%
 
 static
-Expression* make_binary_expr(Expression* left, BinaryOperator op, Expression* right)
-{
-    Expression* expr = create_expr(EXPR_BINARY, left->loc);
-    expr->u.binary.left = left;
-    expr->u.binary.op = op;
-    expr->u.binary.right = right;
-    return expr;
-}
-
-static
-Expression* make_unary_expr(UnaryOperator op, Expression* right)
-{
-    Expression* expr = create_expr(EXPR_UNARY, right->loc);
-    expr->u.unary.op = op;
-    expr->u.unary.right = right;
-    return expr;
-}
-
-static
 void begin_scope(ParseContext* context, SourceLocation loc)
 {
     if(context->curr_scope_idx + 1u >= cnt_of_array(context->scope_stack)) {
@@ -1836,6 +1817,25 @@ Expression* create_expr(ExprKind kind, SourceLocation loc)
     Expression* expr = calloc(1, sizeof(Expression));
     expr->kind = kind;
     expr->loc = loc;
+    return expr;
+}
+
+static
+Expression* create_binary_expr(Expression* left, BinaryOperator op, Expression* right)
+{
+    Expression* expr = create_expr(EXPR_BINARY, left->loc);
+    expr->u.binary.left = left;
+    expr->u.binary.op = op;
+    expr->u.binary.right = right;
+    return expr;
+}
+
+static
+Expression* create_unary_expr(UnaryOperator op, Expression* right)
+{
+    Expression* expr = create_expr(EXPR_UNARY, right->loc);
+    expr->u.unary.op = op;
+    expr->u.unary.right = right;
     return expr;
 }
 
