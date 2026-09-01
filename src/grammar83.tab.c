@@ -885,22 +885,22 @@ static const yytype_int16 yyrline[] =
      947,   968,   969,   970,   974,   975,   976,   977,   978,   979,
      980,   981,   982,   986,   987,   988,   989,   993,   997,  1006,
     1017,  1018,  1024,  1031,  1035,  1036,  1040,  1047,  1053,  1054,
-    1060,  1069,  1073,  1074,  1078,  1087,  1093,  1105,  1106,  1110,
-    1114,  1115,  1120,  1131,  1132,  1132,  1141,  1146,  1150,  1151,
-    1155,  1162,  1163,  1167,  1168,  1172,  1173,  1179,  1200,  1204,
-    1209,  1209,  1216,  1216,  1223,  1227,  1228,  1232,  1233,  1237,
-    1241,  1242,  1246,  1247,  1251,  1252,  1253,  1254,  1258,  1264,
-    1273,  1281,  1282,  1286,  1286,  1307,  1308,  1312,  1313,  1317,
-    1317,  1338,  1339,  1343,  1347,  1348,  1353,  1357,  1358,  1362,
-    1366,  1397,  1416,  1417,  1421,  1422,  1423,  1424,  1428,  1429,
-    1433,  1434,  1435,  1439,  1450,  1451,  1455,  1459,  1463,  1467,
-    1471,  1472,  1473,  1477,  1481,  1482,  1486,  1487,  1491,  1495,
-    1496,  1500,  1501,  1505,  1506,  1510,  1511,  1515,  1519,  1520,
-    1524,  1525,  1529,  1530,  1531,  1532,  1533,  1534,  1535,  1539,
-    1540,  1541,  1545,  1546,  1547,  1551,  1552,  1553,  1554,  1555,
-    1556,  1557,  1558,  1559,  1560,  1564,  1565,  1569,  1573,  1577,
-    1581,  1582,  1583,  1587,  1591,  1595,  1596,  1600,  1601,  1605,
-    1609
+    1060,  1069,  1073,  1074,  1078,  1086,  1091,  1100,  1101,  1105,
+    1109,  1110,  1115,  1126,  1127,  1127,  1136,  1141,  1145,  1146,
+    1150,  1157,  1158,  1162,  1163,  1167,  1168,  1174,  1195,  1199,
+    1204,  1204,  1211,  1211,  1218,  1222,  1223,  1227,  1228,  1232,
+    1236,  1237,  1241,  1242,  1246,  1247,  1248,  1249,  1253,  1259,
+    1268,  1276,  1277,  1281,  1281,  1302,  1303,  1307,  1308,  1312,
+    1312,  1333,  1334,  1338,  1342,  1343,  1348,  1352,  1353,  1357,
+    1361,  1392,  1411,  1412,  1416,  1417,  1418,  1419,  1423,  1424,
+    1428,  1429,  1430,  1434,  1445,  1446,  1450,  1454,  1458,  1462,
+    1466,  1467,  1468,  1472,  1476,  1477,  1481,  1482,  1486,  1490,
+    1491,  1495,  1496,  1500,  1501,  1505,  1506,  1510,  1514,  1515,
+    1519,  1520,  1524,  1525,  1526,  1527,  1528,  1529,  1530,  1534,
+    1535,  1536,  1540,  1541,  1542,  1546,  1547,  1548,  1549,  1550,
+    1551,  1552,  1553,  1554,  1555,  1559,  1560,  1564,  1568,  1572,
+    1576,  1577,  1578,  1582,  1586,  1590,  1591,  1595,  1596,  1600,
+    1604
 };
 #endif
 
@@ -3503,63 +3503,58 @@ yyreduce:
   case 254: /* loop_content: basic_loop  */
 #line 1078 "grammar83.y"
                {
-        (yyval.stmt) = create_stmt(STMT_LOOP, (yyloc));
-        (yyval.stmt)->u.loop.kind = LOOP_WHILE;
-        (yyval.stmt)->u.loop.stmts = (yyvsp[0].stmt);
+        (yyval.stmt) = create_stmt(STMT_WHILE, (yyloc));
         // Create condition so this becomes a 'while True' loop
         Expression* condition = create_expr(EXPR_ENUM_LIT, (yyloc));
         condition->u.enum_lit = &boolean_type.u.enum_.literals[true];
-        (yyval.stmt)->u.loop.u.while_.condition = condition;
+        (yyval.stmt)->u.while_.condition = condition;
+        (yyval.stmt)->u.while_.stmts = (yyvsp[0].stmt);
     }
-#line 3515 "grammar83.tab.c"
+#line 3514 "grammar83.tab.c"
     break;
 
   case 255: /* loop_content: WHILE condition basic_loop  */
-#line 1087 "grammar83.y"
+#line 1086 "grammar83.y"
                                {
-        (yyval.stmt) = create_stmt(STMT_LOOP, (yyloc));
-        (yyval.stmt)->u.loop.kind = LOOP_WHILE;
-        (yyval.stmt)->u.loop.u.while_.condition = (yyvsp[-1].expr);
-        (yyval.stmt)->u.loop.stmts = (yyvsp[0].stmt);
+        (yyval.stmt) = create_stmt(STMT_WHILE, (yyloc));
+        (yyval.stmt)->u.while_.condition = (yyvsp[-1].expr);
+        (yyval.stmt)->u.while_.stmts = (yyvsp[0].stmt);
     }
-#line 3526 "grammar83.tab.c"
+#line 3524 "grammar83.tab.c"
     break;
 
   case 256: /* loop_content: FOR identifier IN reverse_opt discrete_range basic_loop  */
-#line 1093 "grammar83.y"
+#line 1091 "grammar83.y"
                                                             {
-        (yyval.stmt) = create_stmt(STMT_LOOP, (yyloc));
-        (yyval.stmt)->u.loop.kind = LOOP_FOR;
-        (yyval.stmt)->u.loop.reverse = (yyvsp[-2].bool_);
-        (yyval.stmt)->u.loop.u.for_.var.base.kind = DECL_OBJECT;
-        (yyval.stmt)->u.loop.u.for_.var.base.loc = (yylsp[-4]);
-        (yyval.stmt)->u.loop.u.for_.var.name = (yyvsp[-4].str_token);
-        (yyval.stmt)->u.loop.u.for_.range = (yyvsp[-1].expr);
-        (yyval.stmt)->u.loop.stmts = (yyvsp[0].stmt);
+        (yyval.stmt) = create_stmt(STMT_FOR, (yyloc));
+        (yyval.stmt)->u.for_.var = create_object_decl((yyvsp[-4].str_token), (yylsp[-4]));
+        (yyval.stmt)->u.for_.reverse = (yyvsp[-2].bool_);
+        (yyval.stmt)->u.for_.range = (yyvsp[-1].expr);
+        (yyval.stmt)->u.for_.stmts = (yyvsp[0].stmt);
     }
-#line 3541 "grammar83.tab.c"
+#line 3536 "grammar83.tab.c"
     break;
 
   case 257: /* reverse_opt: %empty  */
-#line 1105 "grammar83.y"
+#line 1100 "grammar83.y"
             { (yyval.bool_) = false; }
-#line 3547 "grammar83.tab.c"
+#line 3542 "grammar83.tab.c"
     break;
 
   case 258: /* reverse_opt: REVERSE  */
-#line 1106 "grammar83.y"
+#line 1101 "grammar83.y"
             { (yyval.bool_) = true; }
-#line 3553 "grammar83.tab.c"
+#line 3548 "grammar83.tab.c"
     break;
 
   case 259: /* basic_loop: LOOP statement_s END LOOP  */
-#line 1110 "grammar83.y"
+#line 1105 "grammar83.y"
                               { (yyval.stmt) = (yyvsp[-2].stmt_list).first; }
-#line 3559 "grammar83.tab.c"
+#line 3554 "grammar83.tab.c"
     break;
 
   case 262: /* block: label_opt block_decl block_body END id_opt ';'  */
-#line 1120 "grammar83.y"
+#line 1115 "grammar83.y"
                                                    {
         (yyval.stmt) = create_stmt(STMT_BLOCK, (yyloc));
         (yyval.stmt)->u.block.decls = (yyvsp[-4].decl);
@@ -3569,23 +3564,23 @@ yyreduce:
             end_scope(context, (yylsp[-2]));
         }
     }
-#line 3573 "grammar83.tab.c"
+#line 3568 "grammar83.tab.c"
     break;
 
   case 263: /* block_decl: %empty  */
-#line 1131 "grammar83.y"
+#line 1126 "grammar83.y"
                                                           { (yyval.decl) = NULL; }
-#line 3579 "grammar83.tab.c"
+#line 3574 "grammar83.tab.c"
     break;
 
   case 264: /* $@1: %empty  */
-#line 1132 "grammar83.y"
+#line 1127 "grammar83.y"
             { begin_scope(context, (yylsp[0])); }
-#line 3585 "grammar83.tab.c"
+#line 3580 "grammar83.tab.c"
     break;
 
   case 265: /* block_decl: DECLARE $@1 decl_part  */
-#line 1132 "grammar83.y"
+#line 1127 "grammar83.y"
                                                           {
         (yyval.decl) = (yyvsp[0].decl);
         // Close scope if no declaration section
@@ -3593,60 +3588,60 @@ yyreduce:
             end_scope(context, (yylsp[-2]));
         }
     }
-#line 3597 "grammar83.tab.c"
+#line 3592 "grammar83.tab.c"
     break;
 
   case 266: /* block_body: BEGiN handled_stmt_s  */
-#line 1141 "grammar83.y"
+#line 1136 "grammar83.y"
                          { (yyval.stmt) = (yyvsp[0].stmt); }
-#line 3603 "grammar83.tab.c"
+#line 3598 "grammar83.tab.c"
     break;
 
   case 267: /* handled_stmt_s: statement_s except_handler_part_opt  */
-#line 1146 "grammar83.y"
+#line 1141 "grammar83.y"
                                         { (yyval.stmt) = (yyvsp[-1].stmt_list).first; }
-#line 3609 "grammar83.tab.c"
+#line 3604 "grammar83.tab.c"
     break;
 
   case 270: /* exit_stmt: EXIT name_opt when_opt ';'  */
-#line 1155 "grammar83.y"
+#line 1150 "grammar83.y"
                                {
         (yyval.stmt) = create_stmt(STMT_EXIT, (yyloc));
         // TODO: name_opt
         (yyval.stmt)->u.exit.condition = (yyvsp[-1].expr);
     }
-#line 3619 "grammar83.tab.c"
+#line 3614 "grammar83.tab.c"
     break;
 
   case 273: /* when_opt: %empty  */
-#line 1167 "grammar83.y"
+#line 1162 "grammar83.y"
                    { (yyval.expr) = NULL; }
-#line 3625 "grammar83.tab.c"
+#line 3620 "grammar83.tab.c"
     break;
 
   case 274: /* when_opt: WHEN condition  */
-#line 1168 "grammar83.y"
+#line 1163 "grammar83.y"
                    { (yyval.expr) = (yyvsp[0].expr); }
-#line 3631 "grammar83.tab.c"
+#line 3626 "grammar83.tab.c"
     break;
 
   case 275: /* return_stmt: RETURN ';'  */
-#line 1172 "grammar83.y"
+#line 1167 "grammar83.y"
                           { (yyval.stmt) = create_stmt(STMT_RETURN, (yyloc)); }
-#line 3637 "grammar83.tab.c"
+#line 3632 "grammar83.tab.c"
     break;
 
   case 276: /* return_stmt: RETURN expression ';'  */
-#line 1173 "grammar83.y"
+#line 1168 "grammar83.y"
                           {
         (yyval.stmt) = create_stmt(STMT_RETURN, (yyloc));
         (yyval.stmt)->u.return_.expr = (yyvsp[-1].expr);
     }
-#line 3646 "grammar83.tab.c"
+#line 3641 "grammar83.tab.c"
     break;
 
   case 277: /* goto_stmt: GOTO identifier ';'  */
-#line 1179 "grammar83.y"
+#line 1174 "grammar83.y"
                         {
         StringToken label_name = (yyvsp[-1].str_token);
 
@@ -3666,90 +3661,90 @@ yyreduce:
             push_declaration(context, (Declaration*)label);
         }
     }
-#line 3670 "grammar83.tab.c"
+#line 3665 "grammar83.tab.c"
     break;
 
   case 278: /* subprog_decl: subprog_spec ';'  */
-#line 1200 "grammar83.y"
+#line 1195 "grammar83.y"
                           {
         (yyval.subprogram_decl) = (yyvsp[-1].subprogram_decl);
         end_scope(context, (yylsp[0]));
     }
-#line 3679 "grammar83.tab.c"
+#line 3674 "grammar83.tab.c"
     break;
 
   case 280: /* @2: %empty  */
-#line 1209 "grammar83.y"
+#line 1204 "grammar83.y"
                                           {
         // TODO: check for name conflict
         (yyval.subprogram_decl) = create_subprogram_decl((yyvsp[0].str_token), (yylsp[0]));
         push_declaration(context, &(yyval.subprogram_decl)->base);
         begin_scope(context, (yylsp[0]));
     }
-#line 3690 "grammar83.tab.c"
+#line 3685 "grammar83.tab.c"
     break;
 
   case 281: /* subprog_spec: PROCEDURE identifier @2 formal_part_opt  */
-#line 1215 "grammar83.y"
+#line 1210 "grammar83.y"
                                 { (yyval.subprogram_decl) = (yyvsp[-1].subprogram_decl); }
-#line 3696 "grammar83.tab.c"
+#line 3691 "grammar83.tab.c"
     break;
 
   case 282: /* @3: %empty  */
-#line 1216 "grammar83.y"
+#line 1211 "grammar83.y"
                                          {
         // TODO: check for name conflict
         (yyval.subprogram_decl) = create_subprogram_decl((yyvsp[0].str_token), (yylsp[0]));
         push_declaration(context, &(yyval.subprogram_decl)->base);
         begin_scope(context, (yylsp[0]));
     }
-#line 3707 "grammar83.tab.c"
+#line 3702 "grammar83.tab.c"
     break;
 
   case 283: /* subprog_spec: FUNCTION designator @3 formal_part_opt RETURN name  */
-#line 1222 "grammar83.y"
+#line 1217 "grammar83.y"
                                 { (yyval.subprogram_decl) = (yyvsp[-3].subprogram_decl); }
-#line 3713 "grammar83.tab.c"
+#line 3708 "grammar83.tab.c"
     break;
 
   case 286: /* designator: char_string  */
-#line 1228 "grammar83.y"
+#line 1223 "grammar83.y"
                 { (yyval.str_token) = string_pool_to_token((yyvsp[0].str)); }
-#line 3719 "grammar83.tab.c"
+#line 3714 "grammar83.tab.c"
     break;
 
   case 294: /* mode: %empty  */
-#line 1251 "grammar83.y"
+#line 1246 "grammar83.y"
            { (yyval.param_mode) = PARAM_MODE_IN; }
-#line 3725 "grammar83.tab.c"
+#line 3720 "grammar83.tab.c"
     break;
 
   case 295: /* mode: IN  */
-#line 1252 "grammar83.y"
+#line 1247 "grammar83.y"
            { (yyval.param_mode) = PARAM_MODE_IN; }
-#line 3731 "grammar83.tab.c"
+#line 3726 "grammar83.tab.c"
     break;
 
   case 296: /* mode: OUT  */
-#line 1253 "grammar83.y"
+#line 1248 "grammar83.y"
            { (yyval.param_mode) = PARAM_MODE_OUT; }
-#line 3737 "grammar83.tab.c"
+#line 3732 "grammar83.tab.c"
     break;
 
   case 297: /* mode: IN OUT  */
-#line 1254 "grammar83.y"
+#line 1249 "grammar83.y"
            { (yyval.param_mode) = PARAM_MODE_IN_OUT; }
-#line 3743 "grammar83.tab.c"
+#line 3738 "grammar83.tab.c"
     break;
 
   case 298: /* subprog_spec_is_push: subprog_spec IS  */
-#line 1258 "grammar83.y"
+#line 1253 "grammar83.y"
                     { (yyval.subprogram_decl) = (yyvsp[-1].subprogram_decl); }
-#line 3749 "grammar83.tab.c"
+#line 3744 "grammar83.tab.c"
     break;
 
   case 299: /* subprog_body: subprog_spec_is_push decl_part block_body END id_opt ';'  */
-#line 1264 "grammar83.y"
+#line 1259 "grammar83.y"
                                                              {
         (yyval.subprogram_decl) = (yyvsp[-5].subprogram_decl);
         (yyval.subprogram_decl)->decls = (yyvsp[-4].decl);
@@ -3757,28 +3752,28 @@ yyreduce:
         // Close scope opened in subprog_spec
         end_scope(context, (yylsp[-2]));
     }
-#line 3761 "grammar83.tab.c"
+#line 3756 "grammar83.tab.c"
     break;
 
   case 300: /* procedure_call: name ';'  */
-#line 1273 "grammar83.y"
+#line 1268 "grammar83.y"
              {
         (yyval.stmt) = create_stmt(STMT_EXPR, (yyloc));
         (yyval.stmt)->u.expr.kind = EXPR_NAME;
         (yyval.stmt)->u.expr.loc = (yyloc);
         (yyval.stmt)->u.expr.u.name = (yyvsp[-1].name);
     }
-#line 3772 "grammar83.tab.c"
+#line 3767 "grammar83.tab.c"
     break;
 
   case 301: /* pkg_decl: pkg_spec ';'  */
-#line 1281 "grammar83.y"
+#line 1276 "grammar83.y"
                          { (yyval.pkg_spec) = (yyvsp[-1].pkg_spec); }
-#line 3778 "grammar83.tab.c"
+#line 3773 "grammar83.tab.c"
     break;
 
   case 303: /* @4: %empty  */
-#line 1286 "grammar83.y"
+#line 1281 "grammar83.y"
                                     {
         begin_scope(context, (yylsp[0]));
         (yyval.pkg_spec) = calloc(1, sizeof(PackageSpec));
@@ -3786,11 +3781,11 @@ yyreduce:
         (yyval.pkg_spec)->base.loc = (yyloc);
         (yyval.pkg_spec)->name = (yyvsp[-1].str_token);
     }
-#line 3790 "grammar83.tab.c"
+#line 3785 "grammar83.tab.c"
     break;
 
   case 304: /* pkg_spec: PACKAGE identifier IS @4 decl_item_s private_part END identifier_opt  */
-#line 1293 "grammar83.y"
+#line 1288 "grammar83.y"
                                                 {
         (yyval.pkg_spec) = (yyvsp[-4].pkg_spec);
         (yyval.pkg_spec)->decls = (yyvsp[-3].decl);
@@ -3803,17 +3798,17 @@ yyreduce:
         }
         push_declaration(context, &(yyval.pkg_spec)->base);
     }
-#line 3807 "grammar83.tab.c"
+#line 3802 "grammar83.tab.c"
     break;
 
   case 307: /* identifier_opt: %empty  */
-#line 1312 "grammar83.y"
+#line 1307 "grammar83.y"
                { (yyval.str_token) = 0; }
-#line 3813 "grammar83.tab.c"
+#line 3808 "grammar83.tab.c"
     break;
 
   case 309: /* @5: %empty  */
-#line 1317 "grammar83.y"
+#line 1312 "grammar83.y"
                                          {
         begin_scope(context, (yylsp[0]));
         (yyval.pkg_body) = calloc(1, sizeof(PackageBody));
@@ -3821,11 +3816,11 @@ yyreduce:
         (yyval.pkg_body)->base.loc = (yyloc);
         (yyval.pkg_body)->name = (yyvsp[-1].str_token);
     }
-#line 3825 "grammar83.tab.c"
+#line 3820 "grammar83.tab.c"
     break;
 
   case 310: /* pkg_body: PACKAGE BODY identifier IS @5 decl_part body_opt END identifier_opt ';'  */
-#line 1324 "grammar83.y"
+#line 1319 "grammar83.y"
                                               {
         (yyval.pkg_body) = (yyvsp[-5].pkg_body);
         (yyval.pkg_body)->decls = (yyvsp[-4].decl);
@@ -3838,29 +3833,29 @@ yyreduce:
         }
         push_declaration(context, &(yyval.pkg_body)->base);
     }
-#line 3842 "grammar83.tab.c"
+#line 3837 "grammar83.tab.c"
     break;
 
   case 316: /* use_name_s: identifier  */
-#line 1353 "grammar83.y"
+#line 1348 "grammar83.y"
                                  {
         StringTokenArray_init(&(yyval.str_token_array));
         StringTokenArray_append(&(yyval.str_token_array), (yyvsp[0].str_token));
     }
-#line 3851 "grammar83.tab.c"
+#line 3846 "grammar83.tab.c"
     break;
 
   case 318: /* use_name_s: use_name_s ',' identifier  */
-#line 1358 "grammar83.y"
+#line 1353 "grammar83.y"
                                  {
         (yyval.str_token_array) = (yyvsp[-2].str_token_array);
         StringTokenArray_append(&(yyval.str_token_array), (yyvsp[0].str_token));
     }
-#line 3860 "grammar83.tab.c"
+#line 3855 "grammar83.tab.c"
     break;
 
   case 320: /* use_clause: USE use_name_s ';'  */
-#line 1366 "grammar83.y"
+#line 1361 "grammar83.y"
                        {
         (yyval.decl) = NULL;
         uint32_t package_count = StringTokenArray_size(&(yyvsp[-1].str_token_array));
@@ -3889,11 +3884,11 @@ yyreduce:
             }
         }
     }
-#line 3893 "grammar83.tab.c"
+#line 3888 "grammar83.tab.c"
     break;
 
   case 321: /* rename_decl: def_id_s ':' object_qualifier_opt subtype_ind RENAMES name ';'  */
-#line 1397 "grammar83.y"
+#line 1392 "grammar83.y"
                                                                    {
         uint32_t ident_count = StringTokenArray_size(&(yyvsp[-6].str_token_array));
         if(ident_count != 1) {
@@ -3913,23 +3908,23 @@ yyreduce:
         // TODO: check that the target is an object (or some kind of slice/expression that yields an object)
         push_declaration(context, &rename_decl->base);
     }
-#line 3917 "grammar83.tab.c"
+#line 3912 "grammar83.tab.c"
     break;
 
   case 328: /* comp_unit: context_spec unit pragma_s  */
-#line 1428 "grammar83.y"
+#line 1423 "grammar83.y"
                                { (yyval.comp_unit) = (yyvsp[-1].comp_unit); }
-#line 3923 "grammar83.tab.c"
+#line 3918 "grammar83.tab.c"
     break;
 
   case 329: /* comp_unit: unit pragma_s  */
-#line 1429 "grammar83.y"
+#line 1424 "grammar83.y"
                                { (yyval.comp_unit) = (yyvsp[-1].comp_unit); }
-#line 3929 "grammar83.tab.c"
+#line 3924 "grammar83.tab.c"
     break;
 
   case 333: /* with_clause: WITH def_id_s ';'  */
-#line 1439 "grammar83.y"
+#line 1434 "grammar83.y"
                       {
         uint32_t package_count = StringTokenArray_size(&(yyvsp[-1].str_token_array));
         for(uint32_t i = 0; i < package_count; ++i) {
@@ -3939,47 +3934,47 @@ yyreduce:
             push_declaration(context, &unit->u.package_spec->base);
         }
     }
-#line 3943 "grammar83.tab.c"
+#line 3938 "grammar83.tab.c"
     break;
 
   case 336: /* unit: pkg_decl  */
-#line 1455 "grammar83.y"
+#line 1450 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_PACKAGE_SPEC);
         (yyval.comp_unit)->u.package_spec = (yyvsp[0].pkg_spec);
     }
-#line 3952 "grammar83.tab.c"
+#line 3947 "grammar83.tab.c"
     break;
 
   case 337: /* unit: pkg_body  */
-#line 1459 "grammar83.y"
+#line 1454 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_PACKAGE_BODY);
         (yyval.comp_unit)->u.package_body = (yyvsp[0].pkg_body);
     }
-#line 3961 "grammar83.tab.c"
+#line 3956 "grammar83.tab.c"
     break;
 
   case 338: /* unit: subprog_decl  */
-#line 1463 "grammar83.y"
+#line 1458 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_SUBPROGRAM);
         (yyval.comp_unit)->u.subprogram_decl = (yyvsp[0].subprogram_decl);
     }
-#line 3970 "grammar83.tab.c"
+#line 3965 "grammar83.tab.c"
     break;
 
   case 339: /* unit: subprog_body  */
-#line 1467 "grammar83.y"
+#line 1462 "grammar83.y"
                  {
         (yyval.comp_unit) = create_comp_unit(COMP_UNIT_SUBPROGRAM);
         (yyval.comp_unit)->u.subprogram_decl = (yyvsp[0].subprogram_decl);
     }
-#line 3979 "grammar83.tab.c"
+#line 3974 "grammar83.tab.c"
     break;
 
 
-#line 3983 "grammar83.tab.c"
+#line 3978 "grammar83.tab.c"
 
         default: break;
       }
@@ -4219,7 +4214,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 1612 "grammar83.y"
+#line 1607 "grammar83.y"
 
 
 static

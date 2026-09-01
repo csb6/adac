@@ -1076,29 +1076,24 @@ label_opt :
 
 loop_content :
     basic_loop {
-        $$ = create_stmt(STMT_LOOP, @$);
-        $$->u.loop.kind = LOOP_WHILE;
-        $$->u.loop.stmts = $basic_loop;
+        $$ = create_stmt(STMT_WHILE, @$);
         // Create condition so this becomes a 'while True' loop
         Expression* condition = create_expr(EXPR_ENUM_LIT, @$);
         condition->u.enum_lit = &boolean_type.u.enum_.literals[true];
-        $$->u.loop.u.while_.condition = condition;
+        $$->u.while_.condition = condition;
+        $$->u.while_.stmts = $basic_loop;
     }
   | WHILE condition basic_loop {
-        $$ = create_stmt(STMT_LOOP, @$);
-        $$->u.loop.kind = LOOP_WHILE;
-        $$->u.loop.u.while_.condition = $condition;
-        $$->u.loop.stmts = $basic_loop;
+        $$ = create_stmt(STMT_WHILE, @$);
+        $$->u.while_.condition = $condition;
+        $$->u.while_.stmts = $basic_loop;
     }
   | FOR identifier IN reverse_opt discrete_range basic_loop {
-        $$ = create_stmt(STMT_LOOP, @$);
-        $$->u.loop.kind = LOOP_FOR;
-        $$->u.loop.reverse = $reverse_opt;
-        $$->u.loop.u.for_.var.base.kind = DECL_OBJECT;
-        $$->u.loop.u.for_.var.base.loc = @identifier;
-        $$->u.loop.u.for_.var.name = $identifier;
-        $$->u.loop.u.for_.range = $discrete_range;
-        $$->u.loop.stmts = $basic_loop;
+        $$ = create_stmt(STMT_FOR, @$);
+        $$->u.for_.var = create_object_decl($identifier, @identifier);
+        $$->u.for_.reverse = $reverse_opt;
+        $$->u.for_.range = $discrete_range;
+        $$->u.for_.stmts = $basic_loop;
     };
 
 reverse_opt :

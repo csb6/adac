@@ -30,7 +30,8 @@ static void print_enum_literal(const EnumLiteral* literal);
 static void print_statement(const Statement* stmt, uint8_t indent_level);
 static void print_if_statement(const IfStmt* stmt, uint8_t indent_level);
 static void print_case_statement(const CaseStmt* stmt, uint8_t indent_level);
-static void print_loop_statement(const LoopStmt* loop, uint8_t indent_level);
+static void print_for_loop(const ForLoop* loop, uint8_t indent_level);
+static void print_while_loop(const WhileLoop* loop, uint8_t indent_level);
 static void print_expression(const Expression* expr);
 static void print_unary_operator(UnaryOperator op);
 static void print_binary_operator(BinaryOperator op);
@@ -312,8 +313,11 @@ void print_statement(const Statement* stmt, uint8_t indent_level)
         case STMT_CASE:
             print_case_statement(&stmt->u.case_, indent_level);
             break;
-        case STMT_LOOP:
-            print_loop_statement(&stmt->u.loop, indent_level);
+        case STMT_FOR:
+            print_for_loop(&stmt->u.for_, indent_level);
+            break;
+        case STMT_WHILE:
+            print_while_loop(&stmt->u.while_, indent_level);
             break;
         case STMT_GOTO:
             printf("goto %s", ST(stmt->u.goto_.label->name));
@@ -400,19 +404,26 @@ void print_choices(const Choices* choices)
 }
 
 static
-void print_loop_statement(const LoopStmt* loop, uint8_t indent_level)
+void print_for_loop(const ForLoop* loop, uint8_t indent_level)
 {
-    if(loop->kind == LOOP_WHILE) {
-        printf("while ");
-        print_expression(loop->u.while_.condition);
-    } else {
-        assert(loop->kind == LOOP_FOR);
-        printf("for %s in ", ST(loop->u.for_.var.name));
-        if(loop->reverse) {
-            printf("reverse ");
-        }
-        print_expression(loop->u.for_.range);
+    printf("for %s in ", ST(loop->var->name));
+    if(loop->reverse) {
+        printf("reverse ");
     }
+    print_expression(loop->range);
+    printf(" loop\n");
+    for(const Statement* stmt = loop->stmts; stmt != NULL; stmt = stmt->next) {
+        print_statement(stmt, indent_level+1);
+    }
+    print_indent(indent_level);
+    printf("end loop");
+}
+
+static
+void print_while_loop(const WhileLoop* loop, uint8_t indent_level)
+{
+    printf("while ");
+    print_expression(loop->condition);
     printf(" loop\n");
     for(const Statement* stmt = loop->stmts; stmt != NULL; stmt = stmt->next) {
         print_statement(stmt, indent_level+1);

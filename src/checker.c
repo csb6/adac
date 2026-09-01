@@ -77,19 +77,15 @@ void resolve_stmt(ParseContext* context, Statement* stmt)
                 }
             }
             break;
-        case STMT_LOOP:
-            switch(stmt->u.loop.kind) {
-                case LOOP_FOR:
-                    gather_candidates(context, stmt->u.loop.u.for_.range);
-                    break;
-                case LOOP_WHILE:
-                    gather_candidates(context, stmt->u.loop.u.while_.condition);
-                    break;
-                default:
-                    assert(false && "Unhandled loop kind");
-                    break;
+        case STMT_WHILE:
+            gather_candidates(context, stmt->u.while_.condition);
+            for(Statement* s = stmt->u.while_.stmts; s; s = s->next) {
+                resolve_stmt(context, s);
             }
-            for(Statement* s = stmt->u.loop.stmts; s; s = s->next) {
+            break;
+        case STMT_FOR:
+            gather_candidates(context, stmt->u.for_.range);
+            for(Statement* s = stmt->u.for_.stmts; s; s = s->next) {
                 resolve_stmt(context, s);
             }
             break;
