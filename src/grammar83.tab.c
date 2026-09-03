@@ -4337,11 +4337,9 @@ static
 TypeDecl* find_type_decl(ParseContext* context, StringToken name)
 {
     Declaration* bucket = find_bucket(context, name);
-    if(bucket) {
-        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
-            if(decl->kind == DECL_TYPE) {
-                return (TypeDecl*)decl;
-            }
+    for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
+        if(decl->kind == DECL_TYPE) {
+            return (TypeDecl*)decl;
         }
     }
     return NULL;
@@ -4350,11 +4348,9 @@ TypeDecl* find_type_decl(ParseContext* context, StringToken name)
 ObjectDecl* find_object_decl(ParseContext* context, StringToken name)
 {
     Declaration* bucket = find_bucket(context, name);
-    if(bucket) {
-        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
-            if(decl->kind == DECL_OBJECT) {
-                return (ObjectDecl*)decl;
-            }
+    for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
+        if(decl->kind == DECL_OBJECT) {
+            return (ObjectDecl*)decl;
         }
     }
     return NULL;
@@ -4364,11 +4360,9 @@ static
 PackageSpec* find_package_spec(ParseContext* context, StringToken name)
 {
     Declaration* bucket = find_bucket(context, name);
-    if(bucket) {
-        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
-            if(decl->kind == DECL_PKG_SPEC) {
-                return (PackageSpec*)decl;
-            }
+    for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
+        if(decl->kind == DECL_PKG_SPEC) {
+            return (PackageSpec*)decl;
         }
     }
     return NULL;
@@ -4378,11 +4372,9 @@ static
 UseClause* find_use_clause(ParseContext* context, StringToken package_name)
 {
     Declaration* bucket = find_bucket(context, package_name);
-    if(bucket) {
-        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
-            if(decl->kind == DECL_USE) {
-                return (UseClause*)decl;
-            }
+    for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
+        if(decl->kind == DECL_USE) {
+            return (UseClause*)decl;
         }
     }
     return NULL;
@@ -4392,11 +4384,9 @@ static
 LabelDecl* find_label(ParseContext* context, StringToken name)
 {
     Declaration* bucket = find_bucket(context, name);
-    if(bucket) {
-        for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
-            if(decl->kind == DECL_LABEL) {
-                return (LabelDecl*)decl;
-            }
+    for(Declaration* decl = bucket; decl; decl = decl->next_overload) {
+        if(decl->kind == DECL_LABEL) {
+            return (LabelDecl*)decl;
         }
     }
     return NULL;
